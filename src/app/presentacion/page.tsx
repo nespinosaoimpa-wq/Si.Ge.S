@@ -182,15 +182,22 @@ export default function PresentacionPage() {
         {/* Desktop Nav */}
         <nav className="hidden md:flex items-center gap-8">
           {[
-            { label: 'Módulos', href: '#modulos' },
-            { label: 'Detalle', href: '/modulos' },
-            { label: '¿Por qué Si.Ge.S?', href: '#porque' },
-            { label: 'Precios', href: '#precios' },
-            { label: 'Contacto', href: '#contacto' },
+            { label: 'Módulos', href: '#modulos', isRoute: false },
+            { label: 'Detalle', href: '/modulos', isRoute: true },
+            { label: 'Nosotros', href: '/nosotros', isRoute: true },
+            { label: '¿Por qué Si.Ge.S?', href: '#porque', isRoute: false },
+            { label: 'Precios', href: '#precios', isRoute: false },
+            { label: 'Contacto', href: '#contacto', isRoute: false },
           ].map(link => (
-            <a key={link.href} href={link.href} className="text-[11px] font-black uppercase tracking-wider text-zinc-400 hover:text-white transition-colors">
-              {link.label}
-            </a>
+            link.isRoute ? (
+              <Link key={link.href} href={link.href} className="text-[11px] font-black uppercase tracking-wider text-zinc-400 hover:text-white transition-colors">
+                {link.label}
+              </Link>
+            ) : (
+              <a key={link.href} href={link.href} className="text-[11px] font-black uppercase tracking-wider text-zinc-400 hover:text-white transition-colors">
+                {link.label}
+              </a>
+            )
           ))}
         </nav>
 
@@ -217,15 +224,24 @@ export default function PresentacionPage() {
             className="fixed top-16 inset-x-0 z-40 bg-[#071E22]/98 backdrop-blur-xl border-b border-[#237893]/10 p-6 flex flex-col gap-4"
           >
             {[
-              { label: 'Módulos', href: '#modulos' },
-              { label: '¿Por qué Si.Ge.S?', href: '#porque' },
-              { label: 'Precios', href: '#precios' },
-              { label: 'Contacto', href: '#contacto' },
+              { label: 'Módulos', href: '#modulos', isRoute: false },
+              { label: 'Detalle', href: '/modulos', isRoute: true },
+              { label: 'Nosotros', href: '/nosotros', isRoute: true },
+              { label: '¿Por qué Si.Ge.S?', href: '#porque', isRoute: false },
+              { label: 'Precios', href: '#precios', isRoute: false },
+              { label: 'Contacto', href: '#contacto', isRoute: false },
             ].map(link => (
-              <a key={link.href} href={link.href} onClick={() => setMobileMenuOpen(false)}
-                className="text-sm font-black uppercase tracking-wider text-zinc-300 hover:text-white py-2 border-b border-[#237893]/10">
-                {link.label}
-              </a>
+              link.isRoute ? (
+                <Link key={link.href} href={link.href} onClick={() => setMobileMenuOpen(false)}
+                  className="text-sm font-black uppercase tracking-wider text-zinc-300 hover:text-white py-2 border-b border-[#237893]/10 block">
+                  {link.label}
+                </Link>
+              ) : (
+                <a key={link.href} href={link.href} onClick={() => setMobileMenuOpen(false)}
+                  className="text-sm font-black uppercase tracking-wider text-zinc-300 hover:text-white py-2 border-b border-[#237893]/10 block">
+                  {link.label}
+                </a>
+              )
             ))}
           </motion.div>
         )}

@@ -9,8 +9,9 @@ export async function POST(request: Request) {
     const adminSupabase = createServiceClient();
 
     const isDemoMode = process.env.SIGES_DEMO_MODE === 'true' || 
-                       process.env.SIGES_DEMO_MODE !== 'false' || 
-                       !isConfigured;
+                       (process.env.SIGES_DEMO_MODE !== 'false' && 
+                        process.env.NODE_ENV !== 'production' && 
+                        !isConfigured);
 
     // 🛡️ TACTICAL BYPASS: Ensure the main manager can always get in (in Demo mode)
     const lowerEmail = email.toLowerCase().trim();

@@ -138,9 +138,10 @@ export default function AnalisisPage() {
                 </div>
               </CardContent>
             </Card>
-          );
-        })}
-      </div>
+          </motion.div>
+        );
+      })}
+    </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Interactive Trend Chart */}

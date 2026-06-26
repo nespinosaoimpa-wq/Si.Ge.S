@@ -10,8 +10,9 @@ export async function POST(request: Request) {
     const cleanCode = accessCode.trim();
 
     const isDemoMode = process.env.SIGES_DEMO_MODE === 'true' || 
-                       process.env.SIGES_DEMO_MODE !== 'false' || 
-                       !isConfigured;
+                       (process.env.SIGES_DEMO_MODE !== 'false' && 
+                        process.env.NODE_ENV !== 'production' && 
+                        !isConfigured);
 
     // Demo bypass
     if (isDemoMode && (cleanCode === '1234' || cleanCode === 'siges2026' || cleanCode === 'demo')) {

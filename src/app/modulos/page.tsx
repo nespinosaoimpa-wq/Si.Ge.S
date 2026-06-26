@@ -221,6 +221,7 @@ const modules = [
 
 export default function ModulosPage() {
   const [selected, setSelected] = useState<number | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-[#071E22] text-zinc-100 overflow-x-hidden">
@@ -231,24 +232,67 @@ export default function ModulosPage() {
       </div>
 
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-[#071E22]/90 backdrop-blur-2xl border-b border-[#237893]/10 h-16 flex items-center justify-between px-6 lg:px-12">
+      <header className="sticky top-0 w-full z-50 bg-[#071E22]/90 backdrop-blur-2xl border-b border-[#237893]/10 h-16 flex items-center justify-between px-6 lg:px-12">
         <Link href="/presentacion" className="flex items-center gap-3">
           <SigesIcon className="w-8 h-8 text-[#3ABEFF]" />
           <div>
             <span className="font-black text-lg tracking-tight uppercase text-white block leading-none">Si.Ge.S</span>
-            <span className="text-[8px] font-bold tracking-[0.2em] uppercase text-[#3ABEFF] block leading-none">Sistema de Gestión</span>
+            <span className="text-[8px] font-bold tracking-[0.2em] uppercase text-[#3ABEFF] block leading-none">Sistema de Gestión de Seguridad</span>
           </div>
         </Link>
-        <div className="flex items-center gap-4">
-          <Link href="/presentacion" className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-zinc-400 hover:text-white transition-colors">
-            <ArrowLeft size={14} />
-            Volver
+
+        {/* Desktop Nav */}
+        <nav className="hidden md:flex items-center gap-8">
+          {[
+            { label: 'Módulos', href: '/presentacion#modulos', isRoute: true },
+            { label: 'Detalle', href: '/modulos', isRoute: true },
+            { label: 'Nosotros', href: '/nosotros', isRoute: true },
+            { label: 'Precios', href: '/presentacion#precios', isRoute: true },
+            { label: 'Contacto', href: '/presentacion#contacto', isRoute: true },
+          ].map(link => (
+            <Link key={link.href} href={link.href} className="text-[11px] font-black uppercase tracking-wider text-zinc-400 hover:text-white transition-colors">
+              {link.label}
+            </Link>
+          ))}
+        </nav>
+
+        <div className="flex items-center gap-3">
+          <Link href="/login" className="hidden sm:flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-white transition-colors px-4 py-2">
+            Ingresar
           </Link>
-          <a href="/presentacion#contacto" className="h-10 px-5 rounded-xl bg-[#3ABEFF] text-[#071E22] font-black uppercase text-[9px] tracking-widest flex items-center hover:bg-white transition-all">
+          <a href="/presentacion#contacto" className="flex items-center gap-1.5 h-10 px-5 rounded-xl bg-[#3ABEFF] text-[#071E22] font-black uppercase text-[9px] tracking-widest hover:bg-white transition-all shadow-lg shadow-[#3ABEFF]/20 hover:scale-105">
             Solicitar Demo
           </a>
+          <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2 text-zinc-400 hover:text-white">
+            {mobileMenuOpen ? <X size={20} /> : <Layers size={20} />}
+          </button>
         </div>
       </header>
+
+      {/* Mobile Menu */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="fixed top-16 inset-x-0 z-40 bg-[#071E22]/98 backdrop-blur-xl border-b border-[#237893]/10 p-6 flex flex-col gap-4"
+          >
+            {[
+              { label: 'Módulos', href: '/presentacion#modulos' },
+              { label: 'Detalle', href: '/modulos' },
+              { label: 'Nosotros', href: '/nosotros' },
+              { label: 'Precios', href: '/presentacion#precios' },
+              { label: 'Contacto', href: '/presentacion#contacto' },
+            ].map(link => (
+              <Link key={link.href} href={link.href} onClick={() => setMobileMenuOpen(false)}
+                className="text-sm font-black uppercase tracking-wider text-zinc-300 hover:text-white py-2 border-b border-[#237893]/10 block">
+                {link.label}
+              </Link>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Hero */}
       <section className="relative z-10 pt-20 pb-12 px-6 lg:px-12 max-w-7xl mx-auto text-center">
