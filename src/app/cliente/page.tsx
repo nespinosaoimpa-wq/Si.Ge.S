@@ -50,7 +50,7 @@ export default function ClienteHome() {
 
   useEffect(() => {
     // Read client session from cookie
-    let activeSession = null;
+    let activeSession: any = null;
     const cookieMatch = document.cookie.match(/siges_client_session=([^;]+)/);
     if (cookieMatch) {
       try {

@@ -126,7 +126,7 @@ export async function GET(request: Request) {
 
       if (objectives && objectives.length > 0) {
         isRealData = true;
-        const fetchedZones = [];
+        const fetchedZones: { name: string; status: string; risk: number; trend: string }[] = [];
         for (const obj of objectives) {
           // Count checkpoints
           const { count: totalCheckpoints } = await supabase
