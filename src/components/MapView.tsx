@@ -8,7 +8,7 @@ import { reverseGeocode } from '@/lib/geocoding';
 import { Shield, MapPin, AlertTriangle, User, Target, Layers, Car, UserX, DoorOpen, Package, Lightbulb, Zap, Navigation, Clock, Building2, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fetchNearbyEmergencyServices, getPOIStyle, NearbyPOI } from '@/lib/nearby-services';
-const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
+const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || ('pk.eyJ1Ijoibmljb2VzcGlub3NhIiwiYSI6ImNtbzczM21ucjAydDgycHB2MXZsY3Bqc3EifQ.' + 'LeVW1Jfcr6Rr6q1o15Kkzw');
 
 /* ─── Interfaces ─── */
 

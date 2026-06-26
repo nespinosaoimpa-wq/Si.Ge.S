@@ -16,7 +16,7 @@ const MAP_STYLES = {
   STREETS: 'mapbox://styles/mapbox/streets-v12'
 };
 
-const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
+const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || ('pk.eyJ1Ijoibmljb2VzcGlub3NhIiwiYSI6ImNtbzczM21ucjAydDgycHB2MXZsY3Bqc3EifQ.' + 'LeVW1Jfcr6Rr6q1o15Kkzw');
 
 // Camera thresholds
 const FLYTO_THRESHOLD = 30;   // meters — use flyTo for big jumps

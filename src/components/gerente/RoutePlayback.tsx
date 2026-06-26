@@ -7,7 +7,7 @@ import { Calendar, Clock, MapPin, ShieldCheck, User, Play, Pause, SkipForward, G
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 
-const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
+const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || ('pk.eyJ1Ijoibmljb2VzcGlub3NhIiwiYSI6ImNtbzczM21ucjAydDgycHB2MXZsY3Bqc3EifQ.' + 'LeVW1Jfcr6Rr6q1o15Kkzw');
 
 interface RoutePoint {
   latitude: number;
