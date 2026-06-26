@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Key, Mail, ChevronRight, UserCircle } from 'lucide-react';
+import { Key, Mail, ChevronRight, UserCircle, Shield } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { SigesIcon } from '@/components/ui/SigesLogo';
 import Link from 'next/link';
