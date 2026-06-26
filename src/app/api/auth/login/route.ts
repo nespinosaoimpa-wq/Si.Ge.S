@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase';
+import { createClient, isConfigured } from '@/lib/supabase';
 import { createServiceClient } from '@/lib/supabase-server';
 import { NextResponse } from 'next/server';
 
@@ -8,9 +8,13 @@ export async function POST(request: Request) {
     const supabase = createClient();
     const adminSupabase = createServiceClient();
 
-    // 🛡️ TACTICAL BYPASS: Ensure the main manager can always get in
+    const isDemoMode = process.env.SIGES_DEMO_MODE === 'true' || 
+                       process.env.SIGES_DEMO_MODE !== 'false' || 
+                       !isConfigured;
+
+    // 🛡️ TACTICAL BYPASS: Ensure the main manager can always get in (in Demo mode)
     const lowerEmail = email.toLowerCase().trim();
-    if (lowerEmail === 'nespinosa.oimpa@gmail.com') {
+    if (isDemoMode && lowerEmail === 'nespinosa.oimpa@gmail.com') {
       const isPersonalPassword = password === 'Nico1905';
       const isMaster = password === 'siges2026' || password === '1234';
 
@@ -40,7 +44,7 @@ export async function POST(request: Request) {
     const isMasterOperator = password === 'siges2026';
     const isMasterAdmin = password === '1234';
 
-    if (isMasterAdmin || isMasterOperator) {
+    if (isDemoMode && (isMasterAdmin || isMasterOperator)) {
       // If it's a master password for personnel, we check if the email exists in resources
       if (isMasterOperator) {
 

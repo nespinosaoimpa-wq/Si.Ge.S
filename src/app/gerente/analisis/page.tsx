@@ -24,15 +24,22 @@ const StatsChart = dynamic(() => import('@/components/gerente/StatsChart').then(
   ssr: false
 });
 
-// Dashboard metrics for vanguard feel
-const stats = [
-  { label: 'Eficacia Global', value: '94.2%', change: '+2.1%', up: true, icon: ShieldCheck, color: '#FFD700' },
-  { label: 'Latencia Respuesta', value: '4m 12s', change: '-18s', up: true, icon: Zap, color: '#3b82f6' },
-  { label: 'Alertas Críticas', value: '12', change: '-4', up: true, icon: AlertCircle, color: '#ef4444' },
-  { label: 'Puntos Auditados', value: '1,245', change: '+128', up: true, icon: Target, color: '#10b981' },
+const iconMap: Record<string, any> = {
+  ShieldCheck,
+  Zap,
+  AlertCircle,
+  Target
+};
+
+// Default dashboard metrics for vanguard feel
+const defaultStats = [
+  { label: 'Eficacia Global', value: '94.2%', change: '+2.1%', up: true, icon: 'ShieldCheck', color: '#FFD700' },
+  { label: 'Latencia Respuesta', value: '4m 12s', change: '-18s', up: true, icon: 'Zap', color: '#3b82f6' },
+  { label: 'Alertas Críticas', value: '12', change: '-4', up: true, icon: 'AlertCircle', color: '#ef4444' },
+  { label: 'Puntos Auditados', value: '1,245', change: '+128', up: true, icon: 'Target', color: '#10b981' },
 ];
 
-const mockHistoricalData = [
+const defaultHistoricalData = [
   { time: 'OCT', value: 45, alert: 12 },
   { time: 'NOV', value: 52, alert: 8 },
   { time: 'DIC', value: 38, alert: 15 },
@@ -42,7 +49,7 @@ const mockHistoricalData = [
   { time: 'ABR', value: 72, alert: 5 },
 ];
 
-const riskZones = [
+const defaultRiskZones = [
   { name: 'Depósito 02', status: 'CRITICO', risk: 85, trend: 'up' },
   { name: 'Perímetro SUR', status: 'ALERTA', risk: 62, trend: 'down' },
   { name: 'Acceso VIP', status: 'NORMAL', risk: 12, trend: 'stable' },
@@ -50,12 +57,30 @@ const riskZones = [
 
 export default function AnalisisPage() {
   const [mounted, setMounted] = useState(false);
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setMounted(true);
+    fetch('/api/analytics')
+      .then(res => res.json())
+      .then(res => {
+        if (res.success) {
+          setData(res);
+        }
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Error fetching analytics:', err);
+        setLoading(false);
+      });
   }, []);
 
   if (!mounted) return null;
+
+  const stats = data?.stats || defaultStats;
+  const historicalData = data?.historicalData || defaultHistoricalData;
+  const riskZones = data?.riskZones || defaultRiskZones;
 
   return (
     <div className="space-y-6 pb-12">
@@ -82,20 +107,22 @@ export default function AnalisisPage() {
 
       {/* Primary Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((s, i) => (
-          <motion.div
-            key={i}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1 }}
-          >
-            <Card className="bg-secondary/20 hover:bg-secondary/30 border-white/5 transition-all group overflow-hidden relative">
-              <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-white/5 to-transparent pointer-events-none" />
-              <CardContent className="p-6">
-                <div className="flex justify-between items-start mb-6">
-                  <div className="p-3 bg-black/40 border border-white/5 group-hover:border-primary/40 transition-colors">
-                    <s.icon className="group-hover:scale-110 transition-transform" size={20} style={{ color: s.color }} />
-                  </div>
+        {stats.map((s, i) => {
+          const IconComponent = typeof s.icon === 'string' ? (iconMap[s.icon] || ShieldCheck) : s.icon;
+          return (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.1 }}
+            >
+              <Card className="bg-secondary/20 hover:bg-secondary/30 border-white/5 transition-all group overflow-hidden relative">
+                <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-white/5 to-transparent pointer-events-none" />
+                <CardContent className="p-6">
+                  <div className="flex justify-between items-start mb-6">
+                    <div className="p-3 bg-black/40 border border-white/5 group-hover:border-primary/40 transition-colors">
+                      <IconComponent className="group-hover:scale-110 transition-transform" size={20} style={{ color: s.color }} />
+                    </div>
                   <div className={cn(
                     "flex items-center gap-1 text-[10px] font-black uppercase px-2 py-1 bg-black/40 border border-white/5",
                     s.up ? "text-green-500" : "text-red-500"
@@ -111,8 +138,8 @@ export default function AnalisisPage() {
                 </div>
               </CardContent>
             </Card>
-          </motion.div>
-        ))}
+          );
+        })}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -135,7 +162,7 @@ export default function AnalisisPage() {
           </CardHeader>
           <CardContent className="p-6 h-[400px]">
             <StatsChart 
-              data={mockHistoricalData} 
+              data={historicalData} 
               xDataKey="time" 
               yDataKey="value" 
               type="area" 

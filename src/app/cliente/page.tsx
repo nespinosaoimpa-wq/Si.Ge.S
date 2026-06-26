@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   AlertCircle, 
@@ -35,11 +35,6 @@ const categories = [
   { id: 'anomalia', name: 'ANOMALÍA', icon: Search, color: 'text-amber-500', bg: 'bg-amber-500/10', border: 'border-amber-500/30' },
 ];
 
-const mockTickets = [
-  { id: '#4512', category: 'Seguridad', status: 'En Camino', time: '14:20', date: 'HOY' },
-  { id: '#4498', category: 'Asistencia', status: 'Resuelto', time: 'Ayer', date: '30 MAR', solved: true },
-];
-
 export default function ClienteHome() {
   const [viewMode, setViewMode] = useState<'control' | 'reports'>('control');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -47,12 +42,66 @@ export default function ClienteHome() {
   const [description, setDescription] = useState('');
   const [showMap, setShowMap] = useState(false);
 
+  const [session, setSession] = useState<any>(null);
+  const [activeGuards, setActiveGuards] = useState<any[]>([]);
+  const [recentPatrolLogs, setRecentPatrolLogs] = useState<any[]>([]);
+  const [tickets, setTickets] = useState<any[]>([]);
+  const [metrics, setMetrics] = useState<any>({ complianceRate: 98.4, checkedCount: 42, totalCheckpointsCount: 43 });
+
+  useEffect(() => {
+    // Read client session from cookie
+    let activeSession = null;
+    const cookieMatch = document.cookie.match(/siges_client_session=([^;]+)/);
+    if (cookieMatch) {
+      try {
+        activeSession = JSON.parse(decodeURIComponent(cookieMatch[1]));
+      } catch (e) {
+        console.error('Error parsing client session cookie:', e);
+      }
+    }
+
+    if (!activeSession) {
+      const stored = localStorage.getItem('siges_client');
+      if (stored) {
+        try {
+          activeSession = JSON.parse(stored);
+        } catch {}
+      }
+    }
+
+    // Default demo session fallback if none found
+    if (!activeSession) {
+      activeSession = {
+        objective_id: 'demo-objective-id',
+        name: 'Consorcio Portofino VIP',
+        email: 'cliente@portofino.com'
+      };
+    }
+
+    setSession(activeSession);
+
+    // Fetch portal data
+    fetch(`/api/client-portal?objective_id=${activeSession.objective_id}`)
+      .then(res => res.json())
+      .then(res => {
+        if (res.success) {
+          setActiveGuards(res.activeGuards || []);
+          setRecentPatrolLogs(res.recentPatrolLogs || []);
+          setTickets(res.tickets || []);
+          setMetrics(res.metrics || { complianceRate: 98.4, checkedCount: 42, totalCheckpointsCount: 43 });
+        }
+      })
+      .catch(err => {
+        console.error('Error fetching client portal:', err);
+      });
+  }, []);
+
   const handleCreateTicket = async () => {
-    if (!selectedCategory) return;
+    if (!selectedCategory || !session) return;
     setLoading(true);
     try {
       await api.tickets.create({
-        client_id: '550e8400-e29b-41d4-a716-446655440002', // Placeholder
+        client_id: session.objective_id,
         category: selectedCategory.toLowerCase(),
         subject: `Solicitud de ${selectedCategory}`,
         description: description || 'Generado desde interfaz rápida V.I.P.',
@@ -60,6 +109,13 @@ export default function ClienteHome() {
       });
       setSelectedCategory(null);
       setDescription('');
+
+      // Refresh tickets
+      const res = await fetch(`/api/client-portal?objective_id=${session.objective_id}`);
+      const body = await res.json();
+      if (body.success) {
+        setTickets(body.tickets || []);
+      }
     } catch (error) {
       console.error('Error creating ticket:', error);
     } finally {
@@ -67,18 +123,7 @@ export default function ClienteHome() {
     }
   };
 
-  const activeGuards = [
-    { name: 'Of. Carlos Gómez', checkin: '06:00', status: 'Rondín Activo', post: 'Acceso Principal' },
-    { name: 'Of. Lucas Pérez', checkin: '08:00', status: 'Puesto Fijo', post: 'Cabina Perimetral' },
-    { name: 'Of. Martín Díaz', checkin: '07:30', status: 'Rondín Activo', post: 'Sector Depósitos' }
-  ];
 
-  const recentPatrolLogs = [
-    { time: '12:00', checkpoint: 'CP-04 Portón Norte', status: 'Verificado OK', officer: 'C. Gómez' },
-    { time: '11:45', checkpoint: 'CP-09 Depósito 2', status: 'Puerta Asegurada', officer: 'M. Díaz' },
-    { time: '11:20', checkpoint: 'CP-01 Ingreso Vehicular', status: 'Registro Completo', officer: 'L. Pérez' },
-    { time: '10:50', checkpoint: 'CP-06 Cobertura Oeste', status: 'Verificado OK', officer: 'C. Gómez' }
-  ];
 
   return (
     <div className="p-6 space-y-6 pb-24 bg-[#0a0a0a] min-h-screen text-white">
@@ -268,7 +313,7 @@ export default function ClienteHome() {
             </div>
             
             <div className="space-y-3">
-              {mockTickets.map((ticket, i) => (
+              {tickets.map((ticket, i) => (
                 <Card key={i} className="group hover:border-primary/30 transition-all border-white/5 bg-zinc-900/40 cursor-pointer">
                   <CardContent className="p-4 flex items-center justify-between">
                     <div className="flex items-center gap-4">
@@ -319,7 +364,7 @@ export default function ClienteHome() {
                 <BarChart2 className="w-4 h-4 text-emerald-400" />
               </div>
               <div>
-                <span className="text-2xl font-black font-mono text-emerald-400">98.4%</span>
+                <span className="text-2xl font-black font-mono text-emerald-400">{metrics.complianceRate}%</span>
                 <p className="text-[8px] text-zinc-500 uppercase mt-1">Rondines Completados</p>
               </div>
             </Card>
@@ -329,7 +374,7 @@ export default function ClienteHome() {
                 <FileText className="w-4 h-4 text-primary" />
               </div>
               <div>
-                <span className="text-2xl font-black font-mono text-white">42 / 43</span>
+                <span className="text-2xl font-black font-mono text-white">{metrics.checkedCount} / {metrics.totalCheckpointsCount}</span>
                 <p className="text-[8px] text-zinc-500 uppercase mt-1">Checkpoints Verificados</p>
               </div>
             </Card>

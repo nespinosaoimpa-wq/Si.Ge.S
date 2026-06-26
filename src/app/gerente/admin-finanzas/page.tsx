@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   DollarSign, 
@@ -29,11 +29,60 @@ import Link from 'next/link';
 export default function AdminFinanzas() {
   const [activeTab, setActiveTab] = useState<'financial' | 'contracts' | 'documents'>('financial');
   const [isSyncing, setIsSyncing] = useState(false);
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/finances')
+      .then(res => res.json())
+      .then(res => {
+        if (res.success) {
+          setData(res);
+        }
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Error fetching finances:', err);
+        setLoading(false);
+      });
+  }, []);
 
   const handleSync = () => {
     setIsSyncing(true);
-    setTimeout(() => setIsSyncing(false), 2000);
+    fetch('/api/finances')
+      .then(res => res.json())
+      .then(res => {
+        if (res.success) {
+          setData(res);
+        }
+        setIsSyncing(false);
+      })
+      .catch(() => {
+        setIsSyncing(false);
+      });
   };
+
+  const totals = data?.totals || {
+    monthlyIncome: 18400000,
+    payrollCost: 9200000,
+    growthProject: 31.2,
+    retentionRate: 98.4
+  };
+
+  const kpis = [
+    { label: 'Ingresos Mensuales', value: `$${(totals.monthlyIncome / 1000000).toFixed(1)}M ARS`, trend: '+12.4%', icon: DollarSign, color: 'text-green-500' },
+    { label: 'Erogación Personal', value: `$${(totals.payrollCost / 1000000).toFixed(1)}M ARS`, trend: '-1.8%', icon: Users, color: 'text-primary' },
+    { label: 'Growth Project', value: `${totals.growthProject}%`, trend: '+4.5%', icon: TrendingUp, color: 'text-blue-500' },
+    { label: 'Retention Rate', value: `${totals.retentionRate}%`, trend: 'Estable', icon: PieChart, color: 'text-zinc-400' },
+  ];
+
+  const contracts = data?.contracts || [
+    { id: 1, title: 'Consorcio Portofino', amount: '$1.450.000', expiry: '15 MAY', status: 'Pagado', contractCode: 'SIGES_CONTRACT_E_9201' },
+    { id: 2, title: 'Barrio Torremolinos', amount: '$2.180.000', expiry: '12 JUN', status: 'Facturado', contractCode: 'SIGES_CONTRACT_E_9202' },
+    { id: 3, title: 'Planta Industrial Norte', amount: '$3.500.000', expiry: '05 MAY', status: 'Vencido', contractCode: 'SIGES_CONTRACT_E_9203' },
+    { id: 4, title: 'Edificio Las Marías', amount: '$1.050.000', expiry: '20 MAY', status: 'Pagado', contractCode: 'SIGES_CONTRACT_E_9204' },
+    { id: 5, title: 'Centro Comercial Si.Ge.S', amount: '$5.400.000', expiry: '01 JUN', status: 'Facturado', contractCode: 'SIGES_CONTRACT_E_9205' },
+  ];
 
   return (
     <div className="space-y-12">
@@ -41,7 +90,7 @@ export default function AdminFinanzas() {
       {/* Background Ambience */}
       <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-primary/10 blur-[150px] rounded-full -mr-64 -mt-64 pointer-events-none opacity-50" />
       <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-blue-500/5 blur-[120px] rounded-full -ml-32 -mb-32 pointer-events-none opacity-30" />
-
+      
       {/* 1. SPECTACULAR EXECUTIVE HEADER */}
       <div className="flex justify-between items-end relative z-10">
         <div className="space-y-3">
@@ -72,12 +121,7 @@ export default function AdminFinanzas() {
 
       {/* 2. CORPORATE PERFORMANCE HUD (High-Contrast Obsidian) */}
       <div className="grid grid-cols-4 gap-8 relative z-10">
-        {[
-          { label: 'Ingresos Mensuales', value: '$18.4M ARS', trend: '+12.4%', icon: DollarSign, color: 'text-green-500' },
-          { label: 'Erogación Personal', value: '$9.2M ARS', trend: '-1.8%', icon: Users, color: 'text-primary' },
-          { label: 'Growth Project', value: '31.2%', trend: '+4.5%', icon: TrendingUp, color: 'text-blue-500' },
-          { label: 'Retention Rate', value: '98.4%', trend: 'Estable', icon: PieChart, color: 'text-zinc-400' },
-        ].map((kpi, i) => (
+        {kpis.map((kpi, i) => (
           <motion.div
             key={i}
             initial={{ opacity: 0, y: 20 }}
@@ -150,13 +194,7 @@ export default function AdminFinanzas() {
                     </tr>
                   </thead>
                   <tbody>
-                    {[
-                      { id: 1, title: 'Consorcio Portofino', amount: '$1.450.000', expiry: '15 MAY', status: 'Pagado' },
-                      { id: 2, title: 'Barrio Torremolinos', amount: '$2.180.000', expiry: '12 JUN', status: 'Facturado' },
-                      { id: 3, title: 'Planta Industrial Norte', amount: '$3.500.000', expiry: '05 MAY', status: 'Vencido' },
-                      { id: 4, title: 'Edificio Las Marías', amount: '$1.050.000', expiry: '20 MAY', status: 'Pagado' },
-                      { id: 5, title: 'Centro Comercial Si.Ge.S', amount: '$5.400.000', expiry: '01 JUN', status: 'Facturado' },
-                    ].map((row, i) => (
+                    {contracts.map((row: any, i: number) => (
                       <motion.tr 
                         key={row.id} 
                         initial={{ opacity: 0, x: -10 }}
@@ -171,7 +209,7 @@ export default function AdminFinanzas() {
                              </div>
                              <div>
                                <p className="text-sm font-black text-white uppercase group-hover:text-primary transition-all">{row.title}</p>
-                               <p className="text-[9px] text-zinc-600 font-mono italic">SIGES_CONTRACT_E_920{row.id}</p>
+                               <p className="text-[9px] text-zinc-600 font-mono italic">{row.contractCode || `SIGES_CONTRACT_E_920${row.id}`}</p>
                              </div>
                           </div>
                         </td>
