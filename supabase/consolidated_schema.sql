@@ -1,6 +1,6 @@
 -- ==========================================================
 -- Si.Ge.S — CONSOLIDATED SCHEMA MIGRATION
--- Generated: 2026-06-26T17:11:11.007Z
+-- Generated: 2026-06-26T17:19:06.619Z
 -- Contains 53 migrations executed in chronological order.
 -- ==========================================================
 
@@ -590,7 +590,8 @@ ALTER PUBLICATION supabase_realtime ADD TABLE alarms;
 
 -- 6. RLS abierta temporal para alarms (restringir cuando Auth esté estabilizado)
 ALTER TABLE alarms ENABLE ROW LEVEL SECURITY;
-CREATE POLICY IF NOT EXISTS "open_alarms" ON alarms FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "open_alarms" ON "alarms";
+CREATE POLICY "open_alarms" ON "alarms" FOR ALL USING (true) WITH CHECK (true);
 
 -- 7. RLS abierta temporal para guard_book_entries (Service Role la maneja en prod)
 DO $$
