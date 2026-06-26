@@ -1,0 +1,176 @@
+@import "tailwindcss";
+
+/* ===== Si.Ge.S DESIGN SYSTEM: MILITARY GRADE ===== */
+/* Tactical Premium Identity */
+
+@theme {
+  --color-background: #fafafa; /* bg-zinc-50 */
+  --color-foreground: #09090b; /* text-zinc-900 */
+  --color-primary: #0F4C5C;    /* Si.Ge.S Blue-Teal */
+  --color-primary-dark: #0a333e;
+  --color-primary-light: #237893;
+  --color-zinc-950: #09090b;
+  --color-zinc-900: #18181b;
+  --color-zinc-800: #27272a;
+  --color-zinc-100: #f4f4f5;
+  --color-zinc-50: #fafafa;
+  --color-danger: #ef4444;    /* Red 500 */
+  --color-success: #10b981;   /* Emerald 500 */
+  
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-display: 'Outfit', var(--font-sans);
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 32px;
+  --radius-full: 9999px;
+
+  /* Tactical Utility Shadows */
+  --shadow-tactical: 0 10px 40px -10px rgba(0, 0, 0, 0.8);
+  --shadow-volumetric: 0 10px 20px -5px rgba(15, 76, 92, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  --shadow-soft: 0 20px 40px -15px rgba(0, 0, 0, 0.3);
+}
+
+@layer base {
+  body {
+    @apply bg-zinc-50 text-zinc-900 font-sans antialiased selection:bg-primary/30 selection:text-zinc-900;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+
+  h1 {
+    @apply font-black uppercase tracking-tighter text-3xl leading-none;
+  }
+}
+
+@layer components {
+  .tactical-glass {
+    @apply bg-white/80 backdrop-blur-xl border border-zinc-200 shadow-soft;
+  }
+  
+  .btn-premium {
+    @apply relative overflow-hidden transition-all duration-300 active:scale-95 font-black uppercase tracking-[0.2em] text-[10px] rounded-2xl flex items-center justify-center gap-2;
+    background: linear-gradient(135deg, #0F4C5C 0%, #0a333e 100%);
+    box-shadow: var(--shadow-volumetric);
+    color: white;
+  }
+
+  .btn-premium:hover {
+    @apply shadow-[0_0_30px_rgba(15,76,92,0.4)];
+    filter: brightness(1.1);
+  }
+
+  .btn-premium:disabled {
+    @apply opacity-50 cursor-not-allowed grayscale;
+  }
+
+  /* Status Labels */
+  .status-label {
+    @apply font-bold text-[10px] uppercase tracking-widest bg-zinc-800 text-zinc-400 px-2.5 py-1 rounded-full border border-white/5 inline-flex items-center gap-1.5;
+  }
+
+  /* Refined Navigation Pills */
+  .pill-refined {
+    @apply h-8 px-4 rounded-full border border-white/10 bg-zinc-900/50 backdrop-blur-md flex items-center justify-center gap-2 transition-all;
+  }
+
+  .pill-active {
+    @apply border-primary/50 bg-primary/10;
+  }
+
+  /* Mono Display for technical data */
+  .data-mono {
+    @apply font-mono tabular-nums tracking-tighter;
+  }
+
+  .card-tactical {
+    @apply bg-white border border-zinc-200 rounded-[2.5rem] shadow-sm;
+  }
+}
+
+/* Status Dot (pulsing indicator) */
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  position: relative;
+}
+.status-dot::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  background: inherit;
+  opacity: 0.3;
+  animation: status-pulse 2s ease-in-out infinite;
+}
+
+@keyframes status-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.4; }
+  50% { transform: scale(2); opacity: 0; }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #27272a;
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3f3f46;
+}
+
+/* ===== UTILITIES ===== */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Scoped overrides to cancel root layout on operator routes */
+.operator-mode-layout main {
+  padding-top: 0 !important;
+  padding-bottom: 84px !important; /* Space for the bottom nav */
+}
+
+@media (min-width: 1024px) {
+  .operator-mode-layout main {
+    padding-left: 0 !important;
+    margin-left: 0 !important;
+  }
+}
+
+.operator-mode-layout .safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 20px);
+}
+
+/* Modal Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleUp {
+  from { transform: scale(0.9) translateY(20px); opacity: 0; }
+  to { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+.animate-scale-up {
+  animation: scaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+

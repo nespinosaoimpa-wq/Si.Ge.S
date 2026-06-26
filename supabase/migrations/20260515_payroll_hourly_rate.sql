@@ -1,0 +1,1 @@
+ALTER TABLE public.resources ADD COLUMN IF NOT EXISTS hourly_rate NUMERIC DEFAULT 0;

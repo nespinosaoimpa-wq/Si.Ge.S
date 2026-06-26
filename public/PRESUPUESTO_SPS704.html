@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Presupuesto SPS 704 Business OS</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700;900&display=swap');
+        
+        :root {
+            --primary: #F59E0B;
+            --black: #111111;
+            --gray: #6B7280;
+            --light-gray: #F3F4F6;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            color: var(--black);
+            background-color: white;
+            line-height: 1.6;
+        }
+
+        .page {
+            width: 210mm;
+            min-height: 297mm;
+            padding: 20mm;
+            margin: 10mm auto;
+            background: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            position: relative;
+        }
+
+        @media print {
+            body { background: none; }
+            .page { margin: 0; box-shadow: none; width: 100%; }
+            .no-print { display: none; }
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 4px solid var(--black);
+            padding-bottom: 20px;
+            margin-bottom: 40px;
+        }
+
+        .logo-area h1 {
+            font-size: 32px;
+            font-weight: 900;
+            margin: 0;
+            letter-spacing: -1px;
+        }
+
+        .logo-area h1 span {
+            color: var(--primary);
+            font-style: italic;
+        }
+
+        .logo-area p {
+            margin: 5px 0 0;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 700;
+            color: var(--gray);
+        }
+
+        .info-area {
+            text-align: right;
+            font-size: 12px;
+            color: var(--gray);
+        }
+
+        .info-area b {
+            color: var(--black);
+        }
+
+        .title-section {
+            margin-bottom: 40px;
+        }
+
+        .title-section h2 {
+            font-size: 24px;
+            font-weight: 900;
+            text-transform: uppercase;
+            margin: 0;
+            background: var(--black);
+            color: white;
+            display: inline-block;
+            padding: 10px 20px;
+            transform: skewX(-10deg);
+        }
+
+        .meta-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 30px;
+            padding: 20px;
+            background: var(--light-gray);
+            border-radius: 10px;
+        }
+
+        .meta-item label {
+            display: block;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--gray);
+            margin-bottom: 5px;
+        }
+
+        .meta-item span {
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 40px 0;
+        }
+
+        th {
+            text-align: left;
+            font-size: 11px;
+            text-transform: uppercase;
+            padding: 15px;
+            border-bottom: 2px solid var(--black);
+            color: var(--gray);
+        }
+
+        td {
+            padding: 15px;
+            border-bottom: 1px solid var(--light-gray);
+            font-size: 13px;
+        }
+
+        .price-col {
+            font-weight: 700;
+            text-align: right;
+        }
+
+        .total-row {
+            background: var(--black);
+            color: white;
+        }
+
+        .total-row td {
+            font-size: 18px;
+            font-weight: 900;
+            border: none;
+        }
+
+        .justification {
+            margin-top: 40px;
+        }
+
+        .justification h3 {
+            font-size: 16px;
+            font-weight: 900;
+            text-transform: uppercase;
+            border-left: 4px solid var(--primary);
+            padding-left: 15px;
+            margin-bottom: 20px;
+        }
+
+        .justification p {
+            font-size: 13px;
+            color: #444;
+            margin-bottom: 15px;
+        }
+
+        .footer-note {
+            margin-top: 60px;
+            font-size: 11px;
+            color: var(--gray);
+            text-align: center;
+            border-top: 1px solid var(--light-gray);
+            padding-top: 20px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            background: var(--primary);
+            color: black;
+            font-size: 10px;
+            font-weight: 900;
+            border-radius: 4px;
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="page" id="invoice">
+        <header>
+            <div class="logo-area">
+                <h1>SPS 704 <span>OS</span></h1>
+                <p>Comando de Seguridad Privada</p>
+            </div>
+            <div class="info-area">
+                <p>Fecha: <b>07 de Mayo, 2026</b></p>
+                <p>Validez: <b>15 d&iacute;as</b></p>
+                <p>Referencia: <b>SPS-PR-2026-004</b></p>
+            </div>
+        </header>
+
+        <section class="title-section">
+            <h2>Propuesta T&eacute;cnica y Comercial</h2>
+            
+            <div class="meta-grid">
+                <div class="meta-item">
+                    <label>Cliente</label>
+                    <span>SPS 704 - Operaciones Argentina</span>
+                </div>
+                <div class="meta-item">
+                    <label>Proyecto</label>
+                    <span>Ecosistema de Gesti&oacute;n T&aacute;ctica (SaaS)</span>
+                </div>
+            </div>
+        </section>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Descripci&oacute;n del M&oacute;dulo</th>
+                    <th>Tecnolog&iacute;a Clave</th>
+                    <th style="text-align: right;">Inversi&oacute;n (USD)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>
+                        <b>N&uacute;cleo Operativo y Backend Realtime</b><br>
+                        Infraestructura de datos, Auth, RLS y sincronizaci&oacute;n de eventos.
+                    </td>
+                    <td><span class="badge">Supabase</span> <span class="badge">Edge Functions</span></td>
+                    <td class="price-col">U$S 2.000</td>
+                </tr>
+                <tr>
+                    <td>
+                        <b>Dashboard de Vigilador y Tracking GPS</b><br>
+                        PWA de alta precisi&oacute;n con Quality Gates y Geofencing.
+                    </td>
+                    <td><span class="badge">Next.js 15</span> <span class="badge">Mapbox GL</span></td>
+                    <td class="price-col">U$S 3.500</td>
+                </tr>
+                <tr>
+                    <td>
+                        <b>Panel de Gerencia y Business Intelligence</b><br>
+                        Gesti&oacute;n de objetivos, personal y an&aacute;lisis financiero.
+                    </td>
+                    <td><span class="badge">Tailwind 4</span> <span class="badge">Recharts</span></td>
+                    <td class="price-col">U$S 2.500</td>
+                </tr>
+                <tr>
+                    <td>
+                        <b>Asistente Judicial e IA</b><br>
+                        Automatizaci&oacute;n de actas y reportes legales t&eacute;cnicos.
+                    </td>
+                    <td><span class="badge">OpenAI/Gemini</span> <span class="badge">PDF-Gen</span></td>
+                    <td class="price-col">U$S 1.500</td>
+                </tr>
+                <tr class="total-row">
+                    <td colspan="2">TOTAL INVERSI&Oacute;N ESTIMADA (VALOR BLUE/MEP)</td>
+                    <td class="price-col">U$S 9.500</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <section class="justification">
+            <h3>Justificaci&oacute;n del Valor</h3>
+            <p>
+                <b>1. Seguridad de Grado Militar:</b> La aplicaci&oacute;n no solo rastrea, sino que certifica la ubicaci&oacute;n del personal mediante algoritmos de validaci&oacute;n que eliminan el margen de error de redes WiFi, asegurando que los reportes tengan validez ante auditor&iacute;as externas.
+            </p>
+            <p>
+                <b>2. Eficiencia Operativa:</b> La automatizaci&oacute;n del Libro de Guardia y las Actas Judiciales reduce el tiempo administrativo en un 60%, permitiendo que el personal de gerencia se enfoque en la supervisi&oacute;n y no en el papeleo.
+            </p>
+            <p>
+                <b>3. Escalabilidad Serverless:</b> Desarrollada con tecnolog&iacute;a de vanguardia que permite soportar desde 10 hasta 10.000 vigiladores con un costo de mantenimiento m&iacute;nimo, pagando solo por el consumo real de recursos.
+            </p>
+        </section>
+
+        <div class="footer-note">
+            Presupuesto basado en tarifas de mercado para perfiles Senior Full-Stack en Argentina.<br>
+            SPS 704 OS - Intelligence & Security Infrastructure
+        </div>
+    </div>
+
+    <div class="no-print" style="text-align: center; margin-bottom: 50px;">
+        <button onclick="window.print()" style="padding: 15px 30px; background: #F59E0B; border: none; border-radius: 8px; font-weight: 900; cursor: pointer; text-transform: uppercase;">
+            🖨️ Generar PDF Ahora
+        </button>
+    </div>
+
+</body>
+</html>
