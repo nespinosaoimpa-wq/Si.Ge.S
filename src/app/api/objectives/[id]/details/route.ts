@@ -23,11 +23,11 @@ export async function GET(
     const supabase = createServiceClient();
 
     // Parallel fetch using service role to bypass RLS
-    const [objectiveRes, shiftsRes, patrolRoundsRes, routesRes, inventoryRes, guardBookRes] = await Promise.all([
+    const [objectiveRes, shiftsRes, patrolRoundsRes, checkpointsRes, inventoryRes, guardBookRes] = await Promise.all([
       supabase.from('objectives').select('*').eq('id', id).single(),
       supabase.from('guard_shifts').select('*').eq('objective_id', id).order('checkin_time', { ascending: false }).limit(50),
       supabase.from('patrol_rounds').select('*').eq('objective_id', id).order('start_time', { ascending: false }).limit(20),
-      supabase.from('patrol_routes').select('id').eq('objective_id', id),
+      supabase.from('checkpoints').select('*').eq('objective_id', id).order('order_index', { ascending: true }),
       supabase.from('resource_inventory').select('*').eq('objective_id', id),
       supabase.from('guard_book_entries').select('*').eq('objective_id', id).order('created_at', { ascending: false }).limit(30)
     ]);
@@ -67,17 +67,7 @@ export async function GET(
       };
     });
 
-    // If there are routes, fetch checkpoints
-    let checkpoints: any[] = [];
-    const routeIds = routesRes.data?.map(r => r.id) || [];
-    if (routeIds.length > 0) {
-      const { data } = await supabase
-        .from('patrol_checkpoints')
-        .select('*')
-        .in('route_id', routeIds)
-        .order('sequence_order', { ascending: true });
-      checkpoints = data || [];
-    }
+    const checkpoints = checkpointsRes.data || [];
 
     return NextResponse.json({
       objective: objectiveRes.data,

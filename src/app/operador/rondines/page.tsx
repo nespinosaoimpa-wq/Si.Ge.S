@@ -112,18 +112,13 @@ export default function RondinesPage() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // 1. Fetch patrol routes → checkpoints
-        const { data: routes } = await supabase
-          .from('patrol_routes').select('id')
-          .eq('objective_id', objectiveId).eq('is_active', true);
-        const routeIds = routes?.map((r: any) => r.id) || [];
-
-        if (routeIds.length > 0) {
-          const { data: cpData } = await supabase
-            .from('patrol_checkpoints').select('*')
-            .in('route_id', routeIds).order('sequence_order', { ascending: true });
-          setCheckpoints(cpData || []);
-        }
+        // 1. Fetch checkpoints directly linked to the objective
+        const { data: cpData } = await supabase
+          .from('checkpoints')
+          .select('*')
+          .eq('objective_id', objectiveId)
+          .order('order_index', { ascending: true });
+        setCheckpoints(cpData || []);
 
         // 2. Check for an already-active round (cross-device resilience)
         const { data: roundData } = await supabase
@@ -442,7 +437,7 @@ export default function RondinesPage() {
     try {
       await api.patrols.validateCheckpoint({
         operator_id: operatorId,
-        route_id: cp.route_id,
+        round_id: activeRound?.id,
         checkpoint_id: cp.id,
         latitude: coords.lat,
         longitude: coords.lng,
@@ -454,7 +449,7 @@ export default function RondinesPage() {
       setValidating(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [validations, checkpoints.length, operatorId, shiftData?.id]);
+  }, [validations, checkpoints.length, operatorId, shiftData?.id, activeRound]);
 
   // ── Auto proximity checkpoint trigger ──────────────────────────────────────
   useEffect(() => {

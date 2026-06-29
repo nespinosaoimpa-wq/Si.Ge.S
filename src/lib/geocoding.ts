@@ -100,10 +100,15 @@ export function parseCoordinates(query: string): { lat: number, lng: number } | 
  */
 function injectContext(query: string): string {
   const lower = query.toLowerCase();
-  const hasCity = /santa fe|rosario|paraná|parana|rafaela|reconquista|venado tuerto/i.test(lower);
-  if (!hasCity) {
+  
+  // List of major Argentine cities and provinces to identify external contexts
+  const hasExternalContext = /buenos aires|caba|capital federal|cordoba|crdoba|mendoza|tucuman|tucumán|salta|rosario|parana|paraná|entre rios|entre ríos|corrientes|chaco|misiones|formosa|santiago del estero|catamarca|la rioja|san juan|san luis|neuquen|neuquén|rio negro|río negro|chubut|santa cruz|tierra del fuego|ushuaia|mar del plata|la plata|bahia blanca|bahía blanca|rafaela|reconquista|venado tuerto|santa fe/i.test(lower);
+  
+  if (!hasExternalContext) {
+    // Default context for local/incomplete searches
     return `${query}, Santa Fe, Argentina`;
   }
+  
   if (!/argentina/i.test(lower)) {
     return `${query}, Argentina`;
   }

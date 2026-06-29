@@ -56,10 +56,21 @@ interface Incident {
   status?: string;
 }
 
+interface Checkpoint {
+  id: string;
+  name: string;
+  description?: string;
+  latitude: number;
+  longitude: number;
+  order_index?: number;
+}
+
 interface MapViewProps {
   objectives?: Objective[];
   guards?: Guard[];
   incidents?: Incident[];
+  checkpoints?: Checkpoint[];
+  onCheckpointDragEnd?: (id: string, lat: number, lng: number) => void;
   center?: [number, number];
   zoom?: number;
   className?: string;
@@ -307,6 +318,8 @@ export default function MapView({
   objectives = [],
   guards = [],
   incidents = [],
+  checkpoints = [],
+  onCheckpointDragEnd,
   center = [-31.6350, -60.7000],
   zoom = 13,
   className = "",
@@ -758,6 +771,29 @@ export default function MapView({
             </Marker>
           );
         })}
+
+        {/* Checkpoint Markers */}
+        {(checkpoints || []).filter(cp => cp.latitude && cp.longitude && !isNaN(Number(cp.latitude)) && !isNaN(Number(cp.longitude))).map((cp) => (
+          <Marker
+            key={`cp-${cp.id}`}
+            latitude={Number(cp.latitude)}
+            longitude={Number(cp.longitude)}
+            anchor="center"
+            draggable={!!onCheckpointDragEnd}
+            onDragEnd={(e) => {
+              if (onCheckpointDragEnd) onCheckpointDragEnd(cp.id, e.lngLat.lat, e.lngLat.lng);
+            }}
+          >
+            <div className="relative flex flex-col items-center group cursor-pointer">
+              <div className="bg-amber-500 p-1.5 rounded-full border-2 border-white shadow-lg transition-transform group-hover:scale-110 flex items-center justify-center">
+                <Target size={12} className="text-zinc-950 font-bold" />
+              </div>
+              <div className="absolute top-full mt-1 opacity-0 group-hover:opacity-100 transition-opacity bg-zinc-950/90 text-white text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded shadow-xl pointer-events-none whitespace-nowrap border border-amber-500/20 z-[60]">
+                {cp.name}
+              </div>
+            </div>
+          </Marker>
+        ))}
 
         {/* Objective Markers */}
         {(objectives || []).filter(o => o.latitude && o.longitude && !isNaN(Number(o.latitude)) && !isNaN(Number(o.longitude))).map((obj) => {

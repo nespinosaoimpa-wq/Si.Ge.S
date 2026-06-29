@@ -443,39 +443,15 @@ export default function ObjectiveDetail() {
   const handleAddCheckpoint = async () => {
     if (!newCheckpoint.name || !id) return;
     try {
-      const { data: routes } = await supabase
-        .from('patrol_routes')
-        .select('id')
-        .eq('objective_id', id)
-        .limit(1)
-        .single();
-      
-      let routeId = routes?.id;
-      
-      if (!routeId) {
-        // Create a default route if none exists
-        const { data: newRoute, error: routeErr } = await supabase
-          .from('patrol_routes')
-          .insert({
-            name: `Ruta ${objective.name}`,
-            objective_id: id,
-            estimated_duration_minutes: 30
-          })
-          .select()
-          .single();
-        if (routeErr) throw routeErr;
-        routeId = newRoute.id;
-      }
-
       const { error } = await supabase
-        .from('patrol_checkpoints')
+        .from('checkpoints')
         .insert({
-          route_id: routeId,
+          objective_id: id,
           name: newCheckpoint.name,
-          description: newCheckpoint.description,
-          sequence_order: checkpoints.length,
-          latitude: objective.latitude, // Default to objective location
-          longitude: objective.longitude
+          description: newCheckpoint.description || '',
+          order_index: checkpoints.length,
+          latitude: objective.latitude || -31.6107, // Default coordinates to objective location
+          longitude: objective.longitude || -60.6973
         });
       
       if (error) throw error;
@@ -483,34 +459,28 @@ export default function ObjectiveDetail() {
       setNewCheckpoint({ name: '', description: '', order_index: 0 });
       setIsAddingCheckpoint(false);
       
-      // Refresh
-      // Refresh routes and checkpoints
-      const { data: activeRoutes } = await supabase
-        .from('patrol_routes')
-        .select('id')
-        .eq('objective_id', id);
-      
-      const activeRouteIds = activeRoutes?.map(r => r.id) || [];
-
-      const { data } = await supabase
-        .from('patrol_checkpoints')
+      // Refresh checkpoints list
+      const { data, error: fetchErr } = await supabase
+        .from('checkpoints')
         .select('*')
-        .in('route_id', activeRouteIds)
-        .order('sequence_order', { ascending: true });
+        .eq('objective_id', id)
+        .order('order_index', { ascending: true });
+
+      if (fetchErr) throw fetchErr;
       setCheckpoints(data || []);
     } catch (err: any) {
-      alert("Error: " + err.message);
+      alert("Error al agregar checkpoint: " + err.message);
     }
   };
 
   const handleDeleteCheckpoint = async (cpId: string) => {
     if (!confirm("¿Eliminar este punto de control?")) return;
     try {
-      const { error } = await supabase.from('patrol_checkpoints').delete().eq('id', cpId);
+      const { error } = await supabase.from('checkpoints').delete().eq('id', cpId);
       if (error) throw error;
       setCheckpoints(prev => prev.filter(c => c.id !== cpId));
     } catch (err: any) {
-      alert("Error: " + err.message);
+      alert("Error al eliminar checkpoint: " + err.message);
     }
   };
 
@@ -706,6 +676,21 @@ export default function ObjectiveDetail() {
                   objectives={objective?.latitude && objective?.longitude ? [objective] : []} 
                   guards={resources}
                   incidents={guardBook}
+                  checkpoints={checkpoints}
+                  onCheckpointDragEnd={async (cpId, lat, lng) => {
+                    try {
+                      const { error } = await supabase
+                        .from('checkpoints')
+                        .update({ latitude: lat, longitude: lng })
+                        .eq('id', cpId);
+                      if (error) throw error;
+                      
+                      // Refresh checkpoints list locally
+                      setCheckpoints(prev => prev.map(c => c.id === cpId ? { ...c, latitude: lat, longitude: lng } : c));
+                    } catch (err: any) {
+                      alert("Error al reposicionar checkpoint: " + err.message);
+                    }
+                  }}
                   center={mapCenter}
                   zoom={16}
                   className="w-full h-full"
