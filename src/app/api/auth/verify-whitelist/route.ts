@@ -11,7 +11,7 @@ export async function POST(request: Request) {
 
     const supabase = createServiceClient();
     
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('resources')
       .select('id, name, role')
       .ilike('email', email.toLowerCase().trim())
@@ -21,6 +21,25 @@ export async function POST(request: Request) {
     if (error) {
       console.error('[WHITELIST_VERIFY] DB Error:', error);
       return NextResponse.json({ error: 'Error verificando identidad' }, { status: 500 });
+    }
+
+    if (!data) {
+      // Check if user is pre-approved manager in authorized_users table
+      const { data: authUser, error: authError } = await supabase
+        .from('authorized_users')
+        .select('id, role')
+        .ilike('email', email.toLowerCase().trim())
+        .eq('status', 'approved')
+        .limit(1)
+        .maybeSingle();
+      
+      if (!authError && authUser) {
+        data = {
+          id: authUser.id || 'GER-AUTO',
+          name: 'Gerente Autorizado',
+          role: authUser.role || 'gerente'
+        };
+      }
     }
 
     if (!data) {
