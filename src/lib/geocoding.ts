@@ -105,8 +105,8 @@ function injectContext(query: string): string {
   const hasExternalContext = /buenos aires|caba|capital federal|cordoba|crdoba|mendoza|tucuman|tucumán|salta|rosario|parana|paraná|entre rios|entre ríos|corrientes|chaco|misiones|formosa|santiago del estero|catamarca|la rioja|san juan|san luis|neuquen|neuquén|rio negro|río negro|chubut|santa cruz|tierra del fuego|ushuaia|mar del plata|la plata|bahia blanca|bahía blanca|rafaela|reconquista|venado tuerto|santa fe/i.test(lower);
   
   if (!hasExternalContext) {
-    // Default context for local/incomplete searches
-    return `${query}, Santa Fe, Argentina`;
+    // Default context for local/incomplete searches (explicitly specify the city capital)
+    return `${query}, Santa Fe de la Vera Cruz, Santa Fe, Argentina`;
   }
   
   if (!/argentina/i.test(lower)) {
