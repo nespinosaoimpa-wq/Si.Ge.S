@@ -130,7 +130,6 @@ export async function geocodeForward(query: string): Promise<GeocodingResult[]> 
         country: 'ar',
         language: 'es',
         proximity: `${SANTA_FE_CENTER.lng},${SANTA_FE_CENTER.lat}`,
-        bbox: SANTA_FE_BBOX,
         types: hasNumber ? 'address' : 'address,poi,place,locality',
         limit: '5',
         fuzzyMatch: 'true',
@@ -202,7 +201,6 @@ export async function searchBoxSuggest(query: string): Promise<GeocodingResult[]
       country: 'ar',
       language: 'es',
       proximity: `${SANTA_FE_CENTER.lng},${SANTA_FE_CENTER.lat}`,
-      bbox: SANTA_FE_BBOX,
       types: 'poi,place',
       limit: '5'
     });
@@ -271,12 +269,49 @@ export async function searchBoxRetrieve(mapboxId: string): Promise<GeocodingResu
   }
 }
 
-// ─── UNIFIED SEARCH: Hybrid Engine ────────────────────────────────────
+// ─── OPTIONAL HYBRID ENGINE: Nominatim OpenStreetMap (High Precision) ─
 
+export async function searchNominatim(query: string): Promise<GeocodingResult[]> {
+  if (!query || query.trim().length < 3) return [];
+  try {
+    const normalized = normalizeAddress(query);
+    const contextualized = injectContext(normalized);
+    
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(contextualized)}&countrycodes=ar&limit=5&addressdetails=1`, {
+      headers: {
+        'Accept-Language': 'es',
+        'User-Agent': 'SiGeS-Manager-App/1.0'
+      }
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    
+    return (data || []).map((item: any) => {
+      const addr = item.address || {};
+      return {
+        lat: parseFloat(item.lat),
+        lng: parseFloat(item.lon),
+        displayName: item.display_name,
+        street: addr.road || addr.pedestrian || '',
+        houseNumber: addr.house_number || '',
+        city: addr.city || addr.town || addr.village || '',
+        state: addr.state || '',
+        country: addr.country || 'Argentina',
+        type: item.type || 'address',
+        importance: parseFloat(item.importance || '0.5'),
+      };
+    });
+  } catch (err) {
+    console.warn("Nominatim search failed:", err);
+    return [];
+  }
+}
+
+// ─── UNIFIED SEARCH: Hybrid Engine ────────────────────────────────────
+ 
 /**
- * Main search function — runs BOTH engines in parallel, merges and deduplicates.
- * v5 results always come first (they have coordinates and are more precise).
- * Search Box POI results are appended if not duplicates.
+ * Main search function — runs Mapbox v5, Search Box v1, and Nominatim in parallel.
+ * Combines and deduplicates results, prioritizing coordinate match and exact heights.
  */
 export function searchAddresses(
   query: string, 
@@ -312,17 +347,18 @@ export function searchAddresses(
           });
         }
 
-        // 2. Run engines in parallel
-        const [v5Results, poiResults] = await Promise.all([
+        // 2. Run engines in parallel (Mapbox + Nominatim OSM)
+        const [v5Results, poiResults, osmResults] = await Promise.all([
           geocodeForward(query).catch(() => [] as GeocodingResult[]),
-          searchBoxSuggest(query).catch(() => [] as GeocodingResult[])
+          searchBoxSuggest(query).catch(() => [] as GeocodingResult[]),
+          searchNominatim(query).catch(() => [] as GeocodingResult[])
         ]);
 
         // Merge: coords first, then v5, then POIs
         const merged: GeocodingResult[] = [...results];
         const seenKeys = new Set(results.map(r => `${r.lat.toFixed(5)},${r.lng.toFixed(5)}`));
 
-        for (const r of [...v5Results, ...poiResults]) {
+        for (const r of [...v5Results, ...osmResults, ...poiResults]) {
           const key = r.lat !== 0 ? `${r.lat.toFixed(5)},${r.lng.toFixed(5)}` : r.mapbox_id || r.displayName;
           if (!seenKeys.has(key)) {
             seenKeys.add(key);
