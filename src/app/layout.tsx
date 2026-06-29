@@ -1,8 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { Sidebar } from "@/components/layout/Sidebar";
-import { AppHeader } from "@/components/layout/AppHeader";
 import PWARegistration from "@/components/PWARegistration";
 import CookieBanner from "@/components/legal/CookieBanner";
 import { ShiftProvider } from "@/components/providers/ShiftProvider";
@@ -42,6 +40,8 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
+import { MainLayoutWrapper } from "@/components/layout/MainLayoutWrapper";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -63,16 +63,10 @@ export default function RootLayout({
           <ShiftProvider>
             <PWARegistration />
             
-            {/* Shell — Sidebar and Header are hidden on /operador and /login by their own internal logic */}
-            <Sidebar />
-            <AppHeader />
-            
-            {/* Main Content */}
-            <main className="min-h-screen pt-16 lg:pl-[240px] pb-24 lg:pb-0">
-              <div className="w-full h-full">
-                {children}
-              </div>
-            </main>
+            <MainLayoutWrapper>
+              {children}
+            </MainLayoutWrapper>
+
             <CookieBanner />
           </ShiftProvider>
         </AuthProvider>
