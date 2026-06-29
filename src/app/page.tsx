@@ -258,28 +258,28 @@ export default function RootLandingPage() {
 
       {/* ── HERO ────────────────────────────────────────────────────────── */}
       <section className="relative min-h-[92vh] flex items-center px-6 lg:px-12 max-w-7xl mx-auto w-full z-10 pt-8 pb-20">
-        <div className="grid lg:grid-cols-2 gap-16 items-center w-full">
-          {/* Left */}
+        <div className="max-w-4xl mx-auto text-center w-full">
+          {/* Centered Hero Content */}
           <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            animate={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: 'easeOut' }}
-            className="space-y-8"
+            className="space-y-8 flex flex-col items-center justify-center"
           >
             <SectionTag>Tecnología de Seguridad de Vanguardia</SectionTag>
 
-            <h1 className="text-4xl lg:text-6xl font-black tracking-tight text-white uppercase leading-[0.95] font-display">
+            <h1 className="text-4xl lg:text-6xl font-black tracking-tight text-white uppercase leading-[0.95] font-display max-w-3xl">
               La plataforma que{' '}
               <span className="text-[#3ABEFF]">transforma</span>{' '}
               la gestión de seguridad privada
             </h1>
 
-            <p className="text-zinc-400 text-base lg:text-lg max-w-xl font-medium leading-relaxed">
+            <p className="text-zinc-400 text-base lg:text-lg max-w-2xl font-medium leading-relaxed mx-auto">
               Control GPS en tiempo real. Fichaje digital sin fraude. Portal de clientes con transparencia total.
               Todo en una sola app, diseñada para empresas de seguridad argentinas.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <a href="#contacto" className="group flex items-center justify-center gap-2 h-14 px-8 rounded-2xl bg-[#3ABEFF] text-[#071E22] font-black uppercase text-xs tracking-widest shadow-xl shadow-[#3ABEFF]/25 hover:scale-105 transition-all">
                 Solicitar Demo Gratis
                 <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
@@ -291,7 +291,7 @@ export default function RootLandingPage() {
             </div>
 
             {/* Mini trust bar */}
-            <div className="flex flex-wrap gap-x-8 gap-y-3 pt-4 border-t border-[#237893]/10">
+            <div className="flex flex-wrap justify-center gap-x-8 gap-y-3 pt-6 border-t border-[#237893]/10 w-full max-w-xl mx-auto">
               {[
                 { label: 'Guardias gestionados', val: '+200' },
                 { label: 'Objetivos activos', val: '+30' },
@@ -299,64 +299,13 @@ export default function RootLandingPage() {
               ].map(item => (
                 <div key={item.label} className="flex items-center gap-2">
                   <CheckCircle2 size={14} className="text-[#3ABEFF] shrink-0" />
-                  <div>
+                  <div className="text-left">
                     <p className="text-white font-black text-sm">{item.val}</p>
                     <p className="text-zinc-500 text-[9px] uppercase tracking-wider font-bold">{item.label}</p>
                   </div>
                 </div>
               ))}
             </div>
-          </motion.div>
-
-          {/* Right — Live Dashboard preview */}
-          <motion.div
-            initial={{ opacity: 0, x: 30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8, ease: 'easeOut', delay: 0.2 }}
-            className="relative hidden lg:block"
-          >
-            <div className="absolute inset-0 bg-[#0F4C5C]/30 blur-3xl rounded-full scale-75" />
-            <div className="relative z-10 rounded-[2.5rem] overflow-hidden border border-[#237893]/20 shadow-2xl shadow-black/50">
-              <div className="bg-[#071E22] px-6 py-4 border-b border-[#237893]/10 flex items-center justify-between">
-                <div className="flex gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-red-500/70" />
-                  <div className="w-3 h-3 rounded-full bg-amber-500/70" />
-                  <div className="w-3 h-3 rounded-full bg-emerald-500/70" />
-                </div>
-                <span className="text-[9px] font-mono tracking-widest text-[#237893] uppercase font-bold">Si.Ge.S — Panel de Control</span>
-                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              </div>
-              <div className="relative aspect-[16/10] bg-[#041215]">
-                <Image
-                  src="/hero-dashboard.png"
-                  alt="Dashboard Si.Ge.S en tiempo real"
-                  fill
-                  className="object-cover"
-                  priority
-                />
-              </div>
-            </div>
-            {/* Floating badges */}
-            <motion.div
-              animate={{ y: [0, -8, 0] }}
-              transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
-              className="absolute -bottom-4 -left-8 bg-emerald-950/90 backdrop-blur-xl border border-emerald-500/20 rounded-2xl px-4 py-3 shadow-xl z-20"
-            >
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-[9px] font-black uppercase tracking-wider text-emerald-400">12 guardias en línea</span>
-              </div>
-            </motion.div>
-            <motion.div
-              animate={{ y: [0, 8, 0] }}
-              transition={{ repeat: Infinity, duration: 4, ease: 'easeInOut', delay: 1 }}
-              className="absolute -top-4 -right-4 bg-[#0B2A30]/90 backdrop-blur-xl border border-[#237893]/20 rounded-2xl px-4 py-3 shadow-xl z-20"
-            >
-              <div className="flex items-center gap-2">
-                <TrendingUp size={12} className="text-[#3ABEFF]" />
-                <span className="text-[9px] font-black uppercase tracking-wider text-[#3ABEFF]">98.4% eficacia operativa</span>
-              </div>
-            </motion.div>
           </motion.div>
         </div>
 
