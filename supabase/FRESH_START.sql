@@ -630,7 +630,8 @@ INSERT INTO public.authorized_users (email, role, status, notes)
 VALUES
   ('nespinosa.oimpa@gmail.com', 'gerente', 'approved', 'Gerente General — autorizado por administrador del sistema'),
   ('jugador.nico55@gmail.com', 'gerente', 'approved', 'Cuenta de desarrollo'),
-  ('admin@sigessecurity.com', 'gerente', 'approved', 'Cuenta administrativa principal')
+  ('admin@sigessecurity.com', 'gerente', 'approved', 'Cuenta administrativa principal'),
+  ('segalf9@gmail.com', 'gerente', 'approved', 'Gerente — Habilitado para control administrativo')
 ON CONFLICT (email) DO UPDATE SET role = EXCLUDED.role, status = EXCLUDED.status;
 
 -- Contrato de ejemplo
