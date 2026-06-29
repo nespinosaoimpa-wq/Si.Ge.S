@@ -163,7 +163,7 @@ export async function geocodeForward(query: string): Promise<GeocodingResult[]> 
 
   // Run two queries in parallel: with context and without
   const [withContext, withoutContext] = await Promise.all([
-    makeRequest(`${normalized}, Si.Ge.S`),
+    makeRequest(injectContext(normalized)),
     makeRequest(normalized)
   ]);
 
