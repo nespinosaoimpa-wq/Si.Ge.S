@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
-/* ===== Si.Ge.S DESIGN SYSTEM: MILITARY GRADE ===== */
-/* Tactical Premium Identity */
+/* ===== Si.Ge.S Design System ===== */
+/* */
 
 @theme {
   --color-background: #fafafa; /* bg-zinc-50 */
@@ -27,7 +27,7 @@
   --radius-xl: 32px;
   --radius-full: 9999px;
 
-  /* Tactical Utility Shadows */
+  /* Shadows */
   --shadow-tactical: 0 10px 40px -10px rgba(0, 0, 0, 0.8);
   --shadow-volumetric: 0 10px 20px -5px rgba(15, 76, 92, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
   --shadow-soft: 0 20px 40px -15px rgba(0, 0, 0, 0.3);
@@ -42,7 +42,7 @@
   }
 
   h1 {
-    @apply font-black uppercase tracking-tighter text-3xl leading-none;
+    @apply font-semibold tracking-tight text-2xl leading-tight;
   }
 }
 
@@ -52,7 +52,7 @@
   }
   
   .btn-premium {
-    @apply relative overflow-hidden transition-all duration-300 active:scale-95 font-black uppercase tracking-[0.2em] text-[10px] rounded-2xl flex items-center justify-center gap-2;
+    @apply relative overflow-hidden transition-all duration-300 active:scale-95 font-semibold tracking-wide text-xs rounded-xl flex items-center justify-center gap-2;
     background: linear-gradient(135deg, #0F4C5C 0%, #0a333e 100%);
     box-shadow: var(--shadow-volumetric);
     color: white;
@@ -69,7 +69,7 @@
 
   /* Status Labels */
   .status-label {
-    @apply font-bold text-[10px] uppercase tracking-widest bg-zinc-800 text-zinc-400 px-2.5 py-1 rounded-full border border-white/5 inline-flex items-center gap-1.5;
+    @apply font-medium text-[11px] bg-zinc-800 text-zinc-400 px-2.5 py-1 rounded-full border border-white/5 inline-flex items-center gap-1.5;
   }
 
   /* Refined Navigation Pills */

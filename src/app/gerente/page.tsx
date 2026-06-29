@@ -736,8 +736,8 @@ export default function AdminDashboard() {
                 <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-zinc-200 rounded-xl shadow-2xl z-[60] max-h-[300px] overflow-y-auto no-scrollbar">
                   {mapboxSuggestions.map((res, i) => (
                     <button key={i} className="w-full text-left px-4 py-3 hover:bg-zinc-50 transition-colors border-b last:border-0 border-zinc-100" onClick={() => handleSelectMapboxResult(res)}>
-                      <p className="text-xs font-bold text-zinc-900 line-clamp-1">{res.displayName}</p>
-                      <p className="text-[10px] text-zinc-600 mt-0.5">{res.city}, {res.state}</p>
+                      <p className="text-[13px] font-medium text-zinc-900 line-clamp-1">{res.displayName}</p>
+                      <p className="text-xs text-zinc-500 mt-0.5">{res.city}, {res.state}</p>
                     </button>
                   ))}
                 </div>
@@ -775,7 +775,7 @@ export default function AdminDashboard() {
                   <Zap size={24} className="text-white" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">Alerta en Tiempo Real</p>
+                  <p className="text-xs font-medium opacity-80">Alerta en tiempo real</p>
                   <p className="text-sm font-bold leading-tight">{newIncidentNotification.content}</p>
                 </div>
                 <button onClick={() => setNewIncidentNotification(null)} className="p-2 hover:bg-white/10 rounded-full">
@@ -848,8 +848,8 @@ export default function AdminDashboard() {
                 <AlertTriangle size={40} className="text-white" />
               </div>
               
-              <h2 className="text-3xl font-black text-red-500 uppercase tracking-tighter mb-2">
-                Intervención Requerida
+              <h2 className="text-2xl font-bold text-red-500 mb-2">
+                Intervención requerida
               </h2>
               
               <p className="text-white/80 font-medium mb-6">
@@ -858,12 +858,12 @@ export default function AdminDashboard() {
               
               <div className="bg-white/5 rounded-xl p-4 mb-8 text-left space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-gray-400 text-xs font-bold uppercase tracking-widest">Operador</span>
-                  <span className="text-white font-black">{activeEmergency.resource_name || 'Desconocido'}</span>
+                  <span className="text-gray-400 text-xs font-medium">Operador</span>
+                  <span className="text-white font-semibold">{activeEmergency.resource_name || 'Desconocido'}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-400 text-xs font-bold uppercase tracking-widest">Hora</span>
-                  <span className="text-white font-black">
+                  <span className="text-gray-400 text-xs font-medium">Hora</span>
+                  <span className="text-white font-semibold">
                     {new Date(activeEmergency.created_at).toLocaleTimeString('es-AR')}
                   </span>
                 </div>
@@ -871,7 +871,7 @@ export default function AdminDashboard() {
 
               <button
                 onClick={handleAcknowledgeEmergency}
-                className="w-full py-4 bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-[0.3em] rounded-2xl transition-all shadow-lg shadow-red-600/30"
+                className="w-full py-4 bg-red-600 hover:bg-red-700 text-white font-semibold tracking-wide rounded-xl transition-all shadow-lg shadow-red-600/30"
               >
                 Confirmar Recepción
               </button>

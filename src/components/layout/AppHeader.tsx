@@ -37,12 +37,12 @@ export function AppHeader() {
         {/* Mobile logo */}
         <div className="lg:hidden flex items-center gap-2">
           <SigesIcon className="w-7 h-7" />
-          <span className="font-black text-sm text-gray-900 uppercase font-display tracking-tight">Si.Ge.S</span>
+          <span className="font-semibold text-sm text-gray-900 font-display tracking-tight">Si.Ge.S</span>
         </div>
 
         {/* Desktop: page title */}
         <div className="hidden lg:block">
-          <p className="text-xs text-gray-400 font-medium">
+          <p className="text-[13px] text-gray-500 font-normal">
             {mounted ? time.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }) : ''}
           </p>
         </div>
@@ -52,7 +52,7 @@ export function AppHeader() {
       <div className="flex items-center gap-3">
         {/* Time */}
         <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-lg">
-          <span className="text-sm font-semibold text-gray-700">
+          <span className="text-sm font-medium text-gray-600 tabular-nums">
             {mounted ? time.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
           </span>
         </div>

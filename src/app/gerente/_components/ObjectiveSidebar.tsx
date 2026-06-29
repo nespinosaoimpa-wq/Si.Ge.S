@@ -67,10 +67,10 @@ export function ObjectiveSidebar({
           <div className="p-6 pb-2">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h2 className="text-xl font-black text-zinc-900 uppercase tracking-tighter italic leading-none">Control de Operaciones</h2>
+                <h2 className="text-lg font-semibold text-zinc-900 leading-tight">Control de operaciones</h2>
                 <div className="flex items-center gap-2 mt-1.5">
                   <div className={cn("w-1.5 h-1.5 rounded-full animate-pulse", isConfigured ? "bg-[#0F4C5C]" : "bg-amber-500")} />
-                  <p className="text-[10px] text-zinc-600 font-black tracking-[0.2em] uppercase">{isConfigured ? 'Elite Connection' : 'Demo Mode'}</p>
+                  <p className="text-[11px] text-zinc-500 font-medium">{isConfigured ? 'Conectado' : 'Modo demo'}</p>
                 </div>
               </div>
               <div className="flex gap-2">
@@ -104,7 +104,7 @@ export function ObjectiveSidebar({
                   key={tab}
                   onClick={() => tab === 'payroll' ? (window.location.href = '/gerente/planillas') : setActiveTab(tab)}
                   className={cn(
-                    "flex-1 flex items-center justify-center gap-2 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all",
+                    "flex-1 flex items-center justify-center gap-2 py-2 text-[11px] font-medium rounded-lg transition-all",
                     activeTab === tab ? "bg-white text-[#0F4C5C] shadow-sm border border-zinc-200" : "text-zinc-500 hover:text-zinc-700"
                   )}
                 >
@@ -127,7 +127,7 @@ export function ObjectiveSidebar({
               <input
                 type="text"
                 placeholder={activeTab === 'objectives' ? "Filtrar objetivos..." : "Filtrar personal..."}
-                className="w-full bg-white border border-zinc-200 rounded-xl py-2.5 pl-10 pr-4 text-xs text-zinc-900 placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-[#0F4C5C]/50 shadow-sm"
+                className="w-full bg-white border border-zinc-200 rounded-xl py-2.5 pl-10 pr-4 text-[13px] text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-[#0F4C5C]/50 shadow-sm"
                 value={searchQuery}
                 onChange={(e) => handleMapboxSearch(e.target.value)}
               />
@@ -142,8 +142,8 @@ export function ObjectiveSidebar({
                   <div className="w-20 h-20 bg-white border border-zinc-100 rounded-3xl flex items-center justify-center mb-6 shadow-sm">
                     <MapPin size={32} className="text-zinc-200" strokeWidth={1} />
                   </div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-400">Sin objetivos vinculados</p>
-                  <p className="text-[10px] font-bold text-zinc-300 uppercase tracking-widest mt-2 leading-relaxed">
+                  <p className="text-sm font-medium text-zinc-400">Sin objetivos vinculados</p>
+                  <p className="text-xs font-normal text-zinc-400 mt-1 leading-relaxed">
                     Ajustá el filtro o buscá una <br/> dirección en el mapa
                   </p>
                 </div>
@@ -175,24 +175,24 @@ export function ObjectiveSidebar({
                           )}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <h3 className="text-xs font-black text-zinc-900 uppercase tracking-tight truncate">{obj.name}</h3>
+                          <h3 className="text-[13px] font-semibold text-zinc-900 truncate">{obj.name}</h3>
                           {obj.occupant_name ? (
                             <div className="flex items-center gap-1.5 mt-0.5">
                               <div className="w-1.5 h-1.5 rounded-full bg-[#0F4C5C]" />
-                              <p className="text-[10px] text-[#0F4C5C] font-black uppercase truncate">{obj.occupant_name}</p>
+                              <p className="text-[11px] text-[#0F4C5C] font-medium truncate">{obj.occupant_name}</p>
                             </div>
                           ) : (
-                            obj.address && <p className="text-[10px] text-zinc-600 font-bold uppercase truncate tracking-widest mt-0.5">{obj.address}</p>
+                            obj.address && <p className="text-[11px] text-zinc-500 font-normal truncate mt-0.5">{obj.address}</p>
                           )}
                           <div className="flex items-center gap-2 mt-3">
                             <div className={cn(
-                              "text-[9px] font-black uppercase tracking-[0.1em]",
-                              obj.is_manned ? "text-[#0F4C5C]" : "text-zinc-600"
+                              "text-[11px] font-medium",
+                              obj.is_manned ? "text-[#0F4C5C]" : "text-zinc-500"
                             )}>
                               {obj.is_manned ? '• Cubierto' : obj.status}
                             </div>
                             <span className="text-zinc-200 text-[10px]">|</span>
-                            <span className="text-[9px] text-zinc-300 font-bold uppercase tracking-widest">OBJ-{obj.id.substring(0, 4)}</span>
+                            <span className="text-[11px] text-zinc-400 font-mono">OBJ-{obj.id.substring(0, 4)}</span>
                           </div>
                         </div>
                         <ChevronRight size={16} className={cn("mt-1 transition-colors", selectedObjective?.id === obj.id ? "text-[#0F4C5C]" : "text-zinc-200")} />
@@ -206,7 +206,7 @@ export function ObjectiveSidebar({
               activeGuards.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20 text-gray-400 opacity-50">
                   <User size={48} className="mb-4 text-gray-200" strokeWidth={1} />
-                  <p className="text-[10px] font-bold uppercase tracking-widest">Sin personal en servicio</p>
+                  <p className="text-sm font-medium">Sin personal en servicio</p>
                 </div>
               ) : (
                 <div className="p-3 space-y-2">
@@ -236,20 +236,20 @@ export function ObjectiveSidebar({
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-xs font-black text-zinc-900 uppercase tracking-tighter truncate">{guard.name}</h3>
+                          <h3 className="text-[13px] font-semibold text-zinc-900 truncate">{guard.name}</h3>
                             <div className="flex items-center gap-2 mt-1">
                               <div className={cn("w-1.5 h-1.5 rounded-full", guard.isOnShift ? "bg-[#0F4C5C]" : "bg-zinc-300")} />
-                              <p className={cn("text-[9px] font-bold uppercase tracking-[0.1em] truncate", guard.isOnShift ? "text-[#0F4C5C]" : "text-zinc-400")}>
+                              <p className={cn("text-[11px] font-medium truncate", guard.isOnShift ? "text-[#0F4C5C]" : "text-zinc-400")}>
                                 {guard.isOnShift ? (guard.objectives?.name || 'En Servicio') : 'Fuera de Turno'}
                               </p>
                             </div>
                           <div className="flex items-center gap-2 mt-2">
-                             <div className="px-1.5 py-0.5 bg-zinc-100 rounded text-[7px] font-black text-zinc-500 uppercase tracking-[0.15em]">
-                                U-TRACK LIVE
+                             <div className="px-1.5 py-0.5 bg-zinc-100 rounded text-[9px] font-medium text-zinc-500 tracking-wide">
+                                GPS activo
                              </div>
                              {guard.accuracy && (
-                               <div className="text-[7px] text-zinc-300 font-bold">
-                                 ACC: {Math.round(guard.accuracy)}m
+                               <div className="text-[9px] text-zinc-400 font-mono">
+                                 ±{Math.round(guard.accuracy)}m
                                 </div>
                              )}
                           </div>
@@ -266,15 +266,15 @@ export function ObjectiveSidebar({
           {/* Quick Stats Footer */}
           <div className="p-5 border-t border-zinc-200 bg-zinc-50 flex items-center justify-between">
             <div className="space-y-1">
-              <p className="text-[9px] font-black text-zinc-600 uppercase tracking-[0.2em]">Fuerza Operativa</p>
+              <p className="text-[11px] font-medium text-zinc-500">Fuerza operativa</p>
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
                   <MapPin size={12} className="text-[#0F4C5C]" />
-                  <span className="text-xs font-black text-zinc-900">{filteredObjectives.length}</span>
+                  <span className="text-xs font-semibold text-zinc-900">{filteredObjectives.length}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <User size={12} className="text-[#0F4C5C]" />
-                  <span className="text-xs font-black text-zinc-900">{activeGuards.length}</span>
+                  <span className="text-xs font-semibold text-zinc-900">{activeGuards.length}</span>
                 </div>
               </div>
             </div>

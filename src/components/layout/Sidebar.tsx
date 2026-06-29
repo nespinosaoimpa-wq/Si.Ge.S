@@ -79,7 +79,7 @@ export function Sidebar() {
           const content = (
             <div className="flex flex-col items-center justify-center gap-1.5 min-w-[72px] h-full">
               {iconEl}
-              <span className={cn('text-[9px] font-black uppercase tracking-widest transition-colors whitespace-nowrap', isActive ? 'text-[#0F4C5C]' : 'text-zinc-500')}>
+              <span className={cn('text-[10px] font-semibold transition-colors whitespace-nowrap', isActive ? 'text-[#0F4C5C]' : 'text-zinc-500')}>
                 {item.name}
               </span>
             </div>
@@ -113,7 +113,7 @@ export function Sidebar() {
           <SigesLogo variant="light" iconSize="w-10 h-10" textSize="text-lg" />
         </div>
         <div className="mt-1.5 px-1">
-          <p className="text-zinc-500 text-[9px] font-semibold uppercase tracking-widest">
+          <p className="text-zinc-500 text-[11px] font-medium">
             {isGuardia ? 'Panel Operativo' : 'Panel de Control'}
           </p>
         </div>
@@ -134,10 +134,10 @@ export function Sidebar() {
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-black text-white truncate leading-tight">
+                  <p className="text-[13px] font-semibold text-white truncate leading-tight">
                     {user.user_metadata?.full_name || user.email?.split('@')[0] || 'Usuario'}
                   </p>
-                  <p className="text-[9px] text-primary font-bold uppercase tracking-widest mt-1">
+                  <p className="text-[11px] text-primary/80 font-medium mt-0.5">
                     {role === 'gerente' ? 'Administración' : 'Operativo'}
                   </p>
                 </div>
@@ -164,7 +164,7 @@ export function Sidebar() {
           return (
             <Link key={item.name} href={item.href}>
               <div className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-sm font-semibold',
+                'flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-[13px] font-medium',
                 isActive
                   ? 'bg-primary/10 text-primary border border-primary/15'
                   : 'text-zinc-500 hover:text-white hover:bg-white/5'

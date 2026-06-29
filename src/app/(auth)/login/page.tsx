@@ -96,9 +96,9 @@ export default function LoginPage() {
           </motion.div>
         </div>
         
-        <h1 className="text-4xl font-black tracking-tighter text-gray-900 mb-1.5 uppercase font-display leading-none">Si.Ge.S</h1>
-        <p className="text-gray-400 text-[9px] tracking-[0.2em] font-bold uppercase max-w-[280px] leading-tight">
-          El sistema que potencia la gestión de toda empresa de seguridad privada
+        <h1 className="text-3xl font-bold tracking-tight text-gray-900 mb-1.5 font-display leading-none">Si.Ge.S</h1>
+        <p className="text-gray-500 text-xs font-normal max-w-[280px] leading-relaxed">
+          Sistema integral de gestión para seguridad privada
         </p>
       </div>
 
@@ -147,13 +147,13 @@ export default function LoginPage() {
 
             <div className="flex items-center gap-4 py-2">
               <div className="h-px flex-1 bg-gray-100" />
-              <span className="text-[11px] font-black text-gray-400 uppercase tracking-widest">o mediante correo</span>
+              <span className="text-xs font-medium text-gray-400">o mediante correo</span>
               <div className="h-px flex-1 bg-gray-100" />
             </div>
 
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
-                <label className="text-[11px] uppercase tracking-widest text-gray-400 font-bold ml-1">
+                <label className="text-xs text-gray-500 font-medium ml-1">
                   Identificación
                 </label>
                 <Input
@@ -167,7 +167,7 @@ export default function LoginPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-[11px] uppercase tracking-widest text-gray-400 font-bold ml-1">
+                <label className="text-xs text-gray-500 font-medium ml-1">
                   Código de Acceso
                 </label>
                 <Input
@@ -185,7 +185,7 @@ export default function LoginPage() {
                   type="button"
                   onClick={() => setRole('operador')}
                   className={cn(
-                    "h-12 rounded-xl text-[11px] font-black uppercase tracking-widest border transition-all",
+                    "h-12 rounded-xl text-xs font-medium border transition-all",
                     role === 'operador' 
                       ? "bg-primary border-primary text-black shadow-lg shadow-primary/20" 
                       : "bg-white border-gray-100 text-gray-500 hover:bg-gray-50"
@@ -197,7 +197,7 @@ export default function LoginPage() {
                   type="button"
                   onClick={() => setRole('gerente')}
                   className={cn(
-                    "h-12 rounded-xl text-[11px] font-black uppercase tracking-widest border transition-all",
+                    "h-12 rounded-xl text-xs font-medium border transition-all",
                     role === 'gerente' 
                       ? "bg-primary border-primary text-black shadow-lg shadow-primary/20" 
                       : "bg-white border-gray-100 text-gray-500 hover:bg-gray-50"
@@ -225,8 +225,8 @@ export default function LoginPage() {
         </CardContent>
       </Card>
       
-      <p className="mt-8 text-[10px] text-center text-gray-400 font-bold uppercase tracking-[0.2em]">
-        Si.Ge.S • Gestión Operativa Integral
+      <p className="mt-8 text-xs text-center text-gray-400 font-normal">
+        Si.Ge.S · Gestión de Seguridad
       </p>
     </motion.div>
   );
