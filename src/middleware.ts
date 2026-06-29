@@ -18,7 +18,7 @@ const CLIENT_ROUTES = ['/cliente'];
 const AUTH_ROUTES = ['/login', '/register', '/cliente-login'];
 
 // Rutas públicas que nunca requieren auth
-const PUBLIC_ROUTES = ['/presentacion', '/presupuesto', '/legal', '/', '/api'];
+const PUBLIC_ROUTES = ['/presupuesto', '/legal', '/', '/api', '/roles'];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

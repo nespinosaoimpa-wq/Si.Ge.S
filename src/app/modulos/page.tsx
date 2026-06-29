@@ -233,7 +233,7 @@ export default function ModulosPage() {
 
       {/* Header */}
       <header className="sticky top-0 w-full z-50 bg-[#071E22]/90 backdrop-blur-2xl border-b border-[#237893]/10 h-16 flex items-center justify-between px-6 lg:px-12">
-        <Link href="/presentacion" className="flex items-center gap-3">
+        <Link href="/" className="flex items-center gap-3">
           <SigesIcon className="w-8 h-8 text-[#3ABEFF]" />
           <div>
             <span className="font-black text-lg tracking-tight uppercase text-white block leading-none">Si.Ge.S</span>
@@ -244,11 +244,11 @@ export default function ModulosPage() {
         {/* Desktop Nav */}
         <nav className="hidden md:flex items-center gap-8">
           {[
-            { label: 'Módulos', href: '/presentacion#modulos', isRoute: true },
+            { label: 'Módulos', href: '/#modulos', isRoute: true },
             { label: 'Detalle', href: '/modulos', isRoute: true },
             { label: 'Nosotros', href: '/nosotros', isRoute: true },
-            { label: 'Precios', href: '/presentacion#precios', isRoute: true },
-            { label: 'Contacto', href: '/presentacion#contacto', isRoute: true },
+            { label: 'Precios', href: '/#precios', isRoute: true },
+            { label: 'Contacto', href: '/#contacto', isRoute: true },
           ].map(link => (
             <Link key={link.href} href={link.href} className="text-[11px] font-black uppercase tracking-wider text-zinc-400 hover:text-white transition-colors">
               {link.label}
@@ -257,10 +257,10 @@ export default function ModulosPage() {
         </nav>
 
         <div className="flex items-center gap-3">
-          <Link href="/login" className="hidden sm:flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-white transition-colors px-4 py-2">
+          <Link href="/roles" className="hidden sm:flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-[#3ABEFF] hover:text-white transition-colors px-4 py-2 border border-[#3ABEFF]/25 rounded-xl bg-[#3ABEFF]/5 hover:bg-[#3ABEFF]/10">
             Ingresar
           </Link>
-          <a href="/presentacion#contacto" className="flex items-center gap-1.5 h-10 px-5 rounded-xl bg-[#3ABEFF] text-[#071E22] font-black uppercase text-[9px] tracking-widest hover:bg-white transition-all shadow-lg shadow-[#3ABEFF]/20 hover:scale-105">
+          <a href="/#contacto" className="flex items-center gap-1.5 h-10 px-5 rounded-xl bg-[#3ABEFF] text-[#071E22] font-black uppercase text-[9px] tracking-widest hover:bg-white transition-all shadow-lg shadow-[#3ABEFF]/20 hover:scale-105">
             Solicitar Demo
           </a>
           <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2 text-zinc-400 hover:text-white">
@@ -279,11 +279,11 @@ export default function ModulosPage() {
             className="fixed top-16 inset-x-0 z-40 bg-[#071E22]/98 backdrop-blur-xl border-b border-[#237893]/10 p-6 flex flex-col gap-4"
           >
             {[
-              { label: 'Módulos', href: '/presentacion#modulos' },
+              { label: 'Módulos', href: '/#modulos' },
               { label: 'Detalle', href: '/modulos' },
               { label: 'Nosotros', href: '/nosotros' },
-              { label: 'Precios', href: '/presentacion#precios' },
-              { label: 'Contacto', href: '/presentacion#contacto' },
+              { label: 'Precios', href: '/#precios' },
+              { label: 'Contacto', href: '/#contacto' },
             ].map(link => (
               <Link key={link.href} href={link.href} onClick={() => setMobileMenuOpen(false)}
                 className="text-sm font-black uppercase tracking-wider text-zinc-300 hover:text-white py-2 border-b border-[#237893]/10 block">
@@ -354,7 +354,7 @@ export default function ModulosPage() {
           <p className="text-zinc-400 text-sm font-medium mb-8 max-w-xl mx-auto">
             Solicita una demo personalizada y te mostramos cómo cada módulo puede adaptarse a las necesidades específicas de tu empresa.
           </p>
-          <a href="/presentacion#contacto" className="inline-flex items-center gap-2 h-14 px-10 rounded-2xl bg-[#3ABEFF] text-[#071E22] font-black uppercase text-xs tracking-widest hover:bg-white transition-all shadow-xl shadow-[#3ABEFF]/20 hover:scale-105">
+          <a href="/#contacto" className="inline-flex items-center gap-2 h-14 px-10 rounded-2xl bg-[#3ABEFF] text-[#071E22] font-black uppercase text-xs tracking-widest hover:bg-white transition-all shadow-xl shadow-[#3ABEFF]/20 hover:scale-105">
             Solicitar Demo Gratuita <ArrowLeft size={16} className="rotate-180" />
           </a>
         </div>
@@ -415,7 +415,7 @@ export default function ModulosPage() {
                 <p className="text-zinc-200 text-sm font-medium leading-relaxed">{modules[selected].benefit}</p>
               </div>
 
-              <a href="/presentacion#contacto" className="mt-6 w-full h-12 rounded-xl flex items-center justify-center text-[10px] font-black uppercase tracking-widest transition-all text-[#071E22] hover:scale-[1.02]"
+              <a href="/#contacto" className="mt-6 w-full h-12 rounded-xl flex items-center justify-center text-[10px] font-black uppercase tracking-widest transition-all text-[#071E22] hover:scale-[1.02]"
                 style={{ background: modules[selected].color }}>
                 Solicitar Demo de Este Módulo
               </a>

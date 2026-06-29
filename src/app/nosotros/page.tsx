@@ -60,7 +60,7 @@ export default function NosotrosPage() {
 
       {/* ── Navigation ──────────────────────────────────────────────────── */}
       <header className="sticky top-0 w-full z-50 bg-[#071E22]/90 backdrop-blur-2xl border-b border-[#237893]/10 h-16 flex items-center justify-between px-6 lg:px-12">
-        <Link href="/presentacion" className="flex items-center gap-3">
+        <Link href="/" className="flex items-center gap-3">
           <SigesIcon className="w-8 h-8 text-[#3ABEFF]" />
           <div>
             <span className="font-black text-lg tracking-tight uppercase text-white block leading-none">Si.Ge.S</span>
@@ -71,11 +71,11 @@ export default function NosotrosPage() {
         {/* Desktop Nav */}
         <nav className="hidden md:flex items-center gap-8">
           {[
-            { label: 'Módulos', href: '/presentacion#modulos' },
+            { label: 'Módulos', href: '/#modulos' },
             { label: 'Detalle', href: '/modulos' },
             { label: 'Nosotros', href: '/nosotros' },
-            { label: 'Precios', href: '/presentacion#precios' },
-            { label: 'Contacto', href: '/presentacion#contacto' },
+            { label: 'Precios', href: '/#precios' },
+            { label: 'Contacto', href: '/#contacto' },
           ].map(link => (
             <Link key={link.href} href={link.href} className="text-[11px] font-black uppercase tracking-wider text-zinc-400 hover:text-white transition-colors">
               {link.label}
@@ -84,10 +84,10 @@ export default function NosotrosPage() {
         </nav>
 
         <div className="flex items-center gap-3">
-          <Link href="/login" className="hidden sm:flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-white transition-colors px-4 py-2">
+          <Link href="/roles" className="hidden sm:flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-[#3ABEFF] hover:text-white transition-colors px-4 py-2 border border-[#3ABEFF]/25 rounded-xl bg-[#3ABEFF]/5 hover:bg-[#3ABEFF]/10">
             Ingresar
           </Link>
-          <Link href="/presentacion#contacto" className="flex items-center gap-1.5 h-10 px-5 rounded-xl bg-[#3ABEFF] text-[#071E22] font-black uppercase text-[9px] tracking-widest hover:bg-white transition-all shadow-lg shadow-[#3ABEFF]/20 hover:scale-105">
+          <Link href="/#contacto" className="flex items-center gap-1.5 h-10 px-5 rounded-xl bg-[#3ABEFF] text-[#071E22] font-black uppercase text-[9px] tracking-widest hover:bg-white transition-all shadow-lg shadow-[#3ABEFF]/20 hover:scale-105">
             Solicitar Demo
           </Link>
           <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2 text-zinc-400 hover:text-white">
@@ -106,11 +106,11 @@ export default function NosotrosPage() {
             className="fixed top-16 inset-x-0 z-40 bg-[#071E22]/98 backdrop-blur-xl border-b border-[#237893]/10 p-6 flex flex-col gap-4"
           >
             {[
-              { label: 'Módulos', href: '/presentacion#modulos' },
+              { label: 'Módulos', href: '/#modulos' },
               { label: 'Detalle', href: '/modulos' },
               { label: 'Nosotros', href: '/nosotros' },
-              { label: 'Precios', href: '/presentacion#precios' },
-              { label: 'Contacto', href: '/presentacion#contacto' },
+              { label: 'Precios', href: '/#precios' },
+              { label: 'Contacto', href: '/#contacto' },
             ].map(link => (
               <Link key={link.href} href={link.href} onClick={() => setMobileMenuOpen(false)}
                 className="text-sm font-black uppercase tracking-wider text-zinc-300 hover:text-white py-2 border-b border-[#237893]/10 block">
@@ -166,7 +166,7 @@ export default function NosotrosPage() {
                 En Si.Ge.S, digitalizamos y blindamos cada aspecto de la operación. Desde el monitoreo táctico en vivo hasta la automatización de la nómina y planillas horarias, proveemos un sistema operativo unificado que garantiza la excelencia del servicio y blinda legalmente a las agencias prestadoras frente a reclamos laborales o civiles.
               </p>
               <div className="flex gap-4 pt-4">
-                <Link href="/presentacion#contacto" className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#3ABEFF] hover:text-white transition-colors">
+                <Link href="/#contacto" className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#3ABEFF] hover:text-white transition-colors">
                   Conocer más <ArrowRight size={12} />
                 </Link>
               </div>
@@ -253,10 +253,10 @@ export default function NosotrosPage() {
               Únase a las agencias prestadoras de seguridad física que ya operan a máxima eficiencia con Si.Ge.S OS. Solicite su prueba o demo gratuita hoy mismo.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link href="/presentacion#contacto" className="flex items-center justify-center gap-2 h-12 px-8 rounded-xl bg-[#3ABEFF] text-[#071E22] font-black uppercase text-[10px] tracking-widest hover:bg-white transition-all shadow-lg shadow-[#3ABEFF]/20 w-full sm:w-auto">
+              <Link href="/#contacto" className="flex items-center justify-center gap-2 h-12 px-8 rounded-xl bg-[#3ABEFF] text-[#071E22] font-black uppercase text-[10px] tracking-widest hover:bg-white transition-all shadow-lg shadow-[#3ABEFF]/20 w-full sm:w-auto">
                 Solicitar Demostración <ArrowRight size={14} />
               </Link>
-              <Link href="/login" className="flex items-center justify-center gap-2 h-12 px-8 rounded-xl bg-[#0F4C5C]/20 border border-[#237893]/20 text-white font-black uppercase text-[10px] tracking-widest hover:bg-[#0F4C5C]/40 transition-all w-full sm:w-auto">
+              <Link href="/roles" className="flex items-center justify-center gap-2 h-12 px-8 rounded-xl bg-[#0F4C5C]/20 border border-[#237893]/20 text-white font-black uppercase text-[10px] tracking-widest hover:bg-[#0F4C5C]/40 transition-all w-full sm:w-auto">
                 Ingresar a la Plataforma
               </Link>
             </div>
@@ -276,7 +276,7 @@ export default function NosotrosPage() {
             © {new Date().getFullYear()} Si.Ge.S. Todos los derechos reservados.
           </p>
           <div className="flex gap-6">
-            <Link href="/presentacion" className="text-[10px] font-black uppercase tracking-widest text-zinc-500 hover:text-[#3ABEFF] transition-colors">
+            <Link href="/" className="text-[10px] font-black uppercase tracking-widest text-zinc-500 hover:text-[#3ABEFF] transition-colors">
               Inicio
             </Link>
             <Link href="/modulos" className="text-[10px] font-black uppercase tracking-widest text-zinc-500 hover:text-[#3ABEFF] transition-colors">
