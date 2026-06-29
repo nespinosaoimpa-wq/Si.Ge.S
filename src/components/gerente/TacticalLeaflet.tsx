@@ -160,12 +160,17 @@ export default function TacticalLeaflet({
     selectedRoute = []
   }: TacticalLeafletProps) {
     const mapRef = React.useRef<MapRef>(null);
+    const isValidCoords = (lat: any, lng: any) => lat !== undefined && lng !== undefined && !isNaN(Number(lat)) && !isNaN(Number(lng)) && Number(lat) !== 0 && Number(lng) !== 0;
     const [activeStyle, setActiveStyle] = useState<keyof typeof MAP_STYLES>('NAVIGATION');
     const [showStyles, setShowStyles] = useState(false);
-    const [viewState, setViewState] = useState({
-      latitude: center[0],
-      longitude: center[1],
-      zoom: zoom
+    const [viewState, setViewState] = useState(() => {
+      const lat = center && center[0] && !isNaN(Number(center[0])) ? Number(center[0]) : -31.6107;
+      const lng = center && center[1] && !isNaN(Number(center[1])) ? Number(center[1]) : -60.6973;
+      return {
+        latitude: lat,
+        longitude: lng,
+        zoom: zoom
+      };
     });
     const [selectedPoint, setSelectedPoint] = useState<Objective | null>(null);
     const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
@@ -391,8 +396,7 @@ export default function TacticalLeaflet({
             );
           })}
 
-        {activeIncidents.map((inc) => {
-          if (!inc.latitude || !inc.longitude) return null;
+        {activeIncidents.filter(inc => isValidCoords(inc.latitude, inc.longitude)).map((inc) => {
           return (
             <Marker
               key={`inc-${inc.id}`}

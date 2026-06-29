@@ -401,15 +401,20 @@ export default function MapView({
   onDraftDragEnd,
 }: MapViewProps) {
   const mapRef = useRef<MapRef>(null);
+  const isValidCoords = (lat: any, lng: any) => lat !== undefined && lng !== undefined && !isNaN(Number(lat)) && !isNaN(Number(lng)) && Number(lat) !== 0 && Number(lng) !== 0;
   const [isMobile, setIsMobile] = useState(false);
   const [is3D, setIs3D] = useState(true); 
   const [showStyles, setShowStyles] = useState(false);
-  const [viewState, setViewState] = useState({
-    latitude: center[0],
-    longitude: center[1],
-    zoom: zoom,
-    pitch: 60,
-    bearing: -20
+  const [viewState, setViewState] = useState(() => {
+    const lat = center && center[0] && !isNaN(Number(center[0])) ? Number(center[0]) : -31.6350;
+    const lng = center && center[1] && !isNaN(Number(center[1])) ? Number(center[1]) : -60.7000;
+    return {
+      latitude: lat,
+      longitude: lng,
+      zoom: zoom,
+      pitch: 60,
+      bearing: -20
+    };
   });
 
   const [selectedObjective, setSelectedObjective] = useState<Objective | null>(null);
@@ -465,11 +470,11 @@ export default function MapView({
   }, []);
 
   useEffect(() => {
-    if (center && center.length === 2) {
+    if (center && center.length === 2 && !isNaN(Number(center[0])) && !isNaN(Number(center[1]))) {
       setViewState(prev => ({
         ...prev,
-        latitude: center[0],
-        longitude: center[1],
+        latitude: Number(center[0]),
+        longitude: Number(center[1]),
         zoom: 18,
         pitch: 45,
         transitionDuration: 2000
@@ -732,8 +737,7 @@ export default function MapView({
         })}
 
         {/* Guard Markers with Professional Animation and Heading */}
-        {(guards || []).map((g) => {
-          if (!g.latitude || !g.longitude) return null;
+        {(guards || []).filter(g => isValidCoords(g.latitude, g.longitude)).map((g) => {
           
           const isSelected = selectedGuard?.id === g.id;
           const isAbandoned = g.status === 'abandoned';
@@ -767,8 +771,7 @@ export default function MapView({
         })}
 
         {/* 🔥 PANIC ALERTS (REALTIME PULSING) 🔥 */}
-        {panicIncidents.map((alert, index) => {
-          if (!alert.latitude || !alert.longitude) return null;
+        {panicIncidents.filter(alert => isValidCoords(alert.latitude, alert.longitude)).map((alert, index) => {
           return (
             <Marker 
               key={`panic-${alert.id || index}`} 
@@ -810,8 +813,7 @@ export default function MapView({
           </Source>
         )}
 
-        {regularIncidents.map((inc) => {
-          if (!inc.latitude || !inc.longitude) return null;
+        {regularIncidents.filter(inc => isValidCoords(inc.latitude, inc.longitude)).map((inc) => {
           return (
             <Marker
               key={`inc-${inc.id}`}
