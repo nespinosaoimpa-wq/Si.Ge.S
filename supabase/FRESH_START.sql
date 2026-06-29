@@ -120,7 +120,7 @@ END $$;
 -- 5. TABLA: guard_shifts (turnos/fichajes)
 CREATE TABLE IF NOT EXISTS public.guard_shifts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  operator_id TEXT NOT NULL,
+  operator_id TEXT NOT NULL REFERENCES public.resources(id) ON DELETE CASCADE,
   objective_id TEXT REFERENCES public.objectives(id) ON DELETE SET NULL,
   checkin_time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   checkout_time TIMESTAMPTZ,
