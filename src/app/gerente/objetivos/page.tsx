@@ -105,30 +105,30 @@ export default function ObjetivosPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <div className="flex items-center gap-4">
-             <div className="w-14 h-14 bg-white border-2 border-zinc-200 rounded-2xl flex items-center justify-center shadow-sm">
-                <Building2 size={28} className="text-zinc-950" />
+             <div className="w-14 h-14 bg-white border border-zinc-200 rounded-2xl flex items-center justify-center shadow-sm">
+                <Building2 size={24} className="text-zinc-950" />
              </div>
              <div>
-                <h1 className="text-4xl font-black text-zinc-950 tracking-tighter uppercase">Gestión de Objetivos</h1>
-                <div className="flex items-center gap-2 mt-1">
-                   <div className={cn("w-2 h-2 rounded-full animate-pulse", isConfigured ? "bg-[#0F4C5C]" : "bg-amber-500")} />
-                   <span className="text-[11px] font-black uppercase tracking-widest text-zinc-600">{isConfigured ? 'Sistema Operativo Vivo' : 'Entorno de Demostración'}</span>
+                <h1 className="text-2xl font-bold tracking-tight text-zinc-950">Gestión de objetivos</h1>
+                <div className="flex items-center gap-1.5 mt-1">
+                   <div className={cn("w-1.5 h-1.5 rounded-full animate-pulse", isConfigured ? "bg-[#0F4C5C]" : "bg-amber-500")} />
+                   <span className="text-xs font-medium text-zinc-500">{isConfigured ? 'Conectado' : 'Modo demo'}</span>
                 </div>
              </div>
           </div>
-          <p className="text-xs font-black text-zinc-600 mt-4 uppercase tracking-widest">{objectives.length} ubicaciones protegidas · {activeCount} activas</p>
+          <p className="text-xs font-normal text-zinc-500 mt-4">{objectives.length} objetivos registrados · {activeCount} activos</p>
         </div>
         <div className="flex gap-3 w-full sm:w-auto">
            <Link href="/gerente" className="flex-1 sm:flex-none">
-             <button className="h-12 px-6 flex items-center justify-center gap-3 bg-white border-2 border-zinc-200 rounded-2xl text-xs font-black text-zinc-950 uppercase tracking-widest hover:bg-zinc-50 transition-all shadow-sm">
-               <MapIcon size={18} /> Ver Mapa
+             <button className="h-10 px-4 flex items-center justify-center gap-2 bg-white border border-zinc-200 rounded-xl text-xs font-medium text-zinc-800 hover:bg-zinc-50 transition-all shadow-sm">
+               <MapIcon size={15} /> Ver mapa
              </button>
            </Link>
            <button 
-             className="h-12 px-6 flex items-center justify-center gap-3 bg-zinc-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-zinc-900/20" 
+             className="h-10 px-4 flex items-center justify-center gap-2 bg-zinc-900 text-white rounded-xl text-xs font-medium hover:bg-black transition-all shadow-sm" 
              onClick={() => setIsModalOpen(true)}
            >
-             <Plus size={18} /> Nuevo Objetivo
+             <Plus size={15} /> Nuevo objetivo
            </button>
         </div>
       </div>
@@ -136,10 +136,10 @@ export default function ObjetivosPage() {
       {/* Quick Summary */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Total Nodos', value: objectives.length, icon: MapPin, color: 'text-zinc-700', bg: 'bg-zinc-100' },
+          { label: 'Total objetivos', value: objectives.length, icon: MapPin, color: 'text-zinc-700', bg: 'bg-zinc-100' },
           { label: 'Activos', value: activeCount, icon: CheckCircle2, color: 'text-[#0F4C5C]', bg: 'bg-[#0F4C5C]/10' },
-          { label: 'Fuerza Operativa', value: '100%', icon: MapIcon, color: 'text-blue-600', bg: 'bg-blue-50' },
-          { label: 'Alertas Hoy', value: 0, icon: AlertCircle, color: 'text-amber-600', bg: 'bg-amber-50' },
+          { label: 'Fuerza operativa', value: '100%', icon: MapIcon, color: 'text-blue-600', bg: 'bg-blue-50' },
+          { label: 'Alertas hoy', value: 0, icon: AlertCircle, color: 'text-amber-600', bg: 'bg-amber-50' },
         ].map((stat, i) => (
           <Card key={i} className="p-4 sm:p-5 border border-zinc-200 shadow-sm bg-white hover:shadow-md transition-shadow rounded-2xl overflow-hidden">
             <div className="flex items-center gap-4">
@@ -147,8 +147,8 @@ export default function ObjetivosPage() {
                 <stat.icon size={20} />
               </div>
               <div className="min-w-0">
-                <p className="text-xl sm:text-2xl font-black text-zinc-950 tracking-tighter truncate">{stat.value}</p>
-                <p className="text-[9px] sm:text-[10px] font-black uppercase text-zinc-600 tracking-widest mt-1 truncate">{stat.label}</p>
+                <p className="text-xl sm:text-2xl font-bold text-zinc-950 tracking-tight truncate">{stat.value}</p>
+                <p className="text-xs font-medium text-zinc-500 mt-1 truncate">{stat.label}</p>
               </div>
             </div>
           </Card>
@@ -172,7 +172,7 @@ export default function ObjetivosPage() {
               key={f}
               onClick={() => setFilter(f)}
               className={cn(
-                "px-5 py-2 rounded-lg text-xs font-bold uppercase tracking-tight transition-all",
+                "px-4 py-1.5 rounded-lg text-xs font-medium transition-all",
                 filter === f ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-800"
               )}
             >
@@ -214,22 +214,22 @@ export default function ObjetivosPage() {
                 {/* Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="text-base font-black text-zinc-950 uppercase tracking-tighter truncate">{obj.name}</p>
-                    {obj.is_active && <div className="w-2 h-2 bg-[#0F4C5C] rounded-full" />}
+                    <p className="text-base font-semibold text-zinc-950 tracking-tight truncate">{obj.name}</p>
+                    {obj.is_active && <div className="w-1.5 h-1.5 bg-[#0F4C5C] rounded-full animate-pulse" />}
                   </div>
-                  <div className="flex items-center gap-3 mt-1.5">
-                    <p className="text-[10px] font-black text-zinc-700 uppercase tracking-widest truncate">{obj.client_name || 'Sin cliente'}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <p className="text-xs font-medium text-zinc-600 truncate">{obj.client_name || 'Sin cliente'}</p>
                     <span className="text-zinc-300">•</span>
-                    <p className="text-[10px] text-zinc-600 font-black uppercase truncate tracking-widest">{obj.address || 'Sin dirección'}</p>
+                    <p className="text-xs text-zinc-500 truncate">{obj.address || 'Sin dirección'}</p>
                   </div>
                 </div>
 
                 {/* Status Column (Desktop) */}
                 <div className="hidden sm:flex flex-col items-end gap-1 px-4">
-                   <p className="text-[10px] font-black uppercase text-gray-300">Estado del Nodo</p>
+                   <p className="text-[11px] font-medium text-gray-400">Estado</p>
                    <div className={cn(
-                     "px-3 py-1 rounded-full text-[10px] font-black uppercase",
-                     (obj.status === 'Activo' || obj.is_active) ? "bg-green-50 text-green-600 border border-green-100" : "bg-gray-100 text-gray-500"
+                     "px-2.5 py-0.5 rounded-lg text-xs font-medium border",
+                     (obj.status === 'Activo' || obj.is_active) ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-zinc-100 text-zinc-500 border-zinc-200"
                    )}>
                      {obj.status || (obj.is_active ? 'Activo' : 'Inactivo')}
                    </div>
@@ -255,38 +255,38 @@ export default function ObjetivosPage() {
       </Card>
 
       {/* New Objective Modal */}
-      <BottomSheet isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Nuevo Objetivo Operativo">
+      <BottomSheet isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Nuevo objetivo">
         <form onSubmit={handleCreateObjective} className="space-y-4 pb-8">
            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase text-gray-500 tracking-wider ml-1">Nombre del Lugar</label>
+                <label className="text-xs font-medium text-zinc-500 ml-0.5">Nombre del lugar</label>
                 <Input required placeholder="Ej: Edificio Central" value={newObjective.name}
                   onChange={e => setNewObjective({...newObjective, name: e.target.value})} />
               </div>
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase text-gray-500 tracking-wider ml-1">Cliente / Cuenta</label>
+                <label className="text-xs font-medium text-zinc-500 ml-0.5">Cliente / Cuenta</label>
                 <Input required placeholder="Ej: Banco Galicia" value={newObjective.client_name}
                   onChange={e => setNewObjective({...newObjective, client_name: e.target.value})} />
               </div>
               <div className="space-y-1.5 sm:col-span-2">
-                <label className="text-[10px] font-black uppercase text-gray-500 tracking-wider ml-1">Dirección Física</label>
+                <label className="text-xs font-medium text-zinc-500 ml-0.5">Dirección física</label>
                 <Input required placeholder="Ej: Av. Alem 1234, Si.Ge.S" value={newObjective.address}
                   onChange={e => setNewObjective({...newObjective, address: e.target.value})} />
               </div>
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase text-gray-500 tracking-wider ml-1">Teléfono Directo</label>
+                <label className="text-xs font-medium text-zinc-500 ml-0.5">Teléfono directo</label>
                 <Input placeholder="+54 342 555-0100" value={newObjective.contact_phone}
                   onChange={e => setNewObjective({...newObjective, contact_phone: e.target.value})} />
               </div>
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase text-gray-500 tracking-wider ml-1">Estado Inicial</label>
+                <label className="text-xs font-medium text-zinc-500 ml-0.5">Estado inicial</label>
                 <select 
                    value={newObjective.status}
                    onChange={e => setNewObjective({...newObjective, status: e.target.value})}
                    className="w-full h-11 border border-gray-200 rounded-xl px-4 text-sm bg-gray-50 focus:bg-white transition-colors"
                 >
-                   <option value="Activo">ACTIVO / OPERATIVO</option>
-                   <option value="Inactivo">INACTIVO / SUSPENDIDO</option>
+                   <option value="Activo">Activo</option>
+                   <option value="Inactivo">Inactivo</option>
                 </select>
               </div>
            </div>
@@ -299,11 +299,11 @@ export default function ObjetivosPage() {
            </div>
 
            <div className="flex gap-4 pt-6">
-             <Button type="button" variant="outline" className="flex-1 h-12 rounded-xl" onClick={() => setIsModalOpen(false)}>
+             <Button type="button" variant="outline" className="flex-1 h-11 rounded-xl font-medium text-xs" onClick={() => setIsModalOpen(false)}>
                Cancelar
              </Button>
-             <Button type="submit" variant="primary" className="flex-1 h-12 rounded-xl shadow-lg shadow-primary/20">
-               Guardar Nodo
+             <Button type="submit" variant="primary" className="flex-1 h-11 rounded-xl font-medium text-xs shadow-sm bg-[#0F4C5C] hover:bg-[#0a333e] text-white">
+               Guardar objetivo
              </Button>
            </div>
         </form>

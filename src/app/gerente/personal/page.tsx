@@ -29,10 +29,10 @@ function daysUntilExpiry(expiry: string | null): number | null {
 
 function Field({ label, ...props }: any) {
   return (
-    <div className="space-y-2">
-      <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">{label}</label>
+    <div className="space-y-1.5">
+      <label className="text-xs font-medium text-zinc-500 ml-0.5">{label}</label>
       <input
-        className="w-full h-12 bg-white border border-zinc-200 rounded-xl px-5 text-xs font-black text-zinc-900 placeholder:text-zinc-300 focus:ring-2 focus:ring-[#0F4C5C]/20 focus:border-[#0F4C5C]/50 outline-none transition-all uppercase tracking-tight"
+        className="w-full h-11 bg-white border border-zinc-200 rounded-xl px-4 text-[13px] font-normal text-zinc-950 placeholder:text-zinc-400 focus:ring-1 focus:ring-[#0F4C5C]/50 focus:border-[#0F4C5C]/50 outline-none transition-all"
         {...props}
       />
     </div>
@@ -167,24 +167,24 @@ export default function PersonalPage() {
             <Users size={32} className="text-zinc-950" />
           </div>
           <div>
-            <h1 className="text-4xl font-black text-zinc-950 tracking-tighter uppercase">Gestión de Personal</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-zinc-950">Gestión de personal</h1>
             <div className="flex items-center gap-3 mt-1.5">
-              <span className="flex items-center gap-2 px-3 py-1 bg-white text-zinc-600 border-2 border-zinc-200 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm">
-                <span className="w-2 h-2 bg-[#0F4C5C] rounded-full animate-pulse" />
-                Si.Ge.S Realtime Hub
+              <span className="flex items-center gap-1.5 px-2.5 py-0.5 bg-white text-zinc-500 border border-zinc-200 rounded-full text-xs font-medium shadow-sm">
+                <span className="w-1.5 h-1.5 bg-[#0F4C5C] rounded-full animate-pulse" />
+                Panel en tiempo real
               </span>
-              <p className="text-[11px] font-black text-zinc-600 uppercase tracking-widest">
-                <span className="text-zinc-950">{staff.length}</span> en nómina · <span className="text-zinc-950">{activeCount}</span> operativos
+              <p className="text-xs font-normal text-zinc-500">
+                <span className="text-zinc-900 font-semibold">{staff.length}</span> en nómina · <span className="text-zinc-900 font-semibold">{activeCount}</span> activos
               </p>
             </div>
           </div>
         </div>
         <button
           onClick={() => { setEditingId(null); setNewStaff({ ...EMPTY_FORM }); setIsModalOpen(true); }}
-          className="flex items-center gap-3 h-14 px-8 bg-zinc-900 text-white rounded-[1.25rem] font-black uppercase text-[11px] tracking-widest shadow-2xl shadow-zinc-900/20 hover:bg-black transition-all active:scale-95"
+          className="flex items-center gap-2 h-11 px-5 bg-zinc-900 text-white rounded-xl font-medium text-xs shadow-sm hover:bg-black transition-all active:scale-95"
         >
-          <Plus size={18} className="text-[#0F4C5C]" />
-          Alta de Personal
+          <Plus size={16} className="text-[#0F4C5C]" />
+          Alta de personal
         </button>
       </div>
 
@@ -209,8 +209,8 @@ export default function PersonalPage() {
               <stat.icon size={22} className={stat.color} />
             </div>
             <div className="min-w-0">
-              <p className="text-xl sm:text-2xl font-black text-zinc-950 tracking-tighter leading-none truncate">{stat.value}</p>
-              <p className="text-[9px] sm:text-[10px] font-black text-zinc-600 uppercase tracking-widest mt-1.5 truncate">{stat.label}</p>
+              <p className="text-xl sm:text-2xl font-bold text-zinc-950 tracking-tight leading-none truncate">{stat.value}</p>
+              <p className="text-xs font-medium text-zinc-500 mt-1 truncate">{stat.label}</p>
             </div>
           </motion.div>
         ))}
@@ -219,22 +219,22 @@ export default function PersonalPage() {
       {/* Search & Filters */}
       <div className="flex flex-col md:flex-row gap-5">
         <div className="relative flex-1">
-          <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-zinc-300" size={20} />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
           <input
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="BUSCAR POR NOMBRE, FUNCIÓN O DNI..."
-            className="w-full h-14 bg-white border border-zinc-200 rounded-2xl py-3 pl-14 pr-6 text-xs font-black text-zinc-900 placeholder:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-[#0F4C5C]/20 focus:border-[#0F4C5C]/50 transition-all uppercase tracking-widest"
+            placeholder="Buscar por nombre, función o DNI..."
+            className="w-full h-11 bg-white border border-zinc-200 rounded-xl pl-11 pr-4 text-[13px] font-normal text-zinc-950 placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-[#0F4C5C]/50 transition-all"
           />
         </div>
-        <div className="flex bg-white border-2 border-zinc-200 p-1.5 rounded-2xl gap-1.5 shadow-sm">
+        <div className="flex bg-white border border-zinc-200 p-1 rounded-xl gap-1 shadow-sm">
           {['Todos', 'Activos', 'Inactivos'].map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
               className={cn(
-                'px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all',
-                filter === f ? 'bg-zinc-900 text-white shadow-lg' : 'text-zinc-600 hover:text-zinc-950'
+                'px-4 py-2 rounded-lg text-xs font-medium transition-all',
+                filter === f ? 'bg-zinc-900 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-950'
               )}
             >
               {f}
@@ -255,7 +255,7 @@ export default function PersonalPage() {
           <div className="w-20 h-20 bg-zinc-50 rounded-full flex items-center justify-center mb-6">
              <Users size={40} className="text-zinc-200" />
           </div>
-          <p className="text-[11px] font-black text-zinc-300 uppercase tracking-[0.3em] italic">Sin registros en el radar operativo</p>
+          <p className="text-sm font-medium text-zinc-400">No se encontraron registros de personal</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -286,7 +286,7 @@ export default function PersonalPage() {
                     </div>
                     <div className="flex flex-col items-end gap-2">
                       <span className={cn(
-                        'text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl border',
+                        'text-xs font-medium px-2.5 py-1 rounded-lg border',
                         person.status === 'active' || person.status === 'Activo'
                           ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
                           : 'bg-zinc-50 text-zinc-400 border-zinc-100'
@@ -297,25 +297,25 @@ export default function PersonalPage() {
                   </div>
 
                   <div className="mb-6">
-                    <h3 className="text-xl font-black text-zinc-900 tracking-tight group-hover:text-[#0F4C5C] transition-colors truncate uppercase">
+                    <h3 className="text-base font-semibold text-zinc-900 tracking-tight group-hover:text-[#0F4C5C] transition-colors truncate">
                       {person.name}
                     </h3>
-                    <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em] mt-1 italic">
-                      {person.role || 'Operador de Seguridad'}
+                    <p className="text-xs font-normal text-zinc-400 mt-0.5">
+                      {person.role || 'Operador de seguridad'}
                     </p>
                   </div>
 
                   <div className="space-y-3 pt-6 border-t border-zinc-50">
                     {person.dni && (
-                      <div className="flex items-center gap-3 text-[10px] font-black text-zinc-400 uppercase tracking-widest">
-                        <ShieldCheck size={14} className="text-zinc-300" />
-                        DNI {person.dni}
+                      <div className="flex items-center gap-2 text-xs text-zinc-500">
+                        <ShieldCheck size={14} className="text-zinc-400" />
+                        <span>DNI {person.dni}</span>
                       </div>
                     )}
                     {objectiveName && (
-                      <div className="flex items-center gap-3 text-[10px] font-black text-zinc-900 uppercase tracking-widest">
-                        <div className="w-2 h-2 rounded-full bg-[#0F4C5C] shadow-[0_0_8px_rgba(15, 76, 92,0.6)]" />
-                        <span className="truncate">{objectiveName}</span>
+                      <div className="flex items-center gap-2 text-xs text-zinc-800">
+                        <div className="w-1.5 h-1.5 rounded-full bg-[#0F4C5C]" />
+                        <span className="truncate font-medium">{objectiveName}</span>
                       </div>
                     )}
                   </div>
@@ -323,13 +323,13 @@ export default function PersonalPage() {
 
                 <div className="px-8 pb-8 flex items-center justify-between gap-3 mt-auto">
                   <Link href={`/gerente/personal/${person.id}`} className="flex-1">
-                    <button className="w-full h-11 bg-zinc-50 text-zinc-900 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-zinc-900 hover:text-white transition-all shadow-sm border border-zinc-100">
+                    <button className="w-full h-9 bg-zinc-50 text-zinc-800 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 hover:bg-zinc-900 hover:text-white transition-all shadow-sm border border-zinc-200">
                       Legajo <ChevronRight size={12} />
                     </button>
                   </Link>
                   <button
                     onClick={() => handleEditClick(person)}
-                    className="flex-1 h-11 bg-[#0F4C5C]/10 text-[#0F4C5C] rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-[#0F4C5C] hover:text-black transition-all border border-[#0F4C5C]/20"
+                    className="flex-1 h-9 bg-[#0F4C5C]/5 text-[#0F4C5C] rounded-lg text-xs font-medium hover:bg-[#0F4C5C]/10 transition-all border border-[#0F4C5C]/10"
                   >
                     Editar
                   </button>
@@ -363,13 +363,13 @@ export default function PersonalPage() {
               exit={{ opacity: 0, y: 60, scale: 0.95 }}
               className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col border border-zinc-200"
             >
-              <div className="flex items-center justify-between p-8 border-b border-zinc-100 bg-zinc-50/50">
+              <div className="flex items-center justify-between p-6 border-b border-zinc-100 bg-zinc-50/50">
                 <div>
-                  <h2 className="text-2xl font-black text-zinc-900 tracking-tighter uppercase">{editingId ? 'Editar Legajo' : 'Alta de Personal'}</h2>
-                  <p className="text-[10px] text-zinc-400 font-black uppercase tracking-[0.2em] mt-1.5 italic">Apertura de Legajo Digital Si.Ge.S</p>
+                  <h2 className="text-xl font-bold text-zinc-900 tracking-tight">{editingId ? 'Editar legajo' : 'Alta de personal'}</h2>
+                  <p className="text-xs text-zinc-500 font-normal mt-0.5">Completá la información del operador</p>
                 </div>
-                <button onClick={() => setIsModalOpen(false)} className="w-11 h-11 rounded-2xl bg-white hover:bg-zinc-50 flex items-center justify-center transition-colors border border-zinc-100 shadow-sm">
-                  <X size={20} className="text-zinc-400" />
+                <button onClick={() => setIsModalOpen(false)} className="w-10 h-10 rounded-xl bg-white hover:bg-zinc-50 flex items-center justify-center transition-colors border border-zinc-200 shadow-sm">
+                  <X size={18} className="text-zinc-400" />
                 </button>
               </div>
 
@@ -390,14 +390,14 @@ export default function PersonalPage() {
                       <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
                     </label>
                   </div>
-                  <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Foto de Perfil (Opcional)</p>
+                  <p className="text-xs font-medium text-zinc-500">Foto de perfil (opcional)</p>
                 </div>
                 <div className="space-y-5">
                   <div className="flex items-center gap-3">
                      <div className="w-6 h-6 bg-[#0F4C5C]/10 rounded flex items-center justify-center">
                         <User size={14} className="text-[#0F4C5C]" />
                      </div>
-                     <p className="text-[11px] font-black text-zinc-900 uppercase tracking-[0.3em]">Identidad Operativa</p>
+                     <p className="text-xs font-semibold text-zinc-700 tracking-wide">Datos personales</p>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <Field label="Nombre Completo *" required placeholder="Apellido y Nombre..." value={newStaff.name} onChange={(e: any) => setNewStaff({ ...newStaff, name: e.target.value })} />
@@ -412,7 +412,7 @@ export default function PersonalPage() {
                      <div className="w-6 h-6 bg-blue-50 rounded flex items-center justify-center">
                         <Mail size={14} className="text-blue-500" />
                      </div>
-                     <p className="text-[11px] font-black text-zinc-900 uppercase tracking-[0.3em]">Contacto y Acceso</p>
+                     <p className="text-xs font-semibold text-zinc-700 tracking-wide">Contacto y acceso</p>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <Field label="Gmail Corporativo *" required type="email" placeholder="correo@gmail.com" value={newStaff.email} onChange={(e: any) => setNewStaff({ ...newStaff, email: e.target.value })} />
@@ -425,15 +425,15 @@ export default function PersonalPage() {
                      <div className="w-6 h-6 bg-red-50 rounded flex items-center justify-center">
                         <ShieldCheck size={14} className="text-red-500" />
                      </div>
-                     <p className="text-[11px] font-black text-zinc-900 uppercase tracking-[0.3em]">Habilitación y Nómina</p>
+                     <p className="text-xs font-semibold text-zinc-700 tracking-wide">Credencial y pago</p>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                     <Field label="Nº de Credencial" placeholder="CRED-XXXX-XXXX" value={newStaff.credential_number} onChange={(e: any) => setNewStaff({ ...newStaff, credential_number: e.target.value })} />
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">Vencimiento</label>
+                      <label className="text-xs font-medium text-zinc-500 ml-0.5">Vencimiento</label>
                       <input
                         type="date"
-                        className="w-full h-12 bg-white border border-zinc-200 rounded-xl px-4 text-xs font-black text-zinc-900 uppercase focus:ring-2 focus:ring-[#0F4C5C]/20 outline-none transition-all"
+                        className="w-full h-11 bg-white border border-zinc-200 rounded-xl px-4 text-[13px] font-normal text-zinc-950 focus:ring-1 focus:ring-[#0F4C5C]/50 outline-none transition-all"
                         value={newStaff.credential_expiry || ''}
                         onChange={(e) => setNewStaff({ ...newStaff, credential_expiry: e.target.value })}
                       />
@@ -447,13 +447,13 @@ export default function PersonalPage() {
                      <div className="w-6 h-6 bg-emerald-50 rounded flex items-center justify-center">
                         <Package size={14} className="text-emerald-500" />
                      </div>
-                     <p className="text-[11px] font-black text-zinc-900 uppercase tracking-[0.3em]">Indumentaria</p>
+                     <p className="text-xs font-semibold text-zinc-700 tracking-wide">Talles de indumentaria</p>
                   </div>
                   <div className="grid grid-cols-3 gap-5">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">Camisa</label>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-zinc-500 ml-0.5">Camisa</label>
                       <select
-                        className="w-full h-12 bg-white border border-zinc-200 rounded-xl px-4 text-xs font-black text-zinc-900 focus:ring-2 focus:ring-[#0F4C5C]/20 outline-none"
+                        className="w-full h-11 bg-white border border-zinc-200 rounded-xl px-4 text-[13px] font-normal text-zinc-950 focus:ring-1 focus:ring-[#0F4C5C]/50 outline-none"
                         value={newStaff.shirt_size || ''}
                         onChange={(e) => setNewStaff({ ...newStaff, shirt_size: e.target.value })}
                       >
@@ -461,10 +461,10 @@ export default function PersonalPage() {
                         {['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'].map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">Pantalón</label>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-zinc-500 ml-0.5">Pantalón</label>
                       <select
-                        className="w-full h-12 bg-white border border-zinc-200 rounded-xl px-4 text-xs font-black text-zinc-900 focus:ring-2 focus:ring-[#0F4C5C]/20 outline-none"
+                        className="w-full h-11 bg-white border border-zinc-200 rounded-xl px-4 text-[13px] font-normal text-zinc-950 focus:ring-1 focus:ring-[#0F4C5C]/50 outline-none"
                         value={newStaff.pants_size || ''}
                         onChange={(e) => setNewStaff({ ...newStaff, pants_size: e.target.value })}
                       >
@@ -472,10 +472,10 @@ export default function PersonalPage() {
                         {['38', '40', '42', '44', '46', '48', '50', '52', '54', '56'].map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">Calzado</label>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-zinc-500 ml-0.5">Calzado</label>
                       <select
-                        className="w-full h-12 bg-white border border-zinc-200 rounded-xl px-4 text-xs font-black text-zinc-900 focus:ring-2 focus:ring-[#0F4C5C]/20 outline-none"
+                        className="w-full h-11 bg-white border border-zinc-200 rounded-xl px-4 text-[13px] font-normal text-zinc-950 focus:ring-1 focus:ring-[#0F4C5C]/50 outline-none"
                         value={newStaff.boot_size || ''}
                         onChange={(e) => setNewStaff({ ...newStaff, boot_size: e.target.value })}
                       >
@@ -490,16 +490,16 @@ export default function PersonalPage() {
                   <button
                     type="button"
                     onClick={() => setIsModalOpen(false)}
-                    className="flex-1 h-14 bg-zinc-50 text-zinc-400 font-black uppercase text-[11px] tracking-widest rounded-2xl hover:bg-zinc-100 transition-all active:scale-95 border border-zinc-100"
+                    className="flex-1 h-11 bg-zinc-50 text-zinc-600 font-medium text-xs rounded-xl hover:bg-zinc-100 transition-all active:scale-95 border border-zinc-200"
                   >
                     Descartar
                   </button>
                   <button
                     type="submit"
                     disabled={saving}
-                    className="flex-1 h-14 bg-zinc-900 text-white font-black uppercase text-[11px] tracking-widest rounded-2xl hover:bg-black shadow-xl shadow-zinc-900/20 transition-all active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50"
+                    className="flex-1 h-11 bg-zinc-900 text-white font-medium text-xs rounded-xl hover:bg-black shadow-sm transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
                   >
-                    {saving ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <ShieldCheck size={18} className="text-[#0F4C5C]" />}
+                    {saving ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <ShieldCheck size={16} className="text-[#0F4C5C]" />}
                     {editingId ? 'Guardar Cambios' : 'Confirmar Alta'}
                   </button>
                 </div>
