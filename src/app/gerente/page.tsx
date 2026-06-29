@@ -690,54 +690,72 @@ export default function AdminDashboard() {
             isMobile ? "top-2 left-2 right-2" : "top-6 left-6 w-96 lg:w-[450px]"
           )}>
             <Card className={cn(
-              "p-1 px-3 flex flex-col shadow-2xl border border-zinc-200 bg-white/95 backdrop-blur-xl",
-              isMobile && "rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.1)]"
+              "p-1 px-3 flex flex-col shadow-[0_15px_45px_rgba(0,0,0,0.12)] border border-zinc-200/80 bg-white/90 backdrop-blur-xl transition-all duration-300 rounded-[22px] focus-within:border-zinc-300 focus-within:shadow-[0_15px_50px_rgba(0,0,0,0.16)]",
+              isMobile && "rounded-2xl"
             )}>
               <div className="flex items-center gap-2">
                 {isMobile ? (
                   <>
-                    <button onClick={() => setIsSidebarOpen(true)} className="text-[#0F4C5C] p-2 -ml-1 border-r border-white/5 mr-1">
+                    <button onClick={() => setIsSidebarOpen(true)} className="text-[#0F4C5C] p-2 -ml-1 border-r border-zinc-100 mr-1">
                       <MapPin size={20} />
                     </button>
-                    <input type="text" placeholder="POI..." className="flex-1 w-full min-w-0 bg-transparent border-none focus:ring-0 text-xs py-2 font-medium text-zinc-900" value={searchQuery} onChange={(e) => handleMapboxSearch(e.target.value)} />
+                    <input type="text" placeholder="Buscar dirección o POI..." className="flex-1 w-full min-w-0 bg-transparent border-none focus:ring-0 text-xs py-2 font-medium text-zinc-900 placeholder:text-zinc-400" value={searchQuery} onChange={(e) => handleMapboxSearch(e.target.value)} />
                   </>
                 ) : (
                   <>
-                    <div className="text-[#0F4C5C]">
+                    <div className="text-[#0F4C5C] pl-1.5 flex items-center justify-center shrink-0">
                       {isSearchingMapbox ? <div className="w-4 h-4 border-2 border-[#0F4C5C] border-t-transparent animate-spin rounded-full" /> : <Search size={18} />}
                     </div>
-                    <input type="text" placeholder="Buscar dirección o POI..." className="flex-1 bg-transparent border-none focus:ring-0 text-sm py-2 font-medium text-zinc-900 placeholder:text-zinc-600" value={searchQuery} onChange={(e) => handleMapboxSearch(e.target.value)} />
+                    <input type="text" placeholder="Buscar dirección o POI..." className="flex-1 bg-transparent border-none focus:ring-0 text-sm py-2.5 font-medium text-zinc-900 placeholder:text-zinc-400 focus:outline-none" value={searchQuery} onChange={(e) => handleMapboxSearch(e.target.value)} />
+                    {searchQuery && (
+                      <button 
+                        onClick={() => handleMapboxSearch('')}
+                        className="p-1 hover:bg-zinc-100 rounded-full transition-colors text-zinc-400 hover:text-zinc-600 mr-1"
+                        title="Limpiar búsqueda"
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
                   </>
                 )}
                 
-                <div className="flex items-center gap-1.5 ml-1 pl-2 pr-1 border-l border-white/5">
-                  <button onClick={() => setShowHeatmap(!showHeatmap)} className={cn("p-1.5 rounded-lg transition-all", showHeatmap ? "bg-[#0F4C5C]/20 text-[#0F4C5C]" : "hover:bg-zinc-800 text-zinc-500")} title="Mapa de Calor">
+                <div className="flex items-center gap-1 ml-1 pl-2.5 pr-1 border-l border-zinc-100">
+                  <button onClick={() => setShowHeatmap(!showHeatmap)} className={cn("p-1.5 rounded-xl transition-all", showHeatmap ? "bg-[#0F4C5C]/10 text-[#0F4C5C] border border-[#0F4C5C]/20" : "hover:bg-zinc-50 border border-transparent text-zinc-500")} title="Mapa de Calor">
                     <Layers size={18} />
                   </button>
-                  <button className="relative p-1.5 hover:bg-zinc-800 rounded-lg transition-colors">
+                  <button className="relative p-1.5 hover:bg-zinc-50 rounded-xl border border-transparent transition-colors">
                     <Bell className="w-4 h-4 text-zinc-500" />
                     <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-red-500 rounded-full" />
                   </button>
                   <button 
                     onClick={() => setIsAuditPanelOpen(true)}
-                    className={cn("p-1.5 rounded-lg transition-all hover:bg-zinc-100 text-zinc-400")} 
+                    className={cn("p-1.5 rounded-xl transition-all hover:bg-zinc-50 border border-transparent text-zinc-400")} 
                     title="Auditoría de Geocercas"
                   >
                     <FileText size={18} />
                   </button>
-                  <div className="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center border border-zinc-200 ml-1">
+                  <div className="w-8 h-8 rounded-xl bg-zinc-50 flex items-center justify-center border border-zinc-100 ml-1">
                     <Shield className="text-[#0F4C5C]" size={14} />
                   </div>
                 </div>
               </div>
-
+ 
               {/* Suggestions Dropdown */}
               {mapboxSuggestions.length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-zinc-200 rounded-xl shadow-2xl z-[60] max-h-[300px] overflow-y-auto no-scrollbar">
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white/95 backdrop-blur-xl border border-zinc-200/80 rounded-[22px] shadow-[0_20px_50px_rgba(0,0,0,0.15)] z-[60] max-h-[300px] overflow-y-auto no-scrollbar p-2 space-y-1">
                   {mapboxSuggestions.map((res, i) => (
-                    <button key={i} className="w-full text-left px-4 py-3 hover:bg-zinc-50 transition-colors border-b last:border-0 border-zinc-100" onClick={() => handleSelectMapboxResult(res)}>
-                      <p className="text-[13px] font-medium text-zinc-900 line-clamp-1">{res.displayName}</p>
-                      <p className="text-xs text-zinc-500 mt-0.5">{res.city}, {res.state}</p>
+                    <button 
+                      key={i} 
+                      className="w-full text-left px-3 py-2.5 hover:bg-zinc-50 rounded-xl transition-all duration-200 flex items-start gap-3 group/item" 
+                      onClick={() => handleSelectMapboxResult(res)}
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-zinc-50 border border-zinc-100 flex items-center justify-center text-zinc-400 group-hover/item:bg-[#0F4C5C]/10 group-hover/item:text-[#0F4C5C] group-hover/item:border-[#0F4C5C]/20 transition-all shrink-0">
+                        {res.type === 'coordinate' ? <MapPin size={15} /> : <Search size={15} />}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-semibold text-zinc-800 line-clamp-1 group-hover/item:text-zinc-950 transition-colors">{res.displayName}</p>
+                        <p className="text-[10px] text-zinc-400 font-medium mt-0.5 uppercase tracking-wider">{res.city ? `${res.city}, ` : ''}{res.state}</p>
+                      </div>
                     </button>
                   ))}
                 </div>

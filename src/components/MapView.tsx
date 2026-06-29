@@ -1013,16 +1013,41 @@ export default function MapView({
         )}
       </Map>
 
-      <div className={cn("absolute z-10 flex flex-col items-end gap-2", isMobile ? "top-20 right-4" : "top-6 right-6")}>
-        <button onClick={() => setShowStyles(!showStyles)} className="w-12 h-12 bg-white rounded-full shadow-2xl flex items-center justify-center border border-gray-100">
-          <Layers size={20} />
+      <div className={cn("absolute z-10 flex flex-col items-end gap-2.5", isMobile ? "top-20 right-4" : "top-6 right-6")}>
+        <button 
+          onClick={() => setShowStyles(!showStyles)} 
+          className="w-12 h-12 bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_12px_35px_rgba(0,0,0,0.12)] flex items-center justify-center border border-zinc-200/80 hover:scale-105 active:scale-95 transition-all text-zinc-800"
+          title="Estilo del mapa"
+        >
+          <Layers size={20} className="text-[#0F4C5C]" />
         </button>
         <AnimatePresence>
           {showStyles && (
-            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="flex flex-col gap-2 bg-black/80 backdrop-blur-md p-1.5 rounded-xl border border-white/10">
-              <button onClick={toggle3D} className="px-3 py-2 text-[10px] font-black uppercase text-white/40 hover:text-white border-b border-white/10">{is3D ? 'View: 3D' : 'View: 2D'}</button>
+            <motion.div 
+              initial={{ opacity: 0, y: -10, scale: 0.95 }} 
+              animate={{ opacity: 1, y: 0, scale: 1 }} 
+              exit={{ opacity: 0, y: -10, scale: 0.95 }} 
+              className="flex flex-col gap-1 bg-white/95 backdrop-blur-md p-2 rounded-2xl border border-zinc-200/80 shadow-[0_15px_40px_rgba(0,0,0,0.15)] min-w-[140px]"
+            >
+              <button 
+                onClick={toggle3D} 
+                className="px-3 py-2 text-[10px] font-black uppercase text-zinc-500 hover:text-zinc-900 transition-colors border-b border-zinc-100 text-left"
+              >
+                {is3D ? 'Ver: 3D Habilitado' : 'Ver: 2D Plano'}
+              </button>
               {(Object.keys(MAP_STYLES) as Array<keyof typeof MAP_STYLES>).map(style => (
-                <button key={style} onClick={() => setActiveStyle(style)} className={cn("px-3 py-1.5 rounded-lg text-[10px] font-black uppercase text-left", activeStyle === style ? "bg-primary text-black" : "text-white/40 hover:text-white")}>{style}</button>
+                <button 
+                  key={style} 
+                  onClick={() => setActiveStyle(style)} 
+                  className={cn(
+                    "px-3 py-2 rounded-xl text-[10px] font-black uppercase text-left transition-all duration-200", 
+                    activeStyle === style 
+                      ? "bg-[#0F4C5C]/10 text-[#0F4C5C] border border-[#0F4C5C]/20" 
+                      : "text-zinc-400 hover:text-zinc-800 hover:bg-zinc-50"
+                  )}
+                >
+                  {style}
+                </button>
               ))}
             </motion.div>
           )}
