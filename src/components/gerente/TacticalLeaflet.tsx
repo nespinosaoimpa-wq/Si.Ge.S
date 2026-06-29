@@ -3,14 +3,78 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import Map, { Marker, Popup, Source, Layer, NavigationControl, GeolocateControl, MapRef } from 'react-map-gl/mapbox';
 import 'mapbox-gl/dist/mapbox-gl.css';
+import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { Shield, User, Navigation, Target, Search, X, MapPin, Loader2, AlertTriangle, Clock, CheckCircle2, Zap, Car, UserX, DoorOpen, Package, Lightbulb } from 'lucide-react';
+import { Shield, User, Navigation, Target, Search, X, MapPin, Loader2, AlertTriangle, Clock, CheckCircle2, Zap, Car, UserX, DoorOpen, Package, Lightbulb, Layers } from 'lucide-react';
 import { searchAddresses, GeocodingResult, searchBoxRetrieve } from '@/lib/geocoding';
 
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || ('pk.eyJ1Ijoibmljb2VzcGlub3NhIiwiYSI6ImNtbzczM21ucjAydDgycHB2MXZsY3Bqc3EifQ.' + 'LeVW1Jfcr6Rr6q1o15Kkzw');
 
-const MAP_STYLES = {
+const googleSatelliteStyle = {
+  version: 8,
+  sources: {
+    'google-satellite': {
+      type: 'raster',
+      tiles: ['https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'],
+      tileSize: 256
+    }
+  },
+  layers: [
+    {
+      id: 'google-satellite-layer',
+      type: 'raster',
+      source: 'google-satellite',
+      minzoom: 0,
+      maxzoom: 22
+    }
+  ]
+};
+
+const googleStreetsStyle = {
+  version: 8,
+  sources: {
+    'google-streets': {
+      type: 'raster',
+      tiles: ['https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}'],
+      tileSize: 256
+    }
+  },
+  layers: [
+    {
+      id: 'google-streets-layer',
+      type: 'raster',
+      source: 'google-streets',
+      minzoom: 0,
+      maxzoom: 22
+    }
+  ]
+};
+
+const googleHybridStyle = {
+  version: 8,
+  sources: {
+    'google-hybrid': {
+      type: 'raster',
+      tiles: ['https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'],
+      tileSize: 256
+    }
+  },
+  layers: [
+    {
+      id: 'google-hybrid-layer',
+      type: 'raster',
+      source: 'google-hybrid',
+      minzoom: 0,
+      maxzoom: 22
+    }
+  ]
+};
+
+const MAP_STYLES: Record<string, any> = {
+  GOOGLE_STREETS: googleStreetsStyle,
+  GOOGLE_SATELLITE: googleSatelliteStyle,
+  GOOGLE_HYBRID: googleHybridStyle,
   SATELLITE: 'mapbox://styles/mapbox/satellite-streets-v12',
   DARK: 'mapbox://styles/mapbox/dark-v11',
   NAVIGATION: 'mapbox://styles/mapbox/navigation-night-v1',
@@ -97,6 +161,7 @@ export default function TacticalLeaflet({
   }: TacticalLeafletProps) {
     const mapRef = React.useRef<MapRef>(null);
     const [activeStyle, setActiveStyle] = useState<keyof typeof MAP_STYLES>('NAVIGATION');
+    const [showStyles, setShowStyles] = useState(false);
     const [viewState, setViewState] = useState({
       latitude: center[0],
       longitude: center[1],
@@ -450,19 +515,39 @@ export default function TacticalLeaflet({
         )}
       </Map>
 
-      <div className="absolute top-6 right-6 z-10 flex flex-col gap-2 bg-black/80 backdrop-blur-md p-1.5 rounded-xl shadow-2xl border border-white/10">
-        {(Object.keys(MAP_STYLES) as Array<keyof typeof MAP_STYLES>).map(style => (
-          <button
-            key={style}
-            onClick={() => setActiveStyle(style)}
-            className={cn(
-              "px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
-              activeStyle === style ? "bg-primary text-black" : "text-white/40 hover:text-white"
-            )}
-          >
-            {style}
-          </button>
-        ))}
+      <div className="absolute top-6 right-6 z-10 flex flex-col items-end gap-2.5">
+        <button 
+          onClick={() => setShowStyles(!showStyles)} 
+          className="w-12 h-12 bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_12px_35px_rgba(0,0,0,0.12)] flex items-center justify-center border border-zinc-200/80 hover:scale-105 active:scale-95 transition-all text-zinc-800"
+          title="Estilo del mapa"
+        >
+          <Layers size={20} className="text-[#0F4C5C]" />
+        </button>
+        <AnimatePresence>
+          {showStyles && (
+            <motion.div 
+              initial={{ opacity: 0, y: -10, scale: 0.95 }} 
+              animate={{ opacity: 1, y: 0, scale: 1 }} 
+              exit={{ opacity: 0, y: -10, scale: 0.95 }} 
+              className="flex flex-col gap-1 bg-white/95 backdrop-blur-md p-2 rounded-2xl border border-zinc-200/80 shadow-[0_15px_40px_rgba(0,0,0,0.15)] min-w-[140px]"
+            >
+              {(Object.keys(MAP_STYLES) as Array<keyof typeof MAP_STYLES>).map(style => (
+                <button 
+                  key={style} 
+                  onClick={() => setActiveStyle(style)} 
+                  className={cn(
+                    "px-3 py-2 rounded-xl text-[10px] font-black uppercase text-left transition-all duration-200", 
+                    activeStyle === style 
+                      ? "bg-[#0F4C5C]/10 text-[#0F4C5C] border border-[#0F4C5C]/20" 
+                      : "text-zinc-400 hover:text-zinc-800 hover:bg-zinc-50"
+                  )}
+                >
+                  {style.replace('GOOGLE_', 'G ').replace('_', ' ').toLowerCase()}
+                </button>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       <div className="absolute top-6 left-6 z-[10] pointer-events-none">

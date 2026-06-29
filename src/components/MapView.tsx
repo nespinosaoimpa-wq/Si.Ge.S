@@ -91,12 +91,73 @@ interface MapViewProps {
   onDraftDragEnd?: (lat: number, lng: number) => void;
 }
 
-const MAP_STYLES = {
+const googleSatelliteStyle = {
+  version: 8,
+  sources: {
+    'google-satellite': {
+      type: 'raster',
+      tiles: ['https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'],
+      tileSize: 256
+    }
+  },
+  layers: [
+    {
+      id: 'google-satellite-layer',
+      type: 'raster',
+      source: 'google-satellite',
+      minzoom: 0,
+      maxzoom: 22
+    }
+  ]
+};
+
+const googleStreetsStyle = {
+  version: 8,
+  sources: {
+    'google-streets': {
+      type: 'raster',
+      tiles: ['https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}'],
+      tileSize: 256
+    }
+  },
+  layers: [
+    {
+      id: 'google-streets-layer',
+      type: 'raster',
+      source: 'google-streets',
+      minzoom: 0,
+      maxzoom: 22
+    }
+  ]
+};
+
+const googleHybridStyle = {
+  version: 8,
+  sources: {
+    'google-hybrid': {
+      type: 'raster',
+      tiles: ['https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'],
+      tileSize: 256
+    }
+  },
+  layers: [
+    {
+      id: 'google-hybrid-layer',
+      type: 'raster',
+      source: 'google-hybrid',
+      minzoom: 0,
+      maxzoom: 22
+    }
+  ]
+};
+
+const MAP_STYLES: Record<string, any> = {
+  google_streets: googleStreetsStyle,
+  google_satellite: googleSatelliteStyle,
+  google_hybrid: googleHybridStyle,
   standard: 'mapbox://styles/mapbox/standard',
-  light: 'mapbox://styles/mapbox/light-v11',
   streets: 'mapbox://styles/mapbox/streets-v12',
   satellite: 'mapbox://styles/mapbox/satellite-streets-v12',
-  hybrid: 'mapbox://styles/mapbox/satellite-streets-v12',
   dark: 'mapbox://styles/mapbox/dark-v11',
   navigation: 'mapbox://styles/mapbox/navigation-night-v1'
 };
