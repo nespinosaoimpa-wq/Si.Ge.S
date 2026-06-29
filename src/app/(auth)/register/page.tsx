@@ -97,14 +97,14 @@ export default function RegisterPage() {
       className="w-full max-w-md"
     >
       <div className="flex flex-col items-center mb-6 text-center">
-        <Link href="/login" className="self-start mb-6 text-primary flex items-center gap-2 text-[10px] font-black uppercase tracking-widest hover:opacity-70 transition-all">
-          <ArrowLeft size={14} /> Volver al Login
+        <Link href="/login" className="self-start mb-6 text-primary flex items-center gap-1.5 text-xs font-medium hover:opacity-70 transition-all">
+          <ArrowLeft size={14} /> Volver al inicio de sesión
         </Link>
-        <div className="w-16 h-16 bg-white border border-primary/20 flex items-center justify-center rounded-2xl mb-4 p-2.5 shadow-md">
+        <div className="w-14 h-14 bg-white border border-primary/20 flex items-center justify-center rounded-2xl mb-4 p-2 shadow-md">
           <SigesIcon className="w-full h-full text-primary" />
         </div>
-        <h1 className="text-3xl font-black tracking-tighter text-white uppercase">Alta de Personal</h1>
-        <p className="text-gray-500 text-[10px] tracking-[0.2em] font-bold uppercase mt-1">Si.Ge.S Terminal</p>
+        <h1 className="text-2xl font-bold tracking-tight text-white">Crear cuenta</h1>
+        <p className="text-gray-400 text-xs font-normal mt-0.5">Gestión de seguridad privada</p>
       </div>
 
       <Card className="border-primary/20 bg-secondary/80 backdrop-blur-xl">
@@ -117,7 +117,7 @@ export default function RegisterPage() {
           
           <form onSubmit={handleRegister} className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-[9px] uppercase tracking-[0.2em] text-primary font-black">Nombre Completo</label>
+              <label className="text-xs font-medium text-primary">Nombre completo</label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                 <Input
@@ -131,7 +131,7 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[9px] uppercase tracking-[0.2em] text-primary font-black">Correo Electrónico</label>
+              <label className="text-xs font-medium text-primary">Correo electrónico</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                 <Input
@@ -146,7 +146,7 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[9px] uppercase tracking-[0.2em] text-primary font-black">Contraseña Táctica</label>
+              <label className="text-xs font-medium text-primary">Contraseña</label>
               <div className="relative">
                 <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                 <Input
@@ -161,43 +161,43 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[9px] uppercase tracking-[0.2em] text-primary font-black">Asignación de Rol</label>
+              <label className="text-xs font-medium text-primary">Rol de usuario</label>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => setRole('operador')}
                   className={cn(
-                    "h-12 border-2 text-[10px] font-black uppercase tracking-widest transition-all",
+                    "h-11 rounded-xl border text-xs font-medium transition-all",
                     role === 'operador' 
-                      ? "border-primary bg-primary text-black shadow-[0_0_15px_rgba(15,76,92,0.3)]" 
-                      : "border-white/10 bg-white/5 text-gray-500 hover:bg-white/10"
+                      ? "border-primary bg-primary text-black shadow-sm" 
+                      : "border-white/10 bg-white/5 text-gray-400 hover:bg-white/10"
                   )}
                 >
-                  OPERADOR
+                  Operador
                 </button>
                 <button
                   type="button"
                   onClick={() => setRole('gerente')}
                   className={cn(
-                    "h-12 border-2 text-[10px] font-black uppercase tracking-widest transition-all",
+                    "h-11 rounded-xl border text-xs font-medium transition-all",
                     role === 'gerente' 
-                      ? "border-primary bg-primary text-black shadow-[0_0_15px_rgba(15,76,92,0.3)]" 
-                      : "border-white/10 bg-white/5 text-gray-500 hover:bg-white/10"
+                      ? "border-primary bg-primary text-black shadow-sm" 
+                      : "border-white/10 bg-white/5 text-gray-400 hover:bg-white/10"
                   )}
                 >
-                  GERENTE
+                  Gerente
                 </button>
               </div>
             </div>
 
             <Button 
               type="submit" 
-              className="w-full h-14 text-sm font-black uppercase tracking-[0.2em] group mt-6"
+              className="w-full h-11 text-xs font-medium group mt-6"
               disabled={loading}
             >
-              {loading ? "PROCESANDO..." : (
+              {loading ? "Procesando..." : (
                 <>
-                  CREAR CUENTA <ChevronRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  Crear cuenta <ChevronRight className="ml-1 w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </>
               )}
             </Button>
