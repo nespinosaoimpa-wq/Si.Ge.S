@@ -359,19 +359,33 @@ export function searchAddresses(
           searchNominatim(query).catch(() => [] as GeocodingResult[])
         ]);
 
-        // Merge: coords first, then v5, then POIs
-        const merged: GeocodingResult[] = [...results];
+        // Merge: keep track of unique coordinates
         const seenKeys = new Set(results.map(r => `${r.lat.toFixed(5)},${r.lng.toFixed(5)}`));
+        const candidates: GeocodingResult[] = [...results];
 
         for (const r of [...v5Results, ...osmResults, ...poiResults]) {
           const key = r.lat !== 0 ? `${r.lat.toFixed(5)},${r.lng.toFixed(5)}` : r.mapbox_id || r.displayName;
           if (!seenKeys.has(key)) {
             seenKeys.add(key);
-            merged.push(r);
+            candidates.push(r);
           }
         }
 
-        resolve(merged.slice(0, 10));
+        // Live Proximity Sorting (Uber/Google Maps style):
+        // Prioritize coordinate inputs, then sort other results by proximity to SANTA_FE_CENTER
+        candidates.sort((a, b) => {
+          // Priority 1: Coordinate match (type 'coordinate') always first
+          if (a.type === 'coordinate' && b.type !== 'coordinate') return -1;
+          if (b.type === 'coordinate' && a.type !== 'coordinate') return 1;
+
+          // Priority 2: Sort by distance to center of operations
+          const distA = a.lat !== 0 ? distanceMeters(a.lat, a.lng, SANTA_FE_CENTER.lat, SANTA_FE_CENTER.lng) : 9999999;
+          const distB = b.lat !== 0 ? distanceMeters(b.lat, b.lng, SANTA_FE_CENTER.lat, SANTA_FE_CENTER.lng) : 9999999;
+
+          return distA - distB;
+        });
+
+        resolve(candidates.slice(0, 10));
       } catch (err) {
         reject(err);
       }
