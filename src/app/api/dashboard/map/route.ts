@@ -66,7 +66,7 @@ export async function GET() {
     const [objectivesRes, resourcesRes, incidentsRes, shiftsRes, rawIncidentsRes] = await Promise.all([
       supabase.from('objectives')
         .select('*, assigned_personnel:resources!current_objective_id(*, profiles:profiles(*))')
-        .or('is_active.eq.true,status.eq.Activo'),
+        .eq('is_active', true),
       supabase.from('resources')
         .select('*, profiles:profiles(*)')
         .in('status', ['activo', 'active'])
