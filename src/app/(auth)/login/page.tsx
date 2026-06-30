@@ -221,6 +221,15 @@ export default function LoginPage() {
                 )}
               </Button>
             </form>
+
+            <div className="text-center pt-4 border-t border-gray-100 mt-6">
+              <span className="text-xs text-gray-400 font-normal">
+                ¿Es tu primera vez aquí?{' '}
+              </span>
+              <Link href="/register" className="text-xs font-bold text-[#0F4C5C] hover:underline">
+                Crear cuenta de personal
+              </Link>
+            </div>
           </div>
         </CardContent>
       </Card>
