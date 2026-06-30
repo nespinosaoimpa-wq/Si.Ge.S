@@ -18,7 +18,9 @@ export default function RecorridosTab({ objectiveId }: RecorridosTabProps) {
   const map = useRef<mapboxgl.Map | null>(null);
   const [rounds, setRounds] = useState<any[]>([]);
   const [selectedRound, setSelectedRound] = useState<any>(null);
+  const [tracePoints, setTracePoints] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadingTrace, setLoadingTrace] = useState(false);
 
   // Markers refs for start and end
   const startMarkerRef = useRef<mapboxgl.Marker | null>(null);
@@ -38,8 +40,8 @@ export default function RecorridosTab({ objectiveId }: RecorridosTabProps) {
           resources(name)
         `)
         .eq('objective_id', objectiveId)
-        .gte('started_at', fiveDaysAgo)
-        .order('started_at', { ascending: false });
+        .gte('round_start', fiveDaysAgo)
+        .order('round_start', { ascending: false });
 
       if (error) {
         console.error('Error fetching patrol rounds:', error);
@@ -51,6 +53,35 @@ export default function RecorridosTab({ objectiveId }: RecorridosTabProps) {
 
     fetchRounds();
   }, [objectiveId]);
+
+  // Fetch telemetry path from patrol_trace table when selectedRound changes
+  useEffect(() => {
+    if (!selectedRound) {
+      setTracePoints([]);
+      return;
+    }
+
+    const fetchTrace = async () => {
+      setLoadingTrace(true);
+      try {
+        const { data, error } = await supabase
+          .from('patrol_trace')
+          .select('*')
+          .eq('round_id', selectedRound.id)
+          .order('recorded_at', { ascending: true });
+        
+        if (data) {
+          setTracePoints(data);
+        }
+      } catch (e) {
+        console.error('Error fetching trace points:', e);
+      } finally {
+        setLoadingTrace(false);
+      }
+    };
+
+    fetchTrace();
+  }, [selectedRound]);
 
   // 2. Initialize isolated Mapbox instance
   useEffect(() => {
@@ -243,14 +274,11 @@ export default function RecorridosTab({ objectiveId }: RecorridosTabProps) {
     };
   }, []);
 
-  // 3. Process selected round
+  // 3. Process selected round and trace points
   useEffect(() => {
-    if (!map.current || !map.current.isStyleLoaded() || !selectedRound) return;
+    if (!map.current || !map.current.isStyleLoaded() || !selectedRound || tracePoints.length === 0) return;
     
-    const telemetry = selectedRound.telemetry_path || [];
-    if (!Array.isArray(telemetry) || telemetry.length === 0) return;
-
-    const coords = telemetry.map((pt: any) => [pt.lng, pt.lat]);
+    const coords = tracePoints.map((pt: any) => [pt.longitude, pt.latitude]);
     
     const lineString: GeoJSON.Feature = {
       type: 'Feature',
@@ -260,12 +288,12 @@ export default function RecorridosTab({ objectiveId }: RecorridosTabProps) {
 
     const pointsCollection: GeoJSON.FeatureCollection = {
       type: 'FeatureCollection',
-      features: telemetry.map((pt: any, i: number) => ({
+      features: tracePoints.map((pt: any, i: number) => ({
         type: 'Feature',
         id: i,
-        geometry: { type: 'Point', coordinates: [pt.lng, pt.lat] },
+        geometry: { type: 'Point', coordinates: [pt.longitude, pt.latitude] },
         properties: {
-          time: pt.timestamp ? new Date(pt.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'N/A',
+          time: pt.recorded_at ? new Date(pt.recorded_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'N/A',
           speed: pt.speed ? Number(pt.speed).toFixed(1) : '0.0',
           accuracy: pt.accuracy ? Number(pt.accuracy).toFixed(1) : '0'
         }
@@ -296,7 +324,7 @@ export default function RecorridosTab({ objectiveId }: RecorridosTabProps) {
     coords.forEach((coord: any) => bounds.extend(coord));
     currentMap.fitBounds(bounds, { padding: 50, pitch: 45, duration: 1000 });
 
-  }, [selectedRound]);
+  }, [selectedRound, tracePoints]);
 
   return (
     <div className="flex h-[600px] w-full rounded-2xl overflow-hidden border border-zinc-200 shadow-sm bg-zinc-50">
@@ -313,8 +341,8 @@ export default function RecorridosTab({ objectiveId }: RecorridosTabProps) {
             </div>
           ) : rounds.length > 0 ? (
             rounds.map((round) => {
-              const start = new Date(round.started_at);
-              const end = round.ended_at ? new Date(round.ended_at) : null;
+              const start = new Date(round.round_start);
+              const end = round.round_end ? new Date(round.round_end) : null;
               const isSelected = selectedRound?.id === round.id;
 
               return (
