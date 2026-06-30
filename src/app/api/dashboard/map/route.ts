@@ -65,10 +65,10 @@ export async function GET() {
     // Parallel fetch — using select('*') for objectives to avoid column name mismatches
     const [objectivesRes, resourcesRes, incidentsRes, shiftsRes, rawIncidentsRes] = await Promise.all([
       supabase.from('objectives')
-        .select('*, assigned_personnel:resources!current_objective_id(*, profiles:profiles(*))')
+        .select('*, assigned_personnel:resources!current_objective_id(*)')
         .eq('is_active', true),
       supabase.from('resources')
-        .select('*, profiles:profiles(*)')
+        .select('*')
         .in('status', ['activo', 'active'])
         .gte('last_gps_update', new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString()),
       supabase.from('guard_book_entries')
