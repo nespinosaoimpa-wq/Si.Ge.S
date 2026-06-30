@@ -66,9 +66,15 @@ function normalizeAddress(query: string): string {
   n = n.replace(/\bpje\.?\b/gi, 'Pasaje');
   n = n.replace(/\bbv\.?\b/gi, 'Boulevard');
   n = n.replace(/\bbvd\.?\b/gi, 'Boulevard');
+  n = n.replace(/\bbulevar\b/gi, 'Boulevard');  // Argentine Spanish variant
   n = n.replace(/\bnro\.?\b/gi, '');
   n = n.replace(/\bn°\b/gi, '');
   n = n.replace(/\b#\b/g, '');
+  n = n.replace(/\bcnel\.?\b/gi, 'Coronel');
+  n = n.replace(/\bgral\.?\b/gi, 'General');
+  n = n.replace(/\bdr\.?\b/gi, 'Doctor');
+  n = n.replace(/\bsgto\.?\b/gi, 'Sargento');
+  n = n.replace(/\bcte\.?\b/gi, 'Comandante');
   
   // 2. Santa Fe specific street mapping (converts shortcuts into formal DB names for Mapbox/OSM resolution)
   n = n.replace(/\bj\.?\s*j\.?\s*paso\b/gi, 'Juan José Paso');
@@ -78,6 +84,11 @@ function normalizeAddress(query: string): string {
   n = n.replace(/\bestanislao\s+l[oó]pez\b/gi, 'Avenida Estanislao López');
   n = n.replace(/\b27\s+de\s+febrero\b/gi, 'Avenida 27 de Febrero');
   n = n.replace(/\balem\b/gi, 'Avenida Alem');
+  n = n.replace(/\bg[aá]lvez\b/gi, 'Gálvez');  // Ensure correct accent for Mapbox/OSM
+  n = n.replace(/\bpellegrini\b/gi, 'Pellegrini');
+  n = n.replace(/\b1\s*(?:ro|ero)?\s*de\s+mayo\b/gi, 'Primero de Mayo');
+  n = n.replace(/\b9\s+de\s+julio\b/gi, '9 de Julio');
+  n = n.replace(/\b25\s+de\s+mayo\b/gi, '25 de Mayo');
   
   return n.trim();
 }

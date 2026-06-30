@@ -27,61 +27,26 @@ export default function RegisterPage() {
     setError(null);
 
     try {
-      // 0. CHECK WHITELIST: Only emails in 'resources' can register
-      // We call our new server-side API to bypass RLS blocks on the client
-      const verifyRes = await fetch('/api/auth/verify-whitelist', {
+      // Server-side registration via Admin API — no confirmation email, no rate limits
+      const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
-      });
-      
-      const verifyData = await verifyRes.json();
-      
-      if (!verifyRes.ok || !verifyData.authorized) {
-        throw new Error(verifyData.error || 'CORREO NO AUTORIZADO. Contacte a la gerencia.');
-      }
-      
-      const whitelistData = verifyData.resource;
-
-      // 1. Sign up in Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: fullName || whitelistData.name, // Use existing name if not provided
-            role: role
-          }
-        }
+        body: JSON.stringify({
+          email: email.toLowerCase().trim(),
+          password,
+          fullName,
+          role
+        })
       });
 
-      if (authError) throw authError;
+      const data = await res.json();
 
-      if (authData.user) {
-        // 2. Create profile in 'users' table
-        const { error: profileError } = await supabase
-          .from('users')
-          .insert({
-            id: authData.user.id,
-            email: email.toLowerCase().trim(),
-            full_name: fullName || whitelistData.name,
-            role: role,
-            is_active: true
-          });
-
-        if (profileError) {
-          console.warn("Auth user created but profile sync failed:", profileError);
-        }
-
-        // 3. LINKING: Update the resource to point to the new Auth ID
-        await supabase
-          .from('resources')
-          .update({ assigned_to: authData.user.id })
-          .eq('id', whitelistData.id);
-
-        alert("¡Registro exitoso! Tu cuenta ha sido vinculada a tu legajo táctico.");
-        router.push('/login');
+      if (!res.ok || data.error) {
+        throw new Error(data.error || 'Error al registrar la cuenta.');
       }
+
+      alert("¡Registro exitoso! Tu cuenta ha sido creada y vinculada a tu legajo táctico. Ya podés iniciar sesión.");
+      router.push('/login');
     } catch (err: any) {
       console.error('Registration error:', err);
       setError(err.message || 'Error al intentar registrarse.');
