@@ -28,6 +28,7 @@ export interface ReverseGeocodingResult {
 }
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || ('pk.eyJ1Ijoibmljb2VzcGlub3NhIiwiYSI6ImNtbzczM21ucjAydDgycHB2MXZsY3Bqc3EifQ.' + 'LeVW1Jfcr6Rr6q1o15Kkzw');
+const GOOGLE_MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
 const MAPBOX_GEO_BASE = 'https://api.mapbox.com/geocoding/v5/mapbox.places';
 const MAPBOX_SEARCH_BASE = 'https://api.mapbox.com/search/searchbox/v1';
 
@@ -55,11 +56,12 @@ let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 let abortController: AbortController | null = null;
 
 /**
- * Normalize common Argentine address abbreviations
+ * Normalize common Argentine address abbreviations and Santa Fe specific streets
  */
 function normalizeAddress(query: string): string {
   let n = query.trim();
-  // Common abbreviations
+  
+  // 1. General prefixes
   n = n.replace(/\bav\.?\b/gi, 'Avenida');
   n = n.replace(/\bpje\.?\b/gi, 'Pasaje');
   n = n.replace(/\bbv\.?\b/gi, 'Boulevard');
@@ -67,6 +69,16 @@ function normalizeAddress(query: string): string {
   n = n.replace(/\bnro\.?\b/gi, '');
   n = n.replace(/\bn°\b/gi, '');
   n = n.replace(/\b#\b/g, '');
+  
+  // 2. Santa Fe specific street mapping (converts shortcuts into formal DB names for Mapbox/OSM resolution)
+  n = n.replace(/\bj\.?\s*j\.?\s*paso\b/gi, 'Juan José Paso');
+  n = n.replace(/\bgral\.?\s+paz\b/gi, 'General Paz');
+  n = n.replace(/\bfacundo\s+zuvir[ií]a\b/gi, 'Avenida Facundo Zuviría');
+  n = n.replace(/\bl[oó]pez\s+y\s+planes\b/gi, 'Avenida López y Planes');
+  n = n.replace(/\bestanislao\s+l[oó]pez\b/gi, 'Avenida Estanislao López');
+  n = n.replace(/\b27\s+de\s+febrero\b/gi, 'Avenida 27 de Febrero');
+  n = n.replace(/\balem\b/gi, 'Avenida Alem');
+  
   return n.trim();
 }
 
@@ -312,10 +324,54 @@ export async function searchNominatim(query: string): Promise<GeocodingResult[]>
   }
 }
 
+/**
+ * Google Maps Geocoding API — the absolute gold standard for address heights in Argentina.
+ * Activates automatically if NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is configured in env.
+ */
+export async function geocodeGoogle(query: string): Promise<GeocodingResult[]> {
+  if (!query || !GOOGLE_MAPS_KEY) return [];
+  try {
+    const normalized = normalizeAddress(query);
+    const contextualized = injectContext(normalized);
+    
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(contextualized)}&key=${GOOGLE_MAPS_KEY}&language=es`;
+    const res = await fetch(url);
+    if (!res.ok) return [];
+    
+    const data = await res.json();
+    if (data.status !== 'OK' || !data.results) return [];
+    
+    return data.results.map((item: any) => {
+      const addrComponents = item.address_components || [];
+      const street = addrComponents.find((c: any) => c.types.includes('route'))?.long_name || '';
+      const houseNumber = addrComponents.find((c: any) => c.types.includes('street_number'))?.long_name || '';
+      const city = addrComponents.find((c: any) => c.types.includes('locality'))?.long_name || '';
+      const state = addrComponents.find((c: any) => c.types.includes('administrative_area_level_1'))?.long_name || '';
+      const country = addrComponents.find((c: any) => c.types.includes('country'))?.long_name || 'Argentina';
+      
+      return {
+        lat: item.geometry.location.lat,
+        lng: item.geometry.location.lng,
+        displayName: item.formatted_address,
+        street,
+        houseNumber,
+        city,
+        state,
+        country,
+        type: item.types?.[0] || 'address',
+        importance: 1.0, // Maximum priority
+      };
+    });
+  } catch (err) {
+    console.warn("Google Geocoding failed:", err);
+    return [];
+  }
+}
+
 // ─── UNIFIED SEARCH: Hybrid Engine ────────────────────────────────────
  
 /**
- * Main search function — runs Mapbox v5, Search Box v1, and Nominatim in parallel.
+ * Main search function — runs Google Maps (if key present), Mapbox v5, Search Box v1, and Nominatim in parallel.
  * Combines and deduplicates results, prioritizing coordinate match and exact heights.
  */
 export function searchAddresses(
@@ -352,8 +408,9 @@ export function searchAddresses(
           });
         }
 
-        // 2. Run engines in parallel (Mapbox + Nominatim OSM)
-        const [v5Results, poiResults, osmResults] = await Promise.all([
+        // 2. Run engines in parallel (Google Geocoding + Mapbox + Nominatim OSM)
+        const [googleResults, v5Results, poiResults, osmResults] = await Promise.all([
+          geocodeGoogle(query).catch(() => [] as GeocodingResult[]),
           geocodeForward(query).catch(() => [] as GeocodingResult[]),
           searchBoxSuggest(query).catch(() => [] as GeocodingResult[]),
           searchNominatim(query).catch(() => [] as GeocodingResult[])
@@ -363,7 +420,10 @@ export function searchAddresses(
         const seenKeys = new Set(results.map(r => `${r.lat.toFixed(5)},${r.lng.toFixed(5)}`));
         const candidates: GeocodingResult[] = [...results];
 
-        for (const r of [...v5Results, ...osmResults, ...poiResults]) {
+        // Combine all results, prioritizing Google Maps results first, then Mapbox, then Nominatim
+        const allCandidates = [...googleResults, ...v5Results, ...osmResults, ...poiResults];
+
+        for (const r of allCandidates) {
           const key = r.lat !== 0 ? `${r.lat.toFixed(5)},${r.lng.toFixed(5)}` : r.mapbox_id || r.displayName;
           if (!seenKeys.has(key)) {
             seenKeys.add(key);
@@ -372,13 +432,19 @@ export function searchAddresses(
         }
 
         // Live Proximity Sorting (Uber/Google Maps style):
-        // Prioritize coordinate inputs, then sort other results by proximity to SANTA_FE_CENTER
+        // Prioritize coordinate inputs, then Google results, then sort others by proximity to SANTA_FE_CENTER
         candidates.sort((a, b) => {
           // Priority 1: Coordinate match (type 'coordinate') always first
           if (a.type === 'coordinate' && b.type !== 'coordinate') return -1;
           if (b.type === 'coordinate' && a.type !== 'coordinate') return 1;
 
-          // Priority 2: Sort by distance to center of operations
+          // Priority 2: Google results (always has high importance and max relevance)
+          const isGoogleA = googleResults.some(g => g.lat.toFixed(5) === a.lat.toFixed(5) && g.lng.toFixed(5) === a.lng.toFixed(5));
+          const isGoogleB = googleResults.some(g => g.lat.toFixed(5) === b.lat.toFixed(5) && g.lng.toFixed(5) === b.lng.toFixed(5));
+          if (isGoogleA && !isGoogleB) return -1;
+          if (isGoogleB && !isGoogleA) return 1;
+
+          // Priority 3: Sort by distance to center of operations
           const distA = a.lat !== 0 ? distanceMeters(a.lat, a.lng, SANTA_FE_CENTER.lat, SANTA_FE_CENTER.lng) : 9999999;
           const distB = b.lat !== 0 ? distanceMeters(b.lat, b.lng, SANTA_FE_CENTER.lat, SANTA_FE_CENTER.lng) : 9999999;
 
