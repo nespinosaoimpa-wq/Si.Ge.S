@@ -32,12 +32,16 @@ export async function POST(request: Request) {
     const supabase = createServiceClient();
     const body = await request.json();
 
-    // Ensure latitude and longitude are numbers
+    // Explicitly map only existing physical columns to prevent schema cache mismatches
     const payload = {
-      ...body,
+      name: body.name,
+      address: body.address,
+      client_name: body.client_name,
+      contact_phone: body.contact_phone,
       latitude: parseFloat(body.latitude),
       longitude: parseFloat(body.longitude),
-      status: body.status || 'Activo',
+      geofence_radius: body.geofence_radius ? parseFloat(body.geofence_radius) : 200,
+      hourly_billing_rate: body.hourly_billing_rate ? parseFloat(body.hourly_billing_rate) : null,
       is_active: true
     };
 
