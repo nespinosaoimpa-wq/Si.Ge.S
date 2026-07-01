@@ -124,18 +124,29 @@ export function parseCoordinates(query: string): { lat: number, lng: number } | 
 function injectContext(query: string): string {
   const lower = query.toLowerCase();
   
-  // List of major Argentine cities and provinces to identify external contexts
-  const hasExternalContext = /buenos aires|caba|capital federal|cordoba|crdoba|mendoza|tucuman|tucumán|salta|rosario|parana|paraná|entre rios|entre ríos|corrientes|chaco|misiones|formosa|santiago del estero|catamarca|la rioja|san juan|san luis|neuquen|neuquén|rio negro|río negro|chubut|santa cruz|tierra del fuego|ushuaia|mar del plata|la plata|bahia blanca|bahía blanca|rafaela|reconquista|venado tuerto|santa fe/i.test(lower);
+  // List of other cities/towns in Santa Fe province to avoid overriding them if explicitly specified
+  const hasOtherCity = /rosario|rafaela|reconquista|santo tom[eé]|sauce viejo|esperanza|franck|coronda|venado tuerto|sunchales|villa constitucion|san lorenzo|ca[nñ]ada de gomez|casilda|santa rosa de calchines|calchines|helvecia|cayasta/i.test(lower);
+  
+  // If the query mentions "santa fe" but no other city in the province is specified,
+  // we replace it with "Santa Fe de la Vera Cruz, Santa Fe" to ensure geocoders lock to the capital
+  // instead of treating it as the broad province and matching other towns like Calchines or Rosario.
+  let adjustedQuery = query;
+  if (/santa fe/i.test(lower) && !hasOtherCity) {
+    adjustedQuery = query.replace(/santa fe/gi, 'Santa Fe de la Vera Cruz, Santa Fe');
+  }
+
+  const lowerAdjusted = adjustedQuery.toLowerCase();
+  const hasExternalContext = /buenos aires|caba|capital federal|cordoba|crdoba|mendoza|tucuman|tucumán|salta|rosario|parana|paraná|entre rios|entre ríos|corrientes|chaco|misiones|formosa|santiago del estero|catamarca|la rioja|san juan|san luis|neuquen|neuquén|rio negro|río negro|chubut|santa cruz|tierra del fuego|ushuaia|mar del plata|la plata|bahia blanca|bahía blanca|rafaela|reconquista|venado tuerto|santa fe de la vera cruz/i.test(lowerAdjusted);
   
   if (!hasExternalContext) {
     // Default context for local/incomplete searches (explicitly specify the city capital)
-    return `${query}, Santa Fe de la Vera Cruz, Santa Fe, Argentina`;
+    return `${adjustedQuery}, Santa Fe de la Vera Cruz, Santa Fe, Argentina`;
   }
   
-  if (!/argentina/i.test(lower)) {
-    return `${query}, Argentina`;
+  if (!/argentina/i.test(lowerAdjusted)) {
+    return `${adjustedQuery}, Argentina`;
   }
-  return query;
+  return adjustedQuery;
 }
 
 /**
