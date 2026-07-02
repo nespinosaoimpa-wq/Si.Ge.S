@@ -172,9 +172,9 @@ export default function GuardiaDashboard() {
         <div className="absolute bottom-0 left-0 w-48 h-48 bg-zinc-900/10 blur-[80px] rounded-full translate-y-1/2 -translate-x-1/2" />
         
         <div className="relative z-10 max-w-5xl mx-auto space-y-6">
-           <div className="flex justify-between items-center">
-              <div className="flex items-center bg-[#09090b]/80 border border-zinc-800 rounded-xl p-1.5 px-3">
-                 <SigesIcon className="w-24 h-7" />
+           <div className="flex justify-between items-center h-12">
+              <div className="flex items-center">
+                 <SigesIcon className="w-44 h-12 scale-[1.6] origin-left ml-2.5" />
               </div>
               
               <div className="flex items-center gap-3">
