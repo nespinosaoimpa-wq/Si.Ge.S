@@ -83,29 +83,28 @@ export default function LoginPage() {
       transition={{ duration: 0.5 }}
       className="w-full max-w-md"
     >
-      <div className="flex flex-col items-center mb-8 text-center">
-        <div className="relative mb-4">
+      <div className="flex flex-col items-center mb-6 text-center">
+        <div className="relative mb-6">
           <motion.div
             animate={{ 
-              boxShadow: ["0 0 10px rgba(15,76,92,0.1)", "0 0 20px rgba(15,76,92,0.2)", "0 0 10px rgba(15,76,92,0.1)"]
+              boxShadow: ["0 0 15px rgba(255,255,255,0.05)", "0 0 30px rgba(255,255,255,0.15)", "0 0 15px rgba(255,255,255,0.05)"]
             }}
             transition={{ duration: 3, repeat: Infinity }}
-            className="w-24 h-24 bg-white border border-primary/20 flex items-center justify-center relative overflow-hidden rounded-3xl p-3.5 shadow-md"
+            className="w-56 h-18 bg-[#09090b]/80 border border-zinc-800 flex items-center justify-center relative overflow-hidden rounded-2xl p-4 shadow-xl"
           >
-            <SigesIcon className="w-full h-full text-primary" />
+            <SigesIcon className="w-full h-full" />
           </motion.div>
         </div>
         
-        <h1 className="text-3xl font-bold tracking-tight text-gray-900 mb-1.5 font-display leading-none">SIGPAD</h1>
-        <p className="text-gray-500 text-xs font-normal max-w-[280px] leading-relaxed">
-          Sistema inteligente de gestión para seguridad privada
+        <p className="text-zinc-400 text-xs font-normal max-w-[280px] leading-relaxed">
+          Sistema Inteligente de Gestión y Plataforma Avanzada de Seguridad Dinámica
         </p>
       </div>
 
-      <Card className="border-gray-200 bg-white shadow-xl rounded-[2rem] overflow-hidden">
+      <Card className="border-zinc-850 bg-zinc-900/40 backdrop-blur-xl shadow-2xl rounded-[2rem] overflow-hidden text-white">
         <CardContent className="pt-8 space-y-6">
           {error && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-2xl flex items-center gap-3 text-red-600 text-xs font-bold">
+            <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-2xl flex items-center gap-3 text-red-500 text-xs font-bold">
               <Shield className="w-4 h-4 shrink-0" />
               <p>{error}</p>
             </div>
@@ -114,12 +113,12 @@ export default function LoginPage() {
           <div className="space-y-4">
             <Button 
               variant="outline" 
-              className="w-full h-14 rounded-2xl border-gray-200 hover:bg-gray-50 flex items-center justify-center gap-3 font-bold transition-all active:scale-95"
+              className="w-full h-14 rounded-2xl border-zinc-800 bg-zinc-950/80 hover:bg-zinc-900 text-white flex items-center justify-center gap-3 font-bold transition-all active:scale-95"
               onClick={handleGoogleLogin}
               disabled={googleLoading}
             >
               {googleLoading ? (
-                <div className="w-5 h-5 border-2 border-gray-300 border-t-primary rounded-full animate-spin" />
+                <div className="w-5 h-5 border-2 border-zinc-700 border-t-white rounded-full animate-spin" />
               ) : (
                 <>
                   <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -146,20 +145,20 @@ export default function LoginPage() {
             </Button>
 
             <div className="flex items-center gap-4 py-2">
-              <div className="h-px flex-1 bg-gray-100" />
-              <span className="text-xs font-medium text-gray-400">o mediante correo</span>
-              <div className="h-px flex-1 bg-gray-100" />
+              <div className="h-px flex-1 bg-zinc-800" />
+              <span className="text-xs font-medium text-zinc-500">o mediante correo</span>
+              <div className="h-px flex-1 bg-zinc-800" />
             </div>
 
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
-                <label className="text-xs text-gray-500 font-medium ml-1">
+                <label className="text-xs text-zinc-400 font-medium ml-1">
                   Identificación
                 </label>
                 <Input
                   type="email"
                   placeholder="ejemplo@correo.com"
-                  className="rounded-2xl h-14"
+                  className="rounded-2xl h-14 border-zinc-800 bg-zinc-950/60 text-white placeholder-zinc-500 focus:border-zinc-700"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -167,13 +166,13 @@ export default function LoginPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs text-gray-500 font-medium ml-1">
+                <label className="text-xs text-zinc-400 font-medium ml-1">
                   Código de Acceso
                 </label>
                 <Input
                   type="password"
                   placeholder="••••••••••••"
-                  className="rounded-2xl h-14"
+                  className="rounded-2xl h-14 border-zinc-800 bg-zinc-950/60 text-white placeholder-zinc-500 focus:border-zinc-700"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -185,10 +184,10 @@ export default function LoginPage() {
                   type="button"
                   onClick={() => setRole('operador')}
                   className={cn(
-                    "h-12 rounded-xl text-xs font-medium border transition-all",
+                    "h-12 rounded-xl text-xs font-semibold border transition-all",
                     role === 'operador' 
-                      ? "bg-primary border-primary text-black shadow-lg shadow-primary/20" 
-                      : "bg-white border-gray-100 text-gray-500 hover:bg-gray-50"
+                      ? "bg-white border-white text-zinc-950 shadow-lg shadow-white/5" 
+                      : "bg-zinc-950 border-zinc-800 text-zinc-400 hover:bg-zinc-900"
                   )}
                 >
                   Operativo
@@ -197,10 +196,10 @@ export default function LoginPage() {
                   type="button"
                   onClick={() => setRole('gerente')}
                   className={cn(
-                    "h-12 rounded-xl text-xs font-medium border transition-all",
+                    "h-12 rounded-xl text-xs font-semibold border transition-all",
                     role === 'gerente' 
-                      ? "bg-primary border-primary text-black shadow-lg shadow-primary/20" 
-                      : "bg-white border-gray-100 text-gray-500 hover:bg-gray-50"
+                      ? "bg-white border-white text-zinc-950 shadow-lg shadow-white/5" 
+                      : "bg-zinc-950 border-zinc-800 text-zinc-400 hover:bg-zinc-900"
                   )}
                 >
                   Gestión
@@ -209,11 +208,11 @@ export default function LoginPage() {
 
               <Button 
                 type="submit" 
-                className="w-full h-16 rounded-2xl text-base font-bold mt-4 shadow-xl shadow-primary/10 group"
+                className="w-full h-16 rounded-2xl text-base font-bold mt-4 shadow-xl bg-white hover:bg-zinc-200 text-zinc-950 border-none group"
                 disabled={loading}
               >
                 {loading ? (
-                  <div className="w-6 h-6 border-2 border-black/20 border-t-black rounded-full animate-spin" />
+                  <div className="w-6 h-6 border-2 border-zinc-900/20 border-t-zinc-900 rounded-full animate-spin" />
                 ) : (
                   <>
                     INGRESAR <ChevronRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -222,11 +221,11 @@ export default function LoginPage() {
               </Button>
             </form>
 
-            <div className="text-center pt-4 border-t border-gray-100 mt-6">
-              <span className="text-xs text-gray-400 font-normal">
+            <div className="text-center pt-4 border-t border-zinc-800 mt-6">
+              <span className="text-xs text-zinc-500 font-normal">
                 ¿Es tu primera vez aquí?{' '}
               </span>
-              <Link href="/register" className="text-xs font-bold text-[#0F4C5C] hover:underline">
+              <Link href="/register" className="text-xs font-bold text-white hover:underline">
                 Crear cuenta de personal
               </Link>
             </div>
@@ -234,8 +233,8 @@ export default function LoginPage() {
         </CardContent>
       </Card>
       
-      <p className="mt-8 text-xs text-center text-gray-400 font-normal">
-        Si.Ge.S · Gestión de Seguridad
+      <p className="mt-8 text-xs text-center text-zinc-600 font-normal uppercase tracking-wider font-mono">
+        SIGPAD OS · Sistema Inteligente de Gestión
       </p>
     </motion.div>
   );

@@ -6,13 +6,13 @@ export default function AuthLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-background relative overflow-hidden">
+    <div className="min-h-screen w-full flex items-center justify-center bg-zinc-950 relative overflow-hidden text-zinc-100">
       {/* Background Decorative Elements */}
-      <div className="absolute top-0 left-0 w-full h-1 bg-primary/20" />
-      <div className="absolute bottom-0 left-0 w-full h-1 bg-primary/20" />
+      <div className="absolute top-0 left-0 w-full h-1 bg-white/5" />
+      <div className="absolute bottom-0 left-0 w-full h-1 bg-white/5" />
       
       {/* Subtle background glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary/5 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-zinc-800/10 blur-[150px] rounded-full pointer-events-none" />
       
       <main className="relative z-10 w-full flex items-center justify-center p-4">
         {children}
