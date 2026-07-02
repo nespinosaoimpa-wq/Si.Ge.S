@@ -69,9 +69,9 @@ function AnimatedCounter({ target, suffix = '' }: { target: number; suffix?: str
 // ─── Section Heading ──────────────────────────────────────────────────────────
 function SectionTag({ children }: { children: React.ReactNode }) {
   return (
-    <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-[#0F4C5C]/30 border border-[#237893]/20 rounded-full mb-4">
-      <div className="w-1.5 h-1.5 rounded-full bg-[#3ABEFF] animate-pulse" />
-      <span className="text-[9px] font-black uppercase tracking-[0.3em] text-[#3ABEFF]">{children}</span>
+    <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-zinc-900 border border-zinc-800 rounded-full mb-4 shadow-[0_0_15px_rgba(255,255,255,0.02)]">
+      <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+      <span className="text-[9px] font-black uppercase tracking-[0.3em] text-zinc-300">{children}</span>
     </div>
   );
 }
@@ -163,23 +163,19 @@ export default function RootLandingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#071E22] text-zinc-100 flex flex-col selection:bg-[#3ABEFF]/20 selection:text-[#3ABEFF] overflow-x-hidden">
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col selection:bg-white/20 selection:text-white overflow-x-hidden">
       
       {/* ── Ambient Backgrounds ─────────────────────────────────────────── */}
       <div className="fixed top-0 left-0 w-full h-full pointer-events-none overflow-hidden z-0">
-        <div className="absolute top-[10%] right-[-15%] w-[600px] h-[600px] bg-[#0F4C5C]/15 blur-[150px] rounded-full" />
-        <div className="absolute top-[50%] left-[-15%] w-[500px] h-[500px] bg-[#237893]/10 blur-[150px] rounded-full" />
-        <div className="absolute bottom-[5%] right-[10%] w-[400px] h-[400px] bg-[#0F4C5C]/10 blur-[120px] rounded-full" />
+        <div className="absolute top-[10%] right-[-15%] w-[600px] h-[600px] bg-zinc-900/10 blur-[150px] rounded-full" />
+        <div className="absolute top-[50%] left-[-15%] w-[500px] h-[500px] bg-zinc-800/5 blur-[150px] rounded-full" />
+        <div className="absolute bottom-[5%] right-[10%] w-[400px] h-[400px] bg-zinc-900/5 blur-[120px] rounded-full" />
       </div>
 
       {/* ── Navigation ──────────────────────────────────────────────────── */}
-      <header className="sticky top-0 w-full z-50 bg-[#071E22]/90 backdrop-blur-2xl border-b border-[#237893]/10 h-16 flex items-center justify-between px-6 lg:px-12">
-        <Link href="/" className="flex items-center gap-3">
-          <SigesIcon className="w-8 h-8 text-[#3ABEFF]" />
-          <div>
-            <span className="font-black text-lg tracking-tight uppercase text-white block leading-none">SIGPAD</span>
-            <span className="text-[7px] font-bold tracking-[0.1em] uppercase text-[#3ABEFF] block leading-none">Sistema Inteligente de Gestión y Seguridad Dinámica</span>
-          </div>
+      <header className="sticky top-0 w-full z-50 bg-zinc-950/80 backdrop-blur-2xl border-b border-zinc-800/80 h-16 flex items-center justify-between px-6 lg:px-12">
+        <Link href="/" className="flex items-center h-10">
+          <SigesIcon className="w-36 h-10" />
         </Link>
 
         {/* Desktop Nav */}
@@ -194,11 +190,11 @@ export default function RootLandingPage() {
             { label: 'Contacto', href: '#contacto', isRoute: false },
           ].map(link => (
             link.isRoute ? (
-              <Link key={link.href} href={link.href} className="text-[11px] font-black uppercase tracking-wider text-zinc-400 hover:text-white transition-colors">
+              <Link key={link.href} href={link.href} className="text-[11px] font-black uppercase tracking-wider text-zinc-500 hover:text-white transition-colors">
                 {link.label}
               </Link>
             ) : (
-              <a key={link.href} href={link.href} className="text-[11px] font-black uppercase tracking-wider text-zinc-400 hover:text-white transition-colors">
+              <a key={link.href} href={link.href} className="text-[11px] font-black uppercase tracking-wider text-zinc-500 hover:text-white transition-colors">
                 {link.label}
               </a>
             )
@@ -206,13 +202,13 @@ export default function RootLandingPage() {
         </nav>
 
         <div className="flex items-center gap-3">
-          <Link href="/roles" className="hidden sm:flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-[#3ABEFF] hover:text-white transition-colors px-4 py-2 border border-[#3ABEFF]/25 rounded-xl bg-[#3ABEFF]/5 hover:bg-[#3ABEFF]/10">
+          <Link href="/roles" className="hidden sm:flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-white hover:text-zinc-300 transition-colors px-4 py-2 border border-zinc-800 rounded-xl bg-zinc-950 hover:bg-zinc-900">
             Ingreso de Personal
           </Link>
-          <a href="#contacto" className="flex items-center gap-1.5 h-10 px-5 rounded-xl bg-[#3ABEFF] text-[#071E22] font-black uppercase text-[9px] tracking-widest hover:bg-white transition-all shadow-lg shadow-[#3ABEFF]/20 hover:scale-105">
+          <a href="#contacto" className="flex items-center gap-1.5 h-10 px-5 rounded-xl bg-white hover:bg-zinc-200 text-zinc-950 font-black uppercase text-[9px] tracking-widest transition-all shadow-lg shadow-white/5 hover:scale-105">
             Solicitar Demo
           </a>
-          <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2 text-zinc-400 hover:text-white">
+          <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2 text-zinc-500 hover:text-white">
             {mobileMenuOpen ? <X size={20} /> : <Layers size={20} />}
           </button>
         </div>
@@ -270,38 +266,38 @@ export default function RootLandingPage() {
 
             <h1 className="text-4xl lg:text-6xl font-black tracking-tight text-white uppercase leading-[0.95] font-display max-w-3xl">
               La plataforma que{' '}
-              <span className="text-[#3ABEFF]">transforma</span>{' '}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-zinc-200 to-zinc-400">transforma</span>{' '}
               la gestión de seguridad privada
             </h1>
 
-            <p className="text-zinc-400 text-base lg:text-lg max-w-2xl font-medium leading-relaxed mx-auto">
+            <p className="text-zinc-400 text-sm lg:text-base max-w-2xl font-medium leading-relaxed mx-auto">
               Control GPS en tiempo real. Fichaje digital sin fraude. Portal de clientes con transparencia total.
               Todo en una sola app, diseñada para empresas de seguridad argentinas.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <a href="#contacto" className="group flex items-center justify-center gap-2 h-14 px-8 rounded-2xl bg-[#3ABEFF] text-[#071E22] font-black uppercase text-xs tracking-widest shadow-xl shadow-[#3ABEFF]/25 hover:scale-105 transition-all">
+              <a href="#contacto" className="group flex items-center justify-center gap-2 h-14 px-8 rounded-2xl bg-white hover:bg-zinc-200 text-zinc-950 font-black uppercase text-xs tracking-widest shadow-xl shadow-white/5 hover:scale-105 transition-all">
                 Solicitar Demo Gratis
                 <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
               </a>
-              <Link href="/roles" className="flex items-center justify-center gap-2 h-14 px-8 rounded-2xl border border-[#237893]/30 hover:bg-[#0F4C5C]/20 text-xs tracking-widest font-black uppercase text-zinc-300 transition-all">
+              <Link href="/roles" className="flex items-center justify-center gap-2 h-14 px-8 rounded-2xl border border-zinc-800 hover:bg-zinc-900 text-xs tracking-widest font-black uppercase text-zinc-300 transition-all">
                 <PlayCircle size={16} />
                 Ingresar a la Plataforma
               </Link>
             </div>
 
             {/* Mini trust bar */}
-            <div className="flex flex-wrap justify-center gap-x-8 gap-y-3 pt-6 border-t border-[#237893]/10 w-full max-w-xl mx-auto">
+            <div className="flex flex-wrap justify-center gap-x-8 gap-y-3 pt-6 border-t border-zinc-800/80 w-full max-w-xl mx-auto">
               {[
                 { label: 'Guardias gestionados', val: '+200' },
                 { label: 'Objetivos activos', val: '+30' },
                 { label: 'Uptime garantizado', val: '99.9%' },
               ].map(item => (
                 <div key={item.label} className="flex items-center gap-2">
-                  <CheckCircle2 size={14} className="text-[#3ABEFF] shrink-0" />
+                   <CheckCircle2 size={14} className="text-zinc-400 shrink-0" />
                   <div className="text-left">
                     <p className="text-white font-black text-sm">{item.val}</p>
-                    <p className="text-zinc-500 text-[9px] uppercase tracking-wider font-bold">{item.label}</p>
+                    <p className="text-zinc-550 text-[9px] uppercase tracking-wider font-bold">{item.label}</p>
                   </div>
                 </div>
               ))}
@@ -962,12 +958,8 @@ export default function RootLandingPage() {
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-4 gap-8 mb-12">
             <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <SigesIcon className="w-8 h-8 text-[#3ABEFF]" />
-                <div>
-                  <span className="font-black text-white block leading-none">SIGPAD</span>
-                  <span className="text-[8px] text-[#3ABEFF] tracking-widest uppercase">Sistema Inteligente</span>
-                </div>
+              <div className="flex items-center">
+                <SigesIcon className="w-36 h-10" />
               </div>
               <p className="text-zinc-500 text-[11px] font-medium leading-relaxed">
                 La plataforma integral para empresas de seguridad privada argentina.
