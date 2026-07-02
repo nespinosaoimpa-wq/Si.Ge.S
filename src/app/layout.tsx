@@ -17,6 +17,13 @@ const outfit = Outfit({
   variable: "--font-outfit",
 });
 
+import { Orbitron } from "next/font/google";
+const orbitron = Orbitron({
+  subsets: ["latin"],
+  variable: "--font-orbitron",
+  weight: ["400", "700", "900"],
+});
+
 export const metadata: Metadata = {
   title: "SIGPAD",
   description: "SIGPAD - Sistema Inteligente de Gestión y Plataforma Avanzada de Seguridad Dinámica",
@@ -57,7 +64,7 @@ export default function RootLayout({
         <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192x192.png" />
       </head>
       <body
-        className={`${inter.variable} ${outfit.variable} font-sans bg-zinc-50 text-zinc-900 h-full overflow-x-hidden antialiased`}
+        className={`${inter.variable} ${outfit.variable} ${orbitron.variable} font-sans bg-zinc-50 text-zinc-900 h-full overflow-x-hidden antialiased`}
       >
         <AuthProvider>
           <ShiftProvider>
