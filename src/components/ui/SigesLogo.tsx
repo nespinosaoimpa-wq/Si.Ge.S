@@ -8,27 +8,76 @@ interface SigesIconProps {
   strokeColor?: string;
 }
 
-export function SigesIcon({ className = "w-[15px] h-[27px]", strokeColor = "currentColor" }: SigesIconProps) {
+/**
+ * SIGPAD Official Horizontal Logo SVG Component
+ * Vectorial representation matching the geometry and style of the official SIGPAD brand logo.
+ */
+export function SigesIcon({ className = "w-32 h-10", strokeColor = "currentColor" }: SigesIconProps) {
   return (
     <svg 
-      viewBox="0 0 15 27" 
+      viewBox="0 0 230 80" 
       fill="none" 
       xmlns="http://www.w3.org/2000/svg"
       className={className}
     >
-      {/* Outer rounded frame inspired by the SIGPAD logo layout */}
+      {/* Outer rounded frame - Curved left border and horizontal open lines */}
       <path 
-        d="M 15 3 C 8.5 3 2.5 3 2.5 3 C 1.5 3 1 3.8 1 4.8 L 1 22.2 C 1 23.2 1.5 24 2.5 24 C 2.5 24 8.5 24 15 24" 
+        d="M 170 15 L 35 15 C 21 15 10 26 10 40 C 10 54 21 65 35 65 L 205 65" 
         stroke={strokeColor} 
-        strokeWidth="1.8" 
+        strokeWidth="4.5" 
         strokeLinecap="round" 
         strokeLinejoin="round" 
       />
-      {/* Monogram letters S and P merged geometrically */}
+      
+      {/* Letter S - Curved and stylized */}
       <path 
-        d="M 11.5 7.5 L 6.5 7.5 C 5.5 7.5 4.5 8.2 4.5 9.2 L 4.5 20.8 C 4.5 20.8 4.5 21.5 4.5 21.5 M 4.5 12 L 10 12 C 11 12 11.5 12.8 11.5 13.8 L 11.5 15.2 C 11.5 16.2 11 17 10 17 L 4.5 17" 
+        d="M 68 25 L 48 25 C 44 25 42 27.5 42 30.5 L 42 36.5 C 42 39.5 44 41.5 48 41.5 L 62 41.5 C 66 41.5 68 43.5 68 46.5 L 68 50.5 C 68 53.5 66 55.5 62 55.5 L 42 55.5" 
         stroke={strokeColor} 
-        strokeWidth="1.8" 
+        strokeWidth="5" 
+        strokeLinecap="round" 
+        strokeLinejoin="round" 
+      />
+      
+      {/* Letter I - Vertical bar */}
+      <path 
+        d="M 80 25 L 80 55" 
+        stroke={strokeColor} 
+        strokeWidth="5" 
+        strokeLinecap="round" 
+      />
+      
+      {/* Letter G - Stylized open loop with inner crossbar */}
+      <path 
+        d="M 116 32 C 116 27 112 25 105 25 L 98 25 C 93 25 90 28 90 33 L 90 47 C 90 52 93 55 98 55 L 106 55 C 111 55 116 52 116 47 L 116 40 L 106 40" 
+        stroke={strokeColor} 
+        strokeWidth="5" 
+        strokeLinecap="round" 
+        strokeLinejoin="round" 
+      />
+      
+      {/* Letter P - Vertical left stem and rounded loop */}
+      <path 
+        d="M 126 55 L 126 25 L 140 25 C 145 25 149 27.5 149 32.5 L 149 34.5 C 149 39.5 145 42 140 42 L 126 42" 
+        stroke={strokeColor} 
+        strokeWidth="5" 
+        strokeLinecap="round" 
+        strokeLinejoin="round" 
+      />
+      
+      {/* Letter A - Triangle without horizontal crossbar (Lambda style) */}
+      <path 
+        d="M 158 55 L 169 25 L 180 55" 
+        stroke={strokeColor} 
+        strokeWidth="5" 
+        strokeLinecap="round" 
+        strokeLinejoin="round" 
+      />
+      
+      {/* Letter D - Vertical left stem and enclosing outer loop */}
+      <path 
+        d="M 190 25 L 190 55 L 202 55 C 210 55 218 49 218 40 L 218 40 C 218 31 210 25 202 25 Z" 
+        stroke={strokeColor} 
+        strokeWidth="5" 
         strokeLinecap="round" 
         strokeLinejoin="round" 
       />
@@ -39,14 +88,16 @@ export function SigesIcon({ className = "w-[15px] h-[27px]", strokeColor = "curr
 interface SigesLogoProps {
   className?: string;
   iconSize?: string;
-  textSize?: string;
   variant?: 'light' | 'dark' | 'color';
 }
 
+/**
+ * Integrated SIGPAD Brand Logo Component.
+ * Unified display component to render the logo in navbars, sidebars and headers.
+ */
 export function SigesLogo({ 
   className = "", 
-  iconSize = "w-10 h-10", 
-  textSize = "text-2xl", 
+  iconSize = "w-36 h-12", 
   variant = "color" 
 }: SigesLogoProps) {
   const getColors = () => {
@@ -54,18 +105,15 @@ export function SigesLogo({
       case 'light':
         return {
           icon: '#FFFFFF',
-          text: 'text-white',
         };
       case 'dark':
         return {
           icon: '#09090B',
-          text: 'text-zinc-900',
         };
       case 'color':
       default:
         return {
-          icon: '#0F4C5C',
-          text: 'text-[#0F4C5C]',
+          icon: '#3ABEFF', // SIGPAD cyan/blue accent for high presence
         };
     }
   };
@@ -73,13 +121,8 @@ export function SigesLogo({
   const colors = getColors();
 
   return (
-    <div className={cn("flex items-center gap-3", className)}>
+    <div className={cn("flex items-center", className)}>
       <SigesIcon className={iconSize} strokeColor={colors.icon} />
-      <div className="flex flex-col">
-        <span className={cn("font-black tracking-tight leading-none uppercase font-display", colors.text, textSize)}>
-          SIGPAD
-        </span>
-      </div>
     </div>
   );
 }

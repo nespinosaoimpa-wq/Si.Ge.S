@@ -36,8 +36,7 @@ export function AppHeader() {
       <div className="flex items-center gap-3">
         {/* Mobile logo */}
         <div className="lg:hidden flex items-center gap-2">
-          <SigesIcon className="w-7 h-7" />
-          <span className="font-semibold text-sm text-gray-900 font-display tracking-tight">SIGPAD</span>
+          <SigesIcon className="w-24 h-8 text-[#0F4C5C]" />
         </div>
 
         {/* Desktop: page title */}

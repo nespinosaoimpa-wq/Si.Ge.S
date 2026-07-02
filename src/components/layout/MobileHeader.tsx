@@ -15,18 +15,16 @@ export const MobileHeader = () => {
   return (
     <header className="lg:hidden fixed top-0 left-0 right-0 h-20 bg-zinc-950/80 backdrop-blur-2xl border-b border-white/5 z-[80] flex items-center justify-between px-6 safe-top transition-all duration-500">
       <div className="flex items-center gap-3">
-        <div className="relative group">
-          <div className="absolute -inset-0.5 bg-gradient-to-r from-primary to-primary/30 rounded-full blur opacity-40 group-hover:opacity-100 transition duration-1000 group-hover:duration-200"></div>
-          <div className="relative w-10 h-10 rounded-full bg-zinc-900 border border-white/10 flex items-center justify-center overflow-hidden p-2">
-             <SigesIcon className="text-primary w-full h-full" />
-          </div>
+        <div className="flex items-center h-10">
+          <SigesIcon className="text-primary w-28 h-8" />
         </div>
+        <div className="h-6 w-px bg-white/10 mx-1" />
         <div>
-          <h2 className="text-[13px] font-black text-white uppercase tracking-widest leading-none">
-            {isOperador ? "SIGPAD Operativo" : "SIGPAD Business"}
-          </h2>
-          <p className="text-[8px] text-zinc-500 font-mono tracking-tighter uppercase mt-1">
-            {isOperador ? "Terminal de Campo" : "Gestión Global"}
+          <p className="text-[10px] font-black text-white uppercase tracking-widest leading-none">
+            {isOperador ? "Operativo" : "Business"}
+          </p>
+          <p className="text-[7px] text-zinc-500 font-mono tracking-tighter uppercase mt-1">
+            {isOperador ? "Terminal de Campo" : "Gestión"}
           </p>
         </div>
       </div>
