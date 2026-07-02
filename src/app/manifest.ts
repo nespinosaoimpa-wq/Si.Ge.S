@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: 'SIGPAD',
     short_name: 'SIGPAD',
     description: 'SIGPAD • Sistema Inteligente de Gestión',
-    start_url: '/',
+    start_url: '/roles',
     display: 'standalone',
     orientation: 'portrait',
     background_color: '#111111',

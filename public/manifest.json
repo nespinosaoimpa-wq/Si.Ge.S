@@ -2,7 +2,7 @@
   "name": "SIGPAD",
   "short_name": "SIGPAD",
   "description": "SIGPAD - Sistema Inteligente de Gestión y Plataforma Avanzada de Seguridad Dinámica",
-  "start_url": "/",
+  "start_url": "/roles",
   "display": "standalone",
   "background_color": "#0a0a0a",
   "theme_color": "#0a0a0a",
