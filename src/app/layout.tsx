@@ -17,11 +17,11 @@ const outfit = Outfit({
   variable: "--font-outfit",
 });
 
-import { Orbitron } from "next/font/google";
-const orbitron = Orbitron({
+import { Syncopate } from "next/font/google";
+const syncopate = Syncopate({
   subsets: ["latin"],
-  variable: "--font-orbitron",
-  weight: ["400", "700", "900"],
+  variable: "--font-syncopate",
+  weight: ["400", "700"],
 });
 
 export const metadata: Metadata = {
@@ -64,7 +64,7 @@ export default function RootLayout({
         <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192x192.png" />
       </head>
       <body
-        className={`${inter.variable} ${outfit.variable} ${orbitron.variable} font-sans bg-zinc-50 text-zinc-900 h-full overflow-x-hidden antialiased`}
+        className={`${inter.variable} ${outfit.variable} ${syncopate.variable} font-sans bg-zinc-50 text-zinc-900 h-full overflow-x-hidden antialiased`}
       >
         <AuthProvider>
           <ShiftProvider>
