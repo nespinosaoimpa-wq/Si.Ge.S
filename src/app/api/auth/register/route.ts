@@ -91,9 +91,13 @@ export async function POST(request: Request) {
 
     if (authError) {
       console.error('[REGISTER] Admin createUser error:', authError);
+      let errorMsg = authError.message || 'Error al crear la cuenta';
+      if (errorMsg.includes('already been registered') || errorMsg.includes('already exists')) {
+        errorMsg = 'Ya existe una cuenta activa con este correo electrónico. Por favor, iniciá sesión directamente.';
+      }
       return NextResponse.json({ 
-        error: authError.message || 'Error al crear la cuenta'
-      }, { status: 500 });
+        error: errorMsg
+      }, { status: 400 });
     }
 
     if (!authData?.user) {
