@@ -65,8 +65,8 @@ export default function RegisterPage() {
         <Link href="/login" className="self-start mb-6 text-zinc-450 flex items-center gap-1.5 text-xs font-semibold hover:text-white transition-all">
           <ArrowLeft size={14} /> Volver al inicio de sesión
         </Link>
-        <div className="w-56 h-18 bg-[#09090b]/80 border border-zinc-800 flex items-center justify-center rounded-2xl mb-4 p-4 shadow-xl">
-          <SigesIcon className="w-full h-full" />
+        <div className="w-60 h-20 bg-[#09090b]/95 border border-zinc-800 flex items-center justify-center rounded-2xl mb-4 p-1 shadow-xl">
+          <SigesIcon className="w-full h-full object-contain" />
         </div>
         <h1 className="text-2xl font-bold tracking-tight text-white font-display">Crear cuenta</h1>
         <p className="text-zinc-500 text-xs font-normal mt-0.5">Gestión de seguridad privada</p>

@@ -90,9 +90,9 @@ export default function LoginPage() {
               boxShadow: ["0 0 15px rgba(255,255,255,0.05)", "0 0 30px rgba(255,255,255,0.15)", "0 0 15px rgba(255,255,255,0.05)"]
             }}
             transition={{ duration: 3, repeat: Infinity }}
-            className="w-56 h-18 bg-[#09090b]/80 border border-zinc-800 flex items-center justify-center relative overflow-hidden rounded-2xl p-4 shadow-xl"
+            className="w-60 h-20 bg-[#09090b]/95 border border-zinc-800 flex items-center justify-center relative overflow-hidden rounded-2xl p-1 shadow-xl"
           >
-            <SigesIcon className="w-full h-full" />
+            <SigesIcon className="w-full h-full object-contain" />
           </motion.div>
         </div>
         
