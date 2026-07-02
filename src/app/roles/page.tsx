@@ -68,7 +68,7 @@ export default function RolesPage() {
             <span className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-500">SIGPAD - Plataforma v2.4</span>
           </div>
           <div className="flex justify-center mb-4">
-            <div className="w-48 h-16 bg-white border border-gray-100 rounded-2xl p-1.5 shadow-sm flex items-center justify-center">
+            <div className="w-48 h-16 bg-[#09090b] border border-zinc-800 rounded-2xl p-1.5 shadow-lg flex items-center justify-center">
               <SigesIcon className="w-full h-full object-contain" />
             </div>
           </div>
