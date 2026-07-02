@@ -55,11 +55,18 @@ export default function AuthorizedUsersPage() {
     e.preventDefault();
     if (!newEmail) return;
 
+    const emailNormalized = newEmail.toLowerCase().trim();
+    const alreadyExists = users.some(u => u.email.toLowerCase() === emailNormalized);
+    if (alreadyExists) {
+      setStatusMsg({ type: 'error', text: 'El correo electrónico ya se encuentra autorizado en la lista.' });
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('authorized_users')
         .insert({
-          email: newEmail.toLowerCase().trim(),
+          email: emailNormalized,
           role: newRole,
           status: 'approved',
           approved_at: new Date().toISOString(),
@@ -74,7 +81,12 @@ export default function AuthorizedUsersPage() {
       
       setTimeout(() => setStatusMsg(null), 3000);
     } catch (err: any) {
-      setStatusMsg({ type: 'error', text: err.message || 'Error al autorizar usuario' });
+      console.error('Error adding user:', err);
+      let errorMsg = 'Error al autorizar usuario';
+      if (err.message?.includes('duplicate key') || err.code === '23505') {
+        errorMsg = 'El correo electrónico ya se encuentra autorizado en la lista.';
+      }
+      setStatusMsg({ type: 'error', text: errorMsg });
     }
   };
 

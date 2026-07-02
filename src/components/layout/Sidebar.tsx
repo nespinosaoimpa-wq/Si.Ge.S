@@ -110,7 +110,7 @@ export function Sidebar() {
       {/* Brand */}
       <div className="p-5 pb-4">
         <div className="flex items-center gap-3">
-          <SigesLogo variant="light" iconSize="w-40 h-12" />
+          <SigesLogo variant="light" iconSize="w-44 h-12" className="scale-[1.6] origin-left ml-2.5 my-2" />
         </div>
         <div className="mt-1.5 px-1">
           <p className="text-zinc-500 text-[11px] font-medium">
