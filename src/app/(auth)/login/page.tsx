@@ -96,9 +96,9 @@ export default function LoginPage() {
           </motion.div>
         </div>
         
-        <h1 className="text-3xl font-bold tracking-tight text-gray-900 mb-1.5 font-display leading-none">Si.Ge.S</h1>
+        <h1 className="text-3xl font-bold tracking-tight text-gray-900 mb-1.5 font-display leading-none">SIGPAD</h1>
         <p className="text-gray-500 text-xs font-normal max-w-[280px] leading-relaxed">
-          Sistema integral de gestión para seguridad privada
+          Sistema inteligente de gestión para seguridad privada
         </p>
       </div>
 

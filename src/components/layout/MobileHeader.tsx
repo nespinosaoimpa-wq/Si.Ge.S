@@ -23,7 +23,7 @@ export const MobileHeader = () => {
         </div>
         <div>
           <h2 className="text-[13px] font-black text-white uppercase tracking-widest leading-none">
-            {isOperador ? "Si.Ge.S Operativo" : "Si.Ge.S Business"}
+            {isOperador ? "SIGPAD Operativo" : "SIGPAD Business"}
           </h2>
           <p className="text-[8px] text-zinc-500 font-mono tracking-tighter uppercase mt-1">
             {isOperador ? "Terminal de Campo" : "Gestión Global"}

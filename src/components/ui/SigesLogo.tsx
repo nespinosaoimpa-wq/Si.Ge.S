@@ -72,7 +72,7 @@ export function SigesLogo({
       <SigesIcon className={iconSize} strokeColor={colors.icon} />
       <div className="flex flex-col">
         <span className={cn("font-black tracking-tight leading-none uppercase font-display", colors.text, textSize)}>
-          Si.Ge.S
+          SIGPAD
         </span>
       </div>
     </div>

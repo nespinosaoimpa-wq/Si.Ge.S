@@ -17,7 +17,7 @@ const modules = [
     title: 'Mapa Táctico en Tiempo Real',
     badge: 'GPS · Geofencing',
     short: 'Monitoreo satelital de guardias con geofencing y alertas automáticas.',
-    description: 'El corazón de Si.Ge.S. Visualiza la posición de todos tus guardias en tiempo real sobre un mapa interactivo. Configura zonas de geofencing que emiten alertas automáticas cuando un guardia sale del perímetro asignado. Revisa el historial de trazados de patrullas y analiza cobertura operativa.',
+    description: 'El corazón de SIGPAD. Visualiza la posición de todos tus guardias en tiempo real sobre un mapa interactivo. Configura zonas de geofencing que emiten alertas automáticas cuando un guardia sale del perímetro asignado. Revisa el historial de trazados de patrullas y analiza cobertura operativa.',
     features: [
       'GPS en tiempo real de todos los guardias activos',
       'Zonas de geofencing configurables por objetivo',
@@ -205,7 +205,7 @@ const modules = [
     title: 'Módulo de Cámaras',
     badge: 'CCTV · Próximamente',
     short: 'Integración con sistemas CCTV y DVR/NVR.',
-    description: 'Integración con sistemas de videovigilancia existentes en el cliente. Visualiza cámaras CCTV directamente desde el dashboard de Si.Ge.S, recibe alertas de movimiento y vincula eventos de video con novedades del libro de guardia. Compatible con los principales sistemas DVR/NVR del mercado.',
+    description: 'Integración con sistemas de videovigilancia existentes en el cliente. Visualiza cámaras CCTV directamente desde el dashboard de SIGPAD, recibe alertas de movimiento y vincula eventos de video con novedades del libro de guardia. Compatible con los principales sistemas DVR/NVR del mercado.',
     features: [
       'Integración con DVR/NVR vía RTSP/ONVIF',
       'Visualización de cámaras en vivo desde el dashboard',
@@ -236,8 +236,8 @@ export default function ModulosPage() {
         <Link href="/" className="flex items-center gap-3">
           <SigesIcon className="w-8 h-8 text-[#3ABEFF]" />
           <div>
-            <span className="font-black text-lg tracking-tight uppercase text-white block leading-none">Si.Ge.S</span>
-            <span className="text-[8px] font-bold tracking-[0.2em] uppercase text-[#3ABEFF] block leading-none">Sistema de Gestión de Seguridad</span>
+            <span className="font-black text-lg tracking-tight uppercase text-white block leading-none">SIGPAD</span>
+            <span className="text-[7px] font-bold tracking-[0.1em] uppercase text-[#3ABEFF] block leading-none">Sistema Inteligente de Gestión y Seguridad Dinámica</span>
           </div>
         </Link>
 

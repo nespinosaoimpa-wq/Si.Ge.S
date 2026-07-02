@@ -63,8 +63,8 @@ export default function NosotrosPage() {
         <Link href="/" className="flex items-center gap-3">
           <SigesIcon className="w-8 h-8 text-[#3ABEFF]" />
           <div>
-            <span className="font-black text-lg tracking-tight uppercase text-white block leading-none">Si.Ge.S</span>
-            <span className="text-[8px] font-bold tracking-[0.2em] uppercase text-[#3ABEFF] block leading-none">Sistema de Gestión de Seguridad</span>
+            <span className="font-black text-lg tracking-tight uppercase text-white block leading-none">SIGPAD</span>
+            <span className="text-[7px] font-bold tracking-[0.1em] uppercase text-[#3ABEFF] block leading-none">Sistema Inteligente de Gestión y Seguridad Dinámica</span>
           </div>
         </Link>
 
@@ -141,7 +141,7 @@ export default function NosotrosPage() {
               Tecnología e Inteligencia al servicio de la <span className="text-[#3ABEFF]">seguridad física</span>
             </h1>
             <p className="text-zinc-400 text-base lg:text-lg font-medium leading-relaxed">
-              Si.Ge.S nace con el propósito de resolver los problemas de opacidad, ineficiencia y falta de control en el sector de la seguridad privada en Argentina, combinando software robusto, geolocalización satelital y automatización legal.
+              SIGPAD nace con el propósito de resolver los problemas de opacidad, ineficiencia y falta de control en el sector de la seguridad privada en Argentina, combinando software robusto, geolocalización satelital y automatización legal.
             </p>
           </motion.div>
         </section>
@@ -163,7 +163,7 @@ export default function NosotrosPage() {
                 La seguridad privada tradicional suele depender de planillas escritas a mano, registros vulnerables y reportes tardíos que generan desconfianza e ineficiencia operativa. 
               </p>
               <p className="text-zinc-400 leading-relaxed font-medium">
-                En Si.Ge.S, digitalizamos y blindamos cada aspecto de la operación. Desde el monitoreo táctico en vivo hasta la automatización de la nómina y planillas horarias, proveemos un sistema operativo unificado que garantiza la excelencia del servicio y blinda legalmente a las agencias prestadoras frente a reclamos laborales o civiles.
+                En SIGPAD, digitalizamos y blindamos cada aspecto de la operación. Desde el monitoreo táctico en vivo hasta la automatización de la nómina y planillas horarias, proveemos un sistema operativo unificado que garantiza la excelencia del servicio y blinda legalmente a las agencias prestadoras frente a reclamos laborales o civiles.
               </p>
               <div className="flex gap-4 pt-4">
                 <Link href="/#contacto" className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#3ABEFF] hover:text-white transition-colors">
@@ -182,7 +182,7 @@ export default function NosotrosPage() {
               <div className="absolute top-0 right-0 w-[200px] h-[200px] bg-[#3ABEFF]/5 blur-[60px] rounded-full" />
               <Shield className="w-16 h-16 text-[#3ABEFF] mb-6" />
               <div className="space-y-4">
-                <h3 className="text-xl font-bold uppercase tracking-tight text-white">¿Por qué Si.Ge.S?</h3>
+                <h3 className="text-xl font-bold uppercase tracking-tight text-white">¿Por qué SIGPAD?</h3>
                 <p className="text-zinc-400 text-sm leading-relaxed font-medium">
                   Porque no solo somos una app de asistencia. Somos un ecosistema operativo integral (OS) de seguridad que unifica la gestión de personal, inventario, libro de guardia, mapas tácticos satelitales y blindaje judicial en un solo lugar.
                 </p>
@@ -250,7 +250,7 @@ export default function NosotrosPage() {
               ¿Listo para modernizar su operación de seguridad?
             </h2>
             <p className="text-zinc-400 font-medium text-sm lg:text-base leading-relaxed">
-              Únase a las agencias prestadoras de seguridad física que ya operan a máxima eficiencia con Si.Ge.S OS. Solicite su prueba o demo gratuita hoy mismo.
+              Únase a las agencias prestadoras de seguridad física que ya operan a máxima eficiencia con SIGPAD OS. Solicite su prueba o demo gratuita hoy mismo.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link href="/#contacto" className="flex items-center justify-center gap-2 h-12 px-8 rounded-xl bg-[#3ABEFF] text-[#071E22] font-black uppercase text-[10px] tracking-widest hover:bg-white transition-all shadow-lg shadow-[#3ABEFF]/20 w-full sm:w-auto">
@@ -270,10 +270,10 @@ export default function NosotrosPage() {
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-3">
             <SigesIcon className="w-6 h-6 text-[#3ABEFF]" />
-            <span className="font-black text-sm tracking-widest uppercase text-white">Si.Ge.S OS</span>
+            <span className="font-black text-sm tracking-widest uppercase text-white">SIGPAD OS</span>
           </div>
           <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">
-            © {new Date().getFullYear()} Si.Ge.S. Todos los derechos reservados.
+            © {new Date().getFullYear()} SIGPAD. Todos los derechos reservados.
           </p>
           <div className="flex gap-6">
             <Link href="/" className="text-[10px] font-black uppercase tracking-widest text-zinc-500 hover:text-[#3ABEFF] transition-colors">

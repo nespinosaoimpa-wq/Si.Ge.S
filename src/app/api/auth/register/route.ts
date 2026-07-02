@@ -77,7 +77,7 @@ export async function POST(request: Request) {
 
     // 3. CREATE USER via Admin API — auto-confirmed, no email sent
     const finalRole = role || resourceData.role?.toLowerCase() || 'operador';
-    const finalName = fullName || resourceData.name || 'Usuario Si.Ge.S';
+    const finalName = fullName || resourceData.name || 'Usuario SIGPAD';
 
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email: normalizedEmail,

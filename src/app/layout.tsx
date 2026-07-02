@@ -18,13 +18,13 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "Si.Ge.S",
-  description: "Si.Ge.S - El sistema que potencia la gestión de toda empresa de seguridad privada",
+  title: "SIGPAD",
+  description: "SIGPAD - Sistema Inteligente de Gestión y Plataforma Avanzada de Seguridad Dinámica",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Si.Ge.S",
+    title: "SIGPAD",
   },
   other: {
     'mobile-web-app-capable': 'yes',

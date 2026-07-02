@@ -125,19 +125,19 @@ const testimonials = [
   {
     name: 'Ing. Ricardo Montoya',
     role: 'Director Operativo — Seguridad Integral S.A.',
-    text: 'Si.Ge.S transformó completamente nuestra operación. Eliminamos las planillas de papel y ahora tenemos visibilidad total de nuestros 45 guardias en tiempo real.',
+    text: 'SIGPAD transformó completamente nuestra operación. Eliminamos las planillas de papel y ahora tenemos visibilidad total de nuestros 45 guardias en tiempo real.',
     rating: 5,
   },
   {
     name: 'Lic. Carla Fernández',
     role: 'Gerente General — Custodia Empresarial',
-    text: 'El módulo de portal de clientes fue un diferenciador enorme. Nuestros clientes corporativos valoran la transparencia que les damos con Si.Ge.S.',
+    text: 'El módulo de portal de clientes fue un diferenciador enorme. Nuestros clientes corporativos valoran la transparencia que les damos con SIGPAD.',
     rating: 5,
   },
   {
     name: 'Crio. (R) Marcelo Torres',
     role: 'CEO — Torres Seguridad Privada',
-    text: 'Implementamos Si.Ge.S en 2 días. La curva de aprendizaje es mínima y el soporte es excepcional. Nuestras auditorías de cumplimiento ahora tardan horas, no semanas.',
+    text: 'Implementamos SIGPAD en 2 días. La curva de aprendizaje es mínima y el soporte es excepcional. Nuestras auditorías de cumplimiento ahora tardan horas, no semanas.',
     rating: 5,
   },
 ];
@@ -177,8 +177,8 @@ export default function RootLandingPage() {
         <Link href="/" className="flex items-center gap-3">
           <SigesIcon className="w-8 h-8 text-[#3ABEFF]" />
           <div>
-            <span className="font-black text-lg tracking-tight uppercase text-white block leading-none">Si.Ge.S</span>
-            <span className="text-[8px] font-bold tracking-[0.2em] uppercase text-[#3ABEFF] block leading-none">Sistema de Gestión de Seguridad</span>
+            <span className="font-black text-lg tracking-tight uppercase text-white block leading-none">SIGPAD</span>
+            <span className="text-[7px] font-bold tracking-[0.1em] uppercase text-[#3ABEFF] block leading-none">Sistema Inteligente de Gestión y Seguridad Dinámica</span>
           </div>
         </Link>
 
@@ -324,7 +324,7 @@ export default function RootLandingPage() {
       <section className="relative z-10 py-12 border-y border-[#237893]/10 bg-[#0B2A30]/30">
         <div className="max-w-6xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8">
           {[
-            { icon: Building2, val: 30, suffix: '+', label: 'Empresas confían en Si.Ge.S' },
+            { icon: Building2, val: 30, suffix: '+', label: 'Empresas confían en SIGPAD' },
             { icon: Users, val: 200, suffix: '+', label: 'Guardias gestionados' },
             { icon: Clock, val: 24, suffix: '/7', label: 'Monitoreo en tiempo real' },
             { icon: Smartphone, val: 99, suffix: '.9%', label: 'Disponibilidad de la plataforma' },
@@ -361,7 +361,7 @@ export default function RootLandingPage() {
               <span className="text-[#3ABEFF]">la plataforma operativa</span>
             </h2>
             <p className="text-zinc-400 text-sm font-medium">
-              Explora las tres interfaces nativas que conforman el ecosistema Si.Ge.S y comprueba cómo organizamos cada rol de seguridad.
+              Explora las tres interfaces nativas que conforman el ecosistema SIGPAD y comprueba cómo organizamos cada rol de seguridad.
             </p>
           </div>
 
@@ -618,7 +618,7 @@ export default function RootLandingPage() {
       {/* ── POR QUÉ SI.GE.S — Comparativa y Soluciones (Enfoque Phoenix) ── */}
       <section id="porque" className="relative z-10 py-24 px-6 lg:px-12 max-w-7xl mx-auto w-full">
         <div className="text-center mb-16">
-          <SectionTag>¿Por qué Si.Ge.S?</SectionTag>
+          <SectionTag>¿Por qué SIGPAD?</SectionTag>
           <h2 className="text-3xl lg:text-5xl font-black text-white uppercase font-display">
             El antes y <span className="text-[#3ABEFF]">el después</span>
           </h2>
@@ -639,7 +639,7 @@ export default function RootLandingPage() {
               <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
                 <X size={20} className="text-red-500" />
               </div>
-              <h3 className="text-lg font-black uppercase text-red-400">Sin Si.Ge.S (Gestión Tradicional)</h3>
+              <h3 className="text-lg font-black uppercase text-red-400">Sin SIGPAD (Gestión Tradicional)</h3>
             </div>
             <ul className="space-y-3">
               {[
@@ -671,7 +671,7 @@ export default function RootLandingPage() {
               <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
                 <Check size={20} className="text-emerald-500" />
               </div>
-              <h3 className="text-lg font-black uppercase text-emerald-400">Con Si.Ge.S (Gestión Digitalizada)</h3>
+              <h3 className="text-lg font-black uppercase text-emerald-400">Con SIGPAD (Gestión Digitalizada)</h3>
             </div>
             <ul className="space-y-3">
               {[
@@ -770,7 +770,7 @@ export default function RootLandingPage() {
               <span className="text-[#3ABEFF]">líderes del sector?</span>
             </h2>
             <p className="text-zinc-400 text-sm font-medium leading-relaxed">
-              Descubra por qué empresas prestadoras de seguridad física en toda la provincia eligen Si.Ge.S para digitalizar y blindar su operación.
+              Descubra por qué empresas prestadoras de seguridad física en toda la provincia eligen SIGPAD para digitalizar y blindar su operación.
             </p>
           </div>
 
@@ -837,7 +837,7 @@ export default function RootLandingPage() {
                 </div>
                 <div>
                   <p className="text-[8px] uppercase tracking-widest text-zinc-500 font-bold">Email de Contacto</p>
-                  <p className="text-white font-bold text-sm font-mono">siges.info@gmail.com</p>
+                  <p className="text-white font-bold text-sm font-mono">contacto@sigpad.com.ar</p>
                 </div>
               </div>
 
@@ -965,8 +965,8 @@ export default function RootLandingPage() {
               <div className="flex items-center gap-3">
                 <SigesIcon className="w-8 h-8 text-[#3ABEFF]" />
                 <div>
-                  <span className="font-black text-white block leading-none">Si.Ge.S</span>
-                  <span className="text-[8px] text-[#3ABEFF] tracking-widest uppercase">Sistema de Gestión</span>
+                  <span className="font-black text-white block leading-none">SIGPAD</span>
+                  <span className="text-[8px] text-[#3ABEFF] tracking-widest uppercase">Sistema Inteligente</span>
                 </div>
               </div>
               <p className="text-zinc-500 text-[11px] font-medium leading-relaxed">
@@ -999,7 +999,7 @@ export default function RootLandingPage() {
             <div>
               <p className="text-[9px] uppercase tracking-widest text-zinc-500 font-black mb-4">Contacto</p>
               <ul className="space-y-2">
-                <li><a href="mailto:siges.info@gmail.com" className="text-[11px] text-zinc-400 hover:text-white transition-colors font-mono">siges.info@gmail.com</a></li>
+                <li><a href="mailto:contacto@sigpad.com.ar" className="text-[11px] text-zinc-400 hover:text-white transition-colors font-mono">contacto@sigpad.com.ar</a></li>
                 <li><span className="text-[11px] text-zinc-400 font-mono">3426 310996</span></li>
                 <li><span className="text-[11px] text-zinc-400 font-mono">3425 162372</span></li>
               </ul>
@@ -1008,7 +1008,7 @@ export default function RootLandingPage() {
 
           <div className="pt-8 border-t border-[#237893]/10 flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-[0.2em]">
-              © {new Date().getFullYear()} Si.Ge.S. Todos los derechos reservados.
+              © {new Date().getFullYear()} SIGPAD. Todos los derechos reservados.
             </p>
             <p className="text-[10px] text-zinc-600 font-medium">
               Tecnología de punta para empresas de seguridad privada argentina
@@ -1019,7 +1019,7 @@ export default function RootLandingPage() {
 
       {/* ── WhatsApp Button ─────────────────────────────────────────────── */}
       <motion.a
-        href="https://wa.me/5493426310996?text=Hola!%20Quiero%20saber%20más%20sobre%20Si.Ge.S"
+        href="https://wa.me/5493426310996?text=Hola!%20Quiero%20saber%20más%20sobre%20SIGPAD"
         target="_blank"
         rel="noopener noreferrer"
         initial={{ scale: 0 }}
