@@ -254,7 +254,17 @@ export default function RootLandingPage() {
 
       {/* ── HERO ────────────────────────────────────────────────────────── */}
       <section className="relative min-h-[92vh] flex items-center px-6 lg:px-12 max-w-7xl mx-auto w-full z-10 pt-8 pb-20">
-        <div className="max-w-4xl mx-auto text-center w-full">
+        
+        {/* Marca de agua translúcida gigante del logotipo de SIGPAD */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-0 overflow-hidden">
+          <img 
+            src="/logo_sigpad.png" 
+            alt="" 
+            className="w-[95%] max-w-5xl opacity-[0.035] filter grayscale contrast-125 scale-110 pointer-events-none select-none"
+          />
+        </div>
+
+        <div className="max-w-4xl mx-auto text-center w-full z-10">
           {/* Centered Hero Content */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
