@@ -1,7 +1,7 @@
 {
-  "name": "Si.Ge.S",
-  "short_name": "Si.Ge.S",
-  "description": "Plataforma de gestión táctica y seguridad privada - Si.Ge.S",
+  "name": "SIGPAD",
+  "short_name": "SIGPAD",
+  "description": "SIGPAD - Sistema Inteligente de Gestión y Plataforma Avanzada de Seguridad Dinámica",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0a0a",

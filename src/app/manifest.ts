@@ -2,9 +2,9 @@ import type { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Si.Ge.S',
-    short_name: 'Si.Ge.S',
-    description: 'Si.Ge.S • Gestión Operativa Digital',
+    name: 'SIGPAD',
+    short_name: 'SIGPAD',
+    description: 'SIGPAD • Sistema Inteligente de Gestión',
     start_url: '/',
     display: 'standalone',
     orientation: 'portrait',

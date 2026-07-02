@@ -64,16 +64,16 @@ export default function RolesPage() {
           className="text-center mb-16"
         >
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-white border border-gray-100 rounded-full shadow-sm mb-6">
-            <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-            <span className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-500">Si.Ge.S - Plataforma v2.4</span>
+            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-500">SIGPAD - Plataforma v2.4</span>
           </div>
           <div className="flex justify-center mb-4">
-            <div className="w-24 h-24 bg-white border border-primary/15 rounded-3xl p-3.5 shadow-sm flex items-center justify-center">
-              <SigesIcon className="w-full h-full text-primary" />
+            <div className="w-48 h-16 bg-white border border-gray-100 rounded-2xl p-1.5 shadow-sm flex items-center justify-center">
+              <SigesIcon className="w-full h-full object-contain" />
             </div>
           </div>
           <h1 className="text-5xl font-black text-gray-900 tracking-tighter mb-4 uppercase">
-            Si.Ge.S <span className="text-primary">OS</span>
+            SIGPAD <span className="text-zinc-500">OS</span>
           </h1>
           <p className="text-gray-500 font-medium max-w-lg mx-auto leading-relaxed">
             Plataforma profesional de monitoreo y gestión integral de seguridad privada. <br />
@@ -139,7 +139,7 @@ export default function RolesPage() {
             <BarChart3 size={20} />
           </div>
           <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.25em]">
-            Si.Ge.S • Tecnología para Empresas de Seguridad Privada
+            SIGPAD • Tecnología para Empresas de Seguridad Privada
           </p>
         </motion.div>
       </div>
