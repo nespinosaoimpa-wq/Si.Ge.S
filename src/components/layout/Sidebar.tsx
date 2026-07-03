@@ -12,7 +12,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useShift } from '@/components/providers/ShiftProvider';
-import { SigesLogo } from '@/components/ui/SigesLogo';
+import { SIGPADLogo } from '@/components/ui/SIGPADLogo';
 
 const adminItems = [
   { name: 'Mapa', href: '/gerente', icon: MapPin },
@@ -110,7 +110,7 @@ export function Sidebar() {
       {/* Brand */}
       <div className="p-5 pb-4">
         <div className="flex items-center gap-3">
-          <SigesLogo variant="light" iconSize="w-44 h-12" className="scale-[1.6] origin-left ml-2.5 my-2" />
+          <SIGPADLogo variant="light" iconSize="w-44 h-12" className="scale-[1.6] origin-left ml-2.5 my-2" />
         </div>
         <div className="mt-1.5 px-1">
           <p className="text-zinc-500 text-[11px] font-medium">

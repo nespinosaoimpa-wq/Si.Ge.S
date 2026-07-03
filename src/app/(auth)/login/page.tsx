@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Key, Mail, ChevronRight, UserCircle, Shield } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { SigesIcon } from '@/components/ui/SigesLogo';
+import { SIGPADIcon } from '@/components/ui/SIGPADLogo';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -52,12 +52,12 @@ export default function LoginPage() {
       });
 
       if (result.user) {
-        localStorage.setItem('siges_user', JSON.stringify({
+        localStorage.setItem('SIGPAD_user', JSON.stringify({
           ...result.user,
           user_metadata: { role: result.user.role, full_name: result.user.name }
         }));
         
-        document.cookie = "siges_bypass_active=true; path=/; max-age=3600";
+        document.cookie = "SIGPAD_bypass_active=true; path=/; max-age=3600";
         router.push(`/${result.user.role}`);
       }
     } catch (err: any) {
@@ -92,7 +92,7 @@ export default function LoginPage() {
             transition={{ duration: 3, repeat: Infinity }}
             className="w-60 h-20 bg-[#09090b]/95 border border-zinc-800 flex items-center justify-center relative overflow-hidden rounded-2xl p-1 shadow-xl"
           >
-            <SigesIcon className="w-full h-full object-contain" />
+            <SIGPADIcon className="w-full h-full object-contain" />
           </motion.div>
         </div>
         

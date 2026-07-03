@@ -105,7 +105,7 @@ export default function TrazabilidadForense() {
           <h1 className="text-3xl md:text-5xl font-black text-white tracking-tighter shadow-sm">
             HISTORIAL <span className="text-primary italic">DE RUTAS</span>
           </h1>
-          <p className="text-zinc-500 text-[10px] tracking-[0.3em] font-mono italic uppercase">Audit Compliance Module V.Si.Ge.S</p>
+          <p className="text-zinc-500 text-[10px] tracking-[0.3em] font-mono italic uppercase">Audit Compliance Module V.SIGPAD</p>
         </div>
       </div>
 

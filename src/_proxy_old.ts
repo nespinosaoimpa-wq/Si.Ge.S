@@ -18,7 +18,7 @@ export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname
 
   // 🛡️ TACTICAL BYPASS: Allow access if the bypass cookie is active (Master PIN sessions)
-  const isBypassActive = request.cookies.get('siges_bypass_active')?.value === 'true'
+  const isBypassActive = request.cookies.get('SIGPAD_bypass_active')?.value === 'true'
 
   if (!supabaseUrl || !supabaseAnonKey) {
     if (

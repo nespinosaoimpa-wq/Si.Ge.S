@@ -7,7 +7,7 @@ export async function GET() {
     if (!isConfigured) {
       // Mock data for local testing without Supabase keys
       return NextResponse.json([
-        { id: 'S-701', name: 'NICO ESPINOSA', role: 'Gerente Operativo', status: 'active', dni: '30.123.456', email: 'nico@Si.Ge.S.com' },
+        { id: 'S-701', name: 'NICO ESPINOSA', role: 'Gerente Operativo', status: 'active', dni: '30.123.456', email: 'nico@SIGPAD.com' },
         { id: 'S-802', name: 'CARLOS GIMENEZ', role: 'Vigilador Senior', status: 'active' },
         { id: 'S-905', name: 'ANA MARTINEZ', role: 'Vigilador', status: 'active' },
         { id: 'S-102', name: 'PEDRO GOMEZ', role: 'Vigilador', status: 'inactive' },

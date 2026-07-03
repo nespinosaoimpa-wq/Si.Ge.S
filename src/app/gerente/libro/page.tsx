@@ -73,7 +73,7 @@ function buildTacticalCSV(entries: any[], dateFilter: string) {
 
   const header = [
     '========================================================',
-    'Si.Ge.S OS - INFORME DE CUMPLIMIENTO TÁCTICO',
+    'SIGPAD OS - INFORME DE CUMPLIMIENTO TÁCTICO',
     `Fecha: ${dateStr}  |  Exportado: ${now}`,
     `Período: ${firstTs} - ${lastTs}  |  Total eventos: ${entries.length}`,
     `Alertas Críticas: ${critCount}  |  Incidentes: ${incidentCount}  |  Fichajes: ${checkinCount}`,
@@ -102,7 +102,7 @@ function buildTacticalCSV(entries: any[], dateFilter: string) {
   const footer = [
     '',
     '========================================================',
-    `Generado por Si.Ge.S OS · ${now}`,
+    `Generado por SIGPAD OS · ${now}`,
     'Documento confidencial — uso interno exclusivo',
     '========================================================',
   ].join('\n');
@@ -212,7 +212,7 @@ export default function GuardBookPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `REPORTE_CUMPLIMIENTO_SIGES_${dateFilter}.csv`;
+    a.download = `REPORTE_CUMPLIMIENTO_SIGPAD_${dateFilter}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };

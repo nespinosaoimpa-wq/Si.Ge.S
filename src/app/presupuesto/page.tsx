@@ -18,7 +18,7 @@ export default function PresupuestoPage() {
         {/* Header no imprimible */}
         <div className="flex justify-between items-center bg-black text-white p-6 rounded-[2rem] shadow-2xl print:hidden">
           <div>
-            <h2 className="text-xl font-black uppercase italic tracking-tighter">Si.Ge.S <span className="text-primary">BUSINESS OS</span></h2>
+            <h2 className="text-xl font-black uppercase italic tracking-tighter">SIGPAD <span className="text-primary">BUSINESS OS</span></h2>
             <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">Documento de Propuesta Comercial</p>
           </div>
           <Button onClick={handlePrint} className="bg-primary text-black font-black hover:bg-white transition-all haptic-light">
@@ -39,13 +39,13 @@ export default function PresupuestoPage() {
             {/* Cabecera Membretada */}
             <div className="flex justify-between items-start border-b-4 border-black pb-8">
               <div className="space-y-1">
-                <h1 className="text-4xl font-black tracking-tighter text-black uppercase italic">Si.Ge.S <span className="text-primary">OS</span></h1>
+                <h1 className="text-4xl font-black tracking-tighter text-black uppercase italic">SIGPAD <span className="text-primary">OS</span></h1>
                 <p className="text-[11px] font-black uppercase tracking-[0.4em] text-gray-500">Comando de Seguridad Privada</p>
               </div>
               <div className="text-right text-[12px] font-medium text-gray-500 space-y-1">
                 <p>Fecha: <span className="text-black font-bold">07 de Mayo, 2026</span></p>
                 <p>Validez: <span className="text-black font-bold">15 d&iacute;as</span></p>
-                <p>Referencia: <span className="text-black font-bold">SIGES-PR-2026-004</span></p>
+                <p>Referencia: <span className="text-black font-bold">SIGPAD-PR-2026-004</span></p>
               </div>
             </div>
 
@@ -58,7 +58,7 @@ export default function PresupuestoPage() {
               <div className="grid grid-cols-2 gap-8 bg-gray-50 p-8 rounded-3xl border border-gray-100">
                 <div className="space-y-1">
                   <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Cliente</label>
-                  <p className="text-sm font-bold text-gray-900">Si.Ge.S - Operaciones Argentina</p>
+                  <p className="text-sm font-bold text-gray-900">SIGPAD - Operaciones Argentina</p>
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Proyecto</label>
@@ -143,7 +143,7 @@ export default function PresupuestoPage() {
 
             {/* Footer Imprimible */}
             <div className="pt-12 border-t border-gray-100 text-center space-y-2">
-               <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.4em]">Si.Ge.S Intelligence & Security Infrastructure</p>
+               <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.4em]">SIGPAD Intelligence & Security Infrastructure</p>
                <p className="text-[9px] text-gray-400">Este documento es una estimaci&oacute;n basada en requerimientos actuales.</p>
             </div>
 
@@ -151,7 +151,7 @@ export default function PresupuestoPage() {
         </Card>
         
         <div className="text-center print:hidden">
-           <p className="text-zinc-500 text-[11px] font-bold uppercase tracking-widest">Si.Ge.S OS | 2026</p>
+           <p className="text-zinc-500 text-[11px] font-bold uppercase tracking-widest">SIGPAD OS | 2026</p>
         </div>
 
       </div>

@@ -77,7 +77,7 @@ export default function AuditoriaComercial() {
              <span className="text-[11px] text-primary uppercase font-black tracking-[0.4em] animate-pulse">Audit & Compliance Network</span>
           </div>
           <h1 className="text-3xl md:text-5xl lg:text-6xl font-black text-white tracking-tighter shadow-sm">INFORMES <span className="text-primary italic">& MÉTRICAS</span></h1>
-          <p className="text-zinc-500 text-[10px] tracking-[0.3em] font-mono italic uppercase">Audit Compliance V.Si.Ge.S</p>
+          <p className="text-zinc-500 text-[10px] tracking-[0.3em] font-mono italic uppercase">Audit Compliance V.SIGPAD</p>
         </div>
         
         <div className="flex gap-4 p-1 bg-white/5 backdrop-blur-3xl rounded-2xl border border-white/10 shadow-2xl">

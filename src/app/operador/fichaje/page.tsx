@@ -172,7 +172,7 @@ export default function FichajePage() {
   
   useEffect(() => {
     try {
-      const consent = localStorage.getItem('siges_gps_consent');
+      const consent = localStorage.getItem('SIGPAD_gps_consent');
       if (!consent) setHasConsent(false);
     } catch (e) {
       setHasConsent(false);
@@ -695,7 +695,7 @@ export default function FichajePage() {
                   <div className="flex justify-center">
                     <div className="flex items-center gap-2.5 py-2 px-4 rounded-full bg-zinc-100">
                       <ShieldCheck size={13} className="text-emerald-500" />
-                      <span className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-400">Si.Ge.S OS Tactical</span>
+                      <span className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-400">SIGPAD OS Tactical</span>
                     </div>
                   </div>
 
@@ -919,7 +919,7 @@ export default function FichajePage() {
               </div>
               
               <p className="mt-8 text-[10px] text-gray-600 font-bold uppercase tracking-[0.2em]">
-                Seguridad Certificada Si.Ge.S
+                Seguridad Certificada SIGPAD
               </p>
           </div>
         </motion.div>
@@ -960,7 +960,7 @@ export default function FichajePage() {
                     <div className="flex justify-between items-center mb-6">
                       <div>
                         <p className={cn("text-lg text-premium", theme === 'dark' ? "text-white" : "text-gray-800")}>{item.name}</p>
-                        <p className="text-[10px] text-gray-400 font-bold mt-1 uppercase tracking-wider">SN: {item.serial_number || 'REG-Si.Ge.S-AUTO'}</p>
+                        <p className="text-[10px] text-gray-400 font-bold mt-1 uppercase tracking-wider">SN: {item.serial_number || 'REG-SIGPAD-AUTO'}</p>
                       </div>
                       <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center">
                         <Package size={22} className="text-blue-500" />

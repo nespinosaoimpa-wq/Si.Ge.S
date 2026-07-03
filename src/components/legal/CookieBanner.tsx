@@ -10,7 +10,7 @@ export default function CookieBanner() {
 
   useEffect(() => {
     try {
-      const consent = localStorage.getItem('siges_cookie_consent');
+      const consent = localStorage.getItem('SIGPAD_cookie_consent');
       if (!consent) {
         setIsVisible(true);
       }
@@ -21,12 +21,12 @@ export default function CookieBanner() {
   }, []);
 
   const acceptAll = () => {
-    localStorage.setItem('siges_cookie_consent', 'all');
+    localStorage.setItem('SIGPAD_cookie_consent', 'all');
     setIsVisible(false);
   };
 
   const acceptEssential = () => {
-    localStorage.setItem('siges_cookie_consent', 'essential');
+    localStorage.setItem('SIGPAD_cookie_consent', 'essential');
     setIsVisible(false);
   };
 

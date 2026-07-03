@@ -121,7 +121,7 @@ export default async function OperatorProfilePage(props: { params: Promise<{ id:
               {operator.role || 'Guardia de Seguridad'}
             </span>
             <span className="px-3 py-1 bg-zinc-100 text-zinc-500 rounded-full text-xs font-bold uppercase tracking-widest">
-              Legajo SIGES-{String(operator.id).substring(0, 8).toUpperCase()}
+              Legajo SIGPAD-{String(operator.id).substring(0, 8).toUpperCase()}
             </span>
           </div>
           <h1 className="text-4xl font-black text-zinc-900 tracking-tight">

@@ -37,15 +37,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return null;
       };
 
-      const tempAuth = getCookie('siges_auth_temp');
+      const tempAuth = getCookie('SIGPAD_auth_temp');
       if (tempAuth) {
         try {
           const parsed = JSON.parse(tempAuth);
-          localStorage.setItem('siges_user', tempAuth);
+          localStorage.setItem('SIGPAD_user', tempAuth);
           setUser(parsed);
           setRole(parsed.role);
           // Clear the temp cookie
-          document.cookie = "siges_auth_temp=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+          document.cookie = "SIGPAD_auth_temp=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
           console.log('[Tactical Auth] OAuth session bridged to local storage.');
           setLoading(false);
           return; // Skip standard init if bridged
@@ -66,7 +66,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setRole(profile?.role || (supabaseSession.user.user_metadata?.role as string) || null);
       } else {
         // 🛡️ TACTICAL FALLBACK: Check localStorage for Master PIN sessions
-        const localUserJson = localStorage.getItem('siges_user');
+        const localUserJson = localStorage.getItem('SIGPAD_user');
         if (localUserJson) {
           try {
             const localUser = JSON.parse(localUserJson);
@@ -98,7 +98,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setRole(profile?.role || (session.user.user_metadata?.role as string) || null);
       } else {
         // Fallback for tactical sessions during state changes
-        const localUserJson = localStorage.getItem('siges_user');
+        const localUserJson = localStorage.getItem('SIGPAD_user');
         if (localUserJson) {
            const localUser = JSON.parse(localUserJson);
            setUser(localUser);
@@ -118,9 +118,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signOut = async () => {
     await supabase.auth.signOut();
-    localStorage.removeItem('siges_user'); 
+    localStorage.removeItem('SIGPAD_user'); 
     // Clear tactical bypass cookie
-    document.cookie = "siges_bypass_active=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    document.cookie = "SIGPAD_bypass_active=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
     window.location.href = '/login';
   };
 

@@ -512,7 +512,7 @@ export default function ObjectiveDetail() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] bg-zinc-50">
         <div className="w-12 h-12 border-4 border-zinc-200 border-t-[#0F4C5C] rounded-full animate-spin" />
-        <p className="mt-6 text-[10px] text-zinc-400 font-black uppercase tracking-[0.2em] italic">Sincronizando Nodo Si.Ge.S...</p>
+        <p className="mt-6 text-[10px] text-zinc-400 font-black uppercase tracking-[0.2em] italic">Sincronizando Nodo SIGPAD...</p>
       </div>
     );
   }

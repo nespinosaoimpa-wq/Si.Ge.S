@@ -80,7 +80,7 @@ export default function PayrollPage() {
     )
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Nómina')
-    XLSX.writeFile(wb, `Nomina_SIGES_${startDate}_${endDate}.xlsx`)
+    XLSX.writeFile(wb, `Nomina_SIGPAD_${startDate}_${endDate}.xlsx`)
   }
 
   const exportFacturacion = () => {
@@ -97,7 +97,7 @@ export default function PayrollPage() {
     )
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Facturación')
-    XLSX.writeFile(wb, `Facturacion_SIGES_${startDate}_${endDate}.xlsx`)
+    XLSX.writeFile(wb, `Facturacion_SIGPAD_${startDate}_${endDate}.xlsx`)
   }
 
   if (error) {

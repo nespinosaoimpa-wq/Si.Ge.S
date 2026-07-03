@@ -65,7 +65,7 @@ export default function PWARegistration() {
 
     // For iOS, show the banner manually if not standalone
     if (isIOSDevice && !standalone) {
-      const dismissed = localStorage.getItem('siges_pwa_dismissed');
+      const dismissed = localStorage.getItem('SIGPAD_pwa_dismissed');
       if (!dismissed || Date.now() - parseInt(dismissed) > 5 * 24 * 60 * 60 * 1000) {
         setShowInstallBanner(true);
       }
@@ -97,7 +97,7 @@ export default function PWARegistration() {
 
   const handleDismiss = () => {
     setShowInstallBanner(false);
-    localStorage.setItem('siges_pwa_dismissed', Date.now().toString());
+    localStorage.setItem('SIGPAD_pwa_dismissed', Date.now().toString());
   };
 
   // Don't show anything if already installed

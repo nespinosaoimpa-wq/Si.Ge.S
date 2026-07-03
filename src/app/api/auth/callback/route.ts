@@ -33,7 +33,7 @@ export async function GET(request: Request) {
     if (!error && data.user?.email) {
       const email = data.user.email.toLowerCase().trim();
       
-      // Verification: Check if the user is a resource in Si.Ge.S system
+      // Verification: Check if the user is a resource in SIGPAD system
       const { data: resources } = await supabase
         .from('resources')
         .select('id, name, role, status')
@@ -50,9 +50,9 @@ export async function GET(request: Request) {
         const response = NextResponse.redirect(`${origin}/${role}`);
         
         // Tactical bypass for middleware and session persistence
-        response.cookies.set('siges_bypass_active', 'true', { path: '/', maxAge: 3600 });
+        response.cookies.set('SIGPAD_bypass_active', 'true', { path: '/', maxAge: 3600 });
         
-        response.cookies.set('siges_auth_temp', JSON.stringify({
+        response.cookies.set('SIGPAD_auth_temp', JSON.stringify({
           email,
           role: role,
           id: resource.id,

@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { ShieldAlert, Mail, ChevronRight, Lock } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { SigesIcon } from '@/components/ui/SigesLogo';
+import { SIGPADIcon } from '@/components/ui/SIGPADLogo';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
@@ -39,9 +39,9 @@ export default function ClienteLoginPage() {
       }
 
       if (result.success) {
-        localStorage.setItem('siges_client', JSON.stringify(result.client));
+        localStorage.setItem('SIGPAD_client', JSON.stringify(result.client));
         // Force cookie for middleware and routing
-        document.cookie = `siges_client_session=${encodeURIComponent(JSON.stringify(result.client))}; path=/; max-age=86400`;
+        document.cookie = `SIGPAD_client_session=${encodeURIComponent(JSON.stringify(result.client))}; path=/; max-age=86400`;
         router.push('/cliente');
       }
     } catch (err: any) {
@@ -68,11 +68,11 @@ export default function ClienteLoginPage() {
             transition={{ duration: 3, repeat: Infinity }}
             className="w-24 h-24 bg-white border border-primary/20 flex items-center justify-center relative overflow-hidden rounded-3xl p-3.5 shadow-md"
           >
-            <SigesIcon className="w-full h-full text-primary" />
+            <SIGPADIcon className="w-full h-full text-primary" />
           </motion.div>
         </div>
         
-        <h1 className="text-4xl font-black tracking-tighter text-gray-900 mb-1.5 uppercase font-display leading-none">Si.Ge.S</h1>
+        <h1 className="text-4xl font-black tracking-tighter text-gray-900 mb-1.5 uppercase font-display leading-none">SIGPAD</h1>
         <p className="text-gray-400 text-[9px] tracking-[0.2em] font-bold uppercase max-w-[280px] leading-tight">
           Portal de Clientes VIP
         </p>
@@ -147,7 +147,7 @@ export default function ClienteLoginPage() {
       </Card>
       
       <p className="mt-8 text-[10px] text-center text-gray-400 font-bold uppercase tracking-[0.2em]">
-        Si.Ge.S • Portal de Transparencia Operativa
+        SIGPAD • Portal de Transparencia Operativa
       </p>
     </motion.div>
   );

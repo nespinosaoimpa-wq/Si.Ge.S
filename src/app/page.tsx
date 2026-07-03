@@ -38,7 +38,7 @@ import {
   ArrowUpRight,
   Award
 } from 'lucide-react';
-import { SigesIcon } from '@/components/ui/SigesLogo';
+import { SIGPADIcon } from '@/components/ui/SIGPADLogo';
 
 // ─── Animated Counter ─────────────────────────────────────────────────────────
 function AnimatedCounter({ target, suffix = '' }: { target: number; suffix?: string }) {
@@ -175,7 +175,7 @@ export default function RootLandingPage() {
       {/* ── Navigation ──────────────────────────────────────────────────── */}
       <header className="sticky top-0 w-full z-50 bg-zinc-950/80 backdrop-blur-2xl border-b border-zinc-800/80 h-16 flex items-center justify-between px-6 lg:px-12">
         <Link href="/" className="flex items-center h-10">
-          <SigesIcon className="w-36 h-10" />
+          <SIGPADIcon className="w-36 h-10" />
         </Link>
 
         {/* Desktop Nav */}
@@ -621,7 +621,7 @@ export default function RootLandingPage() {
         </div>
       </section>
 
-      {/* ── POR QUÉ SI.GE.S — Comparativa y Soluciones (Enfoque Phoenix) ── */}
+      {/* ── POR QUÉ SIGPAD — Comparativa y Soluciones (Enfoque Phoenix) ── */}
       <section id="porque" className="relative z-10 py-24 px-6 lg:px-12 max-w-7xl mx-auto w-full">
         <div className="text-center mb-16">
           <SectionTag>¿Por qué SIGPAD?</SectionTag>
@@ -634,7 +634,7 @@ export default function RootLandingPage() {
         </div>
 
         <div className="grid md:grid-cols-2 gap-6">
-          {/* Sin Si.Ge.S */}
+          {/* Sin SIGPAD */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             whileInView={{ opacity: 1, x: 0 }}
@@ -666,7 +666,7 @@ export default function RootLandingPage() {
             </ul>
           </motion.div>
 
-          {/* Con Si.Ge.S */}
+          {/* Con SIGPAD */}
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             whileInView={{ opacity: 1, x: 0 }}
@@ -969,7 +969,7 @@ export default function RootLandingPage() {
           <div className="grid md:grid-cols-4 gap-8 mb-12">
             <div className="space-y-4">
               <div className="flex items-center">
-                <SigesIcon className="w-36 h-10" />
+                <SIGPADIcon className="w-36 h-10" />
               </div>
               <p className="text-zinc-500 text-[11px] font-medium leading-relaxed">
                 La plataforma integral para empresas de seguridad privada argentina.

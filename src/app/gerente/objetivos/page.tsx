@@ -63,7 +63,7 @@ export default function ObjetivosPage() {
       const { id, ...objectiveData } = newObjective;
       
       // Automatic Geocoding
-      let coords = { latitude: -31.6107, longitude: -60.6973 }; // Default Si.Ge.S
+      let coords = { latitude: -31.6107, longitude: -60.6973 }; // Default SIGPAD
       try {
         const results = await geocodeForward(objectiveData.address);
         if (results.length > 0) {
@@ -270,7 +270,7 @@ export default function ObjetivosPage() {
               </div>
               <div className="space-y-1.5 sm:col-span-2">
                 <label className="text-xs font-medium text-zinc-500 ml-0.5">Dirección física</label>
-                <Input required placeholder="Ej: Av. Alem 1234, Si.Ge.S" value={newObjective.address}
+                <Input required placeholder="Ej: Av. Alem 1234, SIGPAD" value={newObjective.address}
                   onChange={e => setNewObjective({...newObjective, address: e.target.value})} />
               </div>
               <div className="space-y-1.5">

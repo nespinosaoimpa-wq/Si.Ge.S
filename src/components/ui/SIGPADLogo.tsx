@@ -3,7 +3,7 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 
-interface SigesIconProps {
+interface SIGPADIconProps {
   className?: string;
   strokeColor?: string; // Kept for interface compatibility, ignored for image render
 }
@@ -11,7 +11,7 @@ interface SigesIconProps {
 /**
  * SIGPAD Official Logo Component rendering the real user-uploaded PNG image.
  */
-export function SigesIcon({ className = "w-32 h-10" }: SigesIconProps) {
+export function SIGPADIcon({ className = "w-32 h-10" }: SIGPADIconProps) {
   return (
     <img 
       src="/logo_sigpad.png" 
@@ -22,7 +22,7 @@ export function SigesIcon({ className = "w-32 h-10" }: SigesIconProps) {
   );
 }
 
-interface SigesLogoProps {
+interface SIGPADLogoProps {
   className?: string;
   iconSize?: string;
   variant?: 'light' | 'dark' | 'color'; // Ignored as PNG logo contains custom brand styling
@@ -31,13 +31,13 @@ interface SigesLogoProps {
 /**
  * Integrated SIGPAD Brand Logo Component using the real uploaded asset.
  */
-export function SigesLogo({ 
+export function SIGPADLogo({ 
   className = "", 
   iconSize = "w-36 h-12" 
-}: SigesLogoProps) {
+}: SIGPADLogoProps) {
   return (
     <div className={cn("flex items-center", className)}>
-      <SigesIcon className={iconSize} />
+      <SIGPADIcon className={iconSize} />
     </div>
   );
 }

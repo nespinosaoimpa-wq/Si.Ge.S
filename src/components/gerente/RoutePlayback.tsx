@@ -439,7 +439,7 @@ export default function RoutePlayback({ points, roundData, className }: RoutePla
               </div>
               <div>
                 <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Patrullero</p>
-                <p className="text-sm font-black text-white uppercase">{roundData.resource_name || 'Personal Si.Ge.S'}</p>
+                <p className="text-sm font-black text-white uppercase">{roundData.resource_name || 'Personal SIGPAD'}</p>
               </div>
             </div>
             <div className="flex items-center gap-6 pt-2 border-t border-white/5">

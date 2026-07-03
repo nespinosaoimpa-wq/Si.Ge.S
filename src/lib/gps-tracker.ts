@@ -106,7 +106,7 @@ export class GPSTracker {
       
       if (!error && data && data.geofence_radius) {
         this.geofenceRadius = data.geofence_radius;
-        console.log(`[Si.Ge.S GPS] Dynamic Geofence Radius loaded: ${this.geofenceRadius}m`);
+        console.log(`[SIGPAD GPS] Dynamic Geofence Radius loaded: ${this.geofenceRadius}m`);
       } else {
         this.geofenceRadius = 100; // fallback
       }
@@ -119,11 +119,11 @@ export class GPSTracker {
     this.highFrequencyMode = enabled;
     this.roundId = roundId;
     if (enabled) {
-      console.log(`[Si.Ge.S GPS] High-Frequency Mode ACTIVE (Round: ${roundId})`);
+      console.log(`[SIGPAD GPS] High-Frequency Mode ACTIVE (Round: ${roundId})`);
       this.accumulatedDistance = 0;
       this.startFlushTimer();
     } else {
-      console.log('[Si.Ge.S GPS] High-Frequency Mode DISABLED');
+      console.log('[SIGPAD GPS] High-Frequency Mode DISABLED');
       this.lastHighFreqPos = null;
       // Flush remaining buffer before disabling
       this.flushTraceBuffer();
@@ -185,22 +185,22 @@ export class GPSTracker {
     if ('wakeLock' in navigator && this.isRunning) {
       try {
         this.wakeLock = await (navigator as any).wakeLock.request('screen');
-        console.log('[Si.Ge.S GPS] Wake Lock active');
+        console.log('[SIGPAD GPS] Wake Lock active');
       } catch (err) {
-        console.warn('[Si.Ge.S GPS] Wake Lock failed (expected in background)');
+        console.warn('[SIGPAD GPS] Wake Lock failed (expected in background)');
       }
     }
   }
 
   private handleVisibilityChange() {
     if (document.visibilityState === 'visible' && this.isRunning) {
-      console.log('[Si.Ge.S GPS] App became visible, re-acquiring Wake Lock...');
+      console.log('[SIGPAD GPS] App became visible, re-acquiring Wake Lock...');
       this.acquireWakeLock();
     }
   }
 
   private handleOnline() {
-    console.log('[Si.Ge.S GPS] Network connection restored, resetting backoff and flushing...');
+    console.log('[SIGPAD GPS] Network connection restored, resetting backoff and flushing...');
     this.currentBackoffMs = 5000;
     this.flushTraceBuffer();
     this.syncPendingPoints();
@@ -219,7 +219,7 @@ export class GPSTracker {
     document.body.appendChild(video);
     
     // Attempt play (may fail without user interaction, but we catch it)
-    video.play().catch(() => console.warn('[Si.Ge.S GPS] Video fallback autoplay prevented'));
+    video.play().catch(() => console.warn('[SIGPAD GPS] Video fallback autoplay prevented'));
     this.fallbackVideoEl = video;
   }
 
@@ -340,7 +340,7 @@ export class GPSTracker {
       heading: data.heading
     });
 
-    console.log(`[Si.Ge.S GPS] Trace buffered (${this.traceBuffer.length}/${this.TRACE_BUFFER_SIZE})`);
+    console.log(`[SIGPAD GPS] Trace buffered (${this.traceBuffer.length}/${this.TRACE_BUFFER_SIZE})`);
 
     // Flush when buffer is full
     if (this.traceBuffer.length >= this.TRACE_BUFFER_SIZE) {
@@ -362,11 +362,11 @@ export class GPSTracker {
       if (error) {
         throw error;
       } else {
-        console.log(`[Si.Ge.S GPS] Flushed ${batch.length} trace points successfully`);
+        console.log(`[SIGPAD GPS] Flushed ${batch.length} trace points successfully`);
         this.currentBackoffMs = 5000; // reset backoff on success
       }
     } catch (e) {
-      console.error(`[Si.Ge.S GPS] Batch trace exception, retrying in ${this.currentBackoffMs}ms:`, e);
+      console.error(`[SIGPAD GPS] Batch trace exception, retrying in ${this.currentBackoffMs}ms:`, e);
       // Re-queue points
       this.traceBuffer.unshift(...batch);
       

@@ -1,12 +1,12 @@
 @import "tailwindcss";
 
-/* ===== Si.Ge.S Design System ===== */
+/* ===== SIGPAD Design System ===== */
 /* */
 
 @theme {
   --color-background: #fafafa; /* bg-zinc-50 */
   --color-foreground: #09090b; /* text-zinc-900 */
-  --color-primary: #0F4C5C;    /* Si.Ge.S Blue-Teal */
+  --color-primary: #0F4C5C;    /* SIGPAD Blue-Teal */
   --color-primary-dark: #0a333e;
   --color-primary-light: #237893;
   --color-zinc-950: #09090b;

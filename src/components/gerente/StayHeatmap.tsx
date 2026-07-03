@@ -98,7 +98,7 @@ export default function StayHeatmap({ roundId, tracePoints, className }: StayHea
         computeLocalDensity(data);
       }
     } catch (e) {
-      console.error('[Si.Ge.S] Heatmap fetch error:', e);
+      console.error('[SIGPAD] Heatmap fetch error:', e);
     }
     setLoading(false);
   };

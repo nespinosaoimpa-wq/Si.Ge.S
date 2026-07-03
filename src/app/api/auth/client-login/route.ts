@@ -9,13 +9,13 @@ export async function POST(request: Request) {
     const cleanEmail = email.toLowerCase().trim();
     const cleanCode = accessCode.trim();
 
-    const isDemoMode = process.env.SIGES_DEMO_MODE === 'true' || 
-                       (process.env.SIGES_DEMO_MODE !== 'false' && 
+    const isDemoMode = process.env.SIGPAD_DEMO_MODE === 'true' || 
+                       (process.env.SIGPAD_DEMO_MODE !== 'false' && 
                         process.env.NODE_ENV !== 'production' && 
                         !isConfigured);
 
     // Demo bypass
-    if (isDemoMode && (cleanCode === '1234' || cleanCode === 'siges2026' || cleanCode === 'demo')) {
+    if (isDemoMode && (cleanCode === '1234' || cleanCode === 'SIGPAD2026' || cleanCode === 'demo')) {
       const response = NextResponse.json({
         success: true,
         client: {
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
       });
 
       // Set cookie for middleware validation
-      response.cookies.set('siges_client_session', JSON.stringify({
+      response.cookies.set('SIGPAD_client_session', JSON.stringify({
         objective_id: 'demo-objective-id',
         name: 'Consorcio Portofino VIP',
         email: cleanEmail
@@ -81,7 +81,7 @@ export async function POST(request: Request) {
         }
       });
 
-      response.cookies.set('siges_client_session', JSON.stringify({
+      response.cookies.set('SIGPAD_client_session', JSON.stringify({
         objective_id: foundObjective.id,
         name: foundObjective.name,
         email: cleanEmail
@@ -104,7 +104,7 @@ export async function POST(request: Request) {
       }
     });
 
-    response.cookies.set('siges_client_session', JSON.stringify({
+    response.cookies.set('SIGPAD_client_session', JSON.stringify({
       objective_id: objective.id,
       name: objective.name,
       email: cleanEmail

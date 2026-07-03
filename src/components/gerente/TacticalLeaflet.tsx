@@ -556,7 +556,7 @@ export default function TacticalLeaflet({
 
       <div className="absolute top-6 left-6 z-[10] pointer-events-none">
         <div className="bg-black/80 backdrop-blur-md px-4 py-2 border border-white/10 rounded-lg shadow-2xl">
-           <p className="text-[10px] font-black text-white uppercase tracking-widest">Si.Ge.S Intelligence Unit</p>
+           <p className="text-[10px] font-black text-white uppercase tracking-widest">SIGPAD Intelligence Unit</p>
            <div className="flex items-center gap-2 mt-1">
               <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
               <span className="text-[8px] text-white/60 uppercase font-bold tracking-tighter italic">Sincronización Tactical Activa</span>

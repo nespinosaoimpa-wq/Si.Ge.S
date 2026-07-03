@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Si.Ge.S — Route Protection Middleware
+ * SIGPAD — Route Protection Middleware
  *
  * Protege las rutas de la plataforma verificando la sesión activa.
  * Los usuarios no autenticados son redirigidos a /login.
@@ -38,8 +38,8 @@ export function middleware(request: NextRequest) {
 
   // ── Rutas protegidas del operador y gerente ──────────────────────────
   if (PROTECTED_ROUTES.some((r) => pathname.startsWith(r))) {
-    const sessionCookie = request.cookies.get('siges_bypass_active');
-    const userCookie = request.cookies.get('siges_user');
+    const sessionCookie = request.cookies.get('SIGPAD_bypass_active');
+    const userCookie = request.cookies.get('SIGPAD_user');
 
     // Si no hay sesión, redirigir al login
     if (!sessionCookie && !userCookie) {
@@ -73,12 +73,12 @@ export function middleware(request: NextRequest) {
 
   // ── Rutas del portal de clientes ─────────────────────────────────────
   if (CLIENT_ROUTES.some((r) => pathname.startsWith(r))) {
-    const clientSession = request.cookies.get('siges_client_session');
+    const clientSession = request.cookies.get('SIGPAD_client_session');
 
     // Si no hay sesión de cliente, redirigir al login de cliente
     if (!clientSession) {
       // En modo demo/desarrollo, permitir acceso libre al portal de cliente
-      const isDemoMode = process.env.SIGES_DEMO_MODE === 'true' ||
+      const isDemoMode = process.env.SIGPAD_DEMO_MODE === 'true' ||
                          process.env.NODE_ENV === 'development';
       if (!isDemoMode) {
         const clientLoginUrl = new URL('/cliente-login', request.url);

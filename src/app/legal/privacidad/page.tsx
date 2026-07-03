@@ -31,10 +31,10 @@ export default function PrivacidadPage() {
             1. Responsable del Tratamiento
           </h3>
           <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm text-gray-600 leading-relaxed font-medium">
-            <p><strong>Si.Ge.S Custodia / Si.Ge.S Business OS</strong></p>
+            <p><strong>SIGPAD Custodia / SIGPAD Business OS</strong></p>
             <p>CUIT: 30-XXXXXXXX-X</p>
-            <p>Domicilio: Si.Ge.S, Argentina</p>
-            <p>Email DPO: legales@Si.Ge.S-custodia.com.ar</p>
+            <p>Domicilio: SIGPAD, Argentina</p>
+            <p>Email DPO: legales@SIGPAD-custodia.com.ar</p>
           </div>
         </section>
 
@@ -45,12 +45,12 @@ export default function PrivacidadPage() {
           </h3>
           <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm text-gray-600 leading-relaxed font-medium space-y-3">
             <p>
-              Para garantizar la seguridad de nuestro personal y de nuestros clientes, Si.Ge.S recopila datos de ubicación (Latitud y Longitud) a través de la aplicación del Operador.
+              Para garantizar la seguridad de nuestro personal y de nuestros clientes, SIGPAD recopila datos de ubicación (Latitud y Longitud) a través de la aplicación del Operador.
             </p>
             <ul className="list-disc pl-5 space-y-1">
               <li>El rastreo GPS se activa <strong>exclusivamente</strong> cuando el usuario inicia su jornada laboral (Check-In).</li>
               <li>El rastreo se suspende <strong>inmediatamente</strong> al finalizar el turno (Check-Out).</li>
-              <li>Si.Ge.S no rastrea de manera pasiva a sus empleados en segundo plano fuera de su horario laboral.</li>
+              <li>SIGPAD no rastrea de manera pasiva a sus empleados en segundo plano fuera de su horario laboral.</li>
             </ul>
           </div>
         </section>
@@ -74,7 +74,7 @@ export default function PrivacidadPage() {
               En cumplimiento del <strong>Art. 14, 16 y concordantes de la Ley 25.326</strong>, usted tiene el derecho a solicitar sin cargo el Acceso, la Rectificación, la Cancelación o la Oposición respecto a los datos personales suministrados.
             </p>
             <p className="flex items-center gap-2 mt-4 text-primary font-bold">
-              <Mail size={16} /> solicitudes@Si.Ge.S-custodia.com.ar
+              <Mail size={16} /> solicitudes@SIGPAD-custodia.com.ar
             </p>
             <p className="text-xs text-gray-400 mt-4 border-t border-gray-100 pt-4">
               La Agencia de Acceso a la Información Pública, en su carácter de Órgano de Control de la Ley N° 25.326, tiene la atribución de atender las denuncias y reclamos que interpongan quienes resulten afectados en sus derechos por incumplimiento de las normas vigentes en materia de protección de datos personales.

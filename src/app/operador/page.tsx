@@ -17,7 +17,7 @@ import Link from 'next/link';
 import { useShift } from '@/components/providers/ShiftProvider';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/providers/AuthProvider';
-import { SigesIcon } from '@/components/ui/SigesLogo';
+import { SIGPADIcon } from '@/components/ui/SIGPADLogo';
 
 export default function GuardiaDashboard() {
   const { isShiftActive, shiftId, shiftData, startShift, theme, toggleTheme } = useShift();
@@ -175,7 +175,7 @@ export default function GuardiaDashboard() {
         {/* Cabecera / Logo Integrado y Prolijo */}
         <div className="flex flex-col items-center text-center space-y-4">
           <div className="w-48 h-14 bg-[#09090b]/40 border border-white/[0.04] rounded-2xl flex items-center justify-center p-1.5 shadow-xl backdrop-blur-md">
-            <SigesIcon className="w-full h-full object-contain" />
+            <SIGPADIcon className="w-full h-full object-contain" />
           </div>
           
           <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/10 rounded-full border border-emerald-500/15">

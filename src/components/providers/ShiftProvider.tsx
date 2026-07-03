@@ -33,10 +33,10 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
 
   // Persistence for Theme & Shift
   useEffect(() => {
-    const savedTheme = localStorage.getItem('siges_ui_theme') as 'light' | 'dark';
+    const savedTheme = localStorage.getItem('SIGPAD_ui_theme') as 'light' | 'dark';
     if (savedTheme) setTheme(savedTheme);
 
-    const savedShift = localStorage.getItem('siges_active_shift');
+    const savedShift = localStorage.getItem('SIGPAD_active_shift');
     if (savedShift) {
       try {
         const parsed = JSON.parse(savedShift);
@@ -50,7 +50,7 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
   const toggleTheme = () => {
     const newTheme = theme === 'light' ? 'dark' : 'light';
     setTheme(newTheme);
-    localStorage.setItem('siges_ui_theme', newTheme);
+    localStorage.setItem('SIGPAD_ui_theme', newTheme);
   };
   
   const startShift = (data: any, id: string | null = null) => {
@@ -58,7 +58,7 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
     setShiftData(data);
     const sid = id || (data as any)?.id || null;
     setShiftId(sid);
-    localStorage.setItem('siges_active_shift', JSON.stringify({ id: sid, data }));
+    localStorage.setItem('SIGPAD_active_shift', JSON.stringify({ id: sid, data }));
     resetManAlive();
   };
 
@@ -67,7 +67,7 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
       const updated = { ...prev, ...newData };
       // Also update localStorage so it persists on refresh
       if (shiftId) {
-        localStorage.setItem('siges_active_shift', JSON.stringify({ id: shiftId, data: updated }));
+        localStorage.setItem('SIGPAD_active_shift', JSON.stringify({ id: shiftId, data: updated }));
       }
       return updated;
     });
@@ -77,7 +77,7 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
     setIsShiftActive(false);
     setShiftData(null);
     setShiftId(null);
-    localStorage.removeItem('siges_active_shift');
+    localStorage.removeItem('SIGPAD_active_shift');
     if (manAliveTimer) clearTimeout(manAliveTimer);
     setShowManAliveDialog(false);
   };
@@ -146,7 +146,7 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
                // Notify UI for live updates
                updateShiftData({ location: { lat: pos.latitude, lng: pos.longitude, accuracy: pos.accuracy, speed: pos.speed } });
             },
-            (err) => console.warn('[Si.Ge.S Tracker] Background Error:', err),
+            (err) => console.warn('[SIGPAD Tracker] Background Error:', err),
             shiftData?.objectiveLocation ? {
               location: shiftData.objectiveLocation,
               radius: shiftData.geofenceRadius || 100,
@@ -155,7 +155,7 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
           );
           trackerRef.current.start();
         } catch (e) {
-          console.error("[Si.Ge.S Tracker] Failed to start:", e);
+          console.error("[SIGPAD Tracker] Failed to start:", e);
         }
       };
       startTracking();

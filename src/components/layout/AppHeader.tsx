@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Bell } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/providers/AuthProvider';
-import { SigesIcon } from '@/components/ui/SigesLogo';
+import { SIGPADIcon } from '@/components/ui/SIGPADLogo';
 
 export function AppHeader() {
   const { user, role } = useAuth();
@@ -36,7 +36,7 @@ export function AppHeader() {
       <div className="flex items-center gap-3">
         {/* Mobile logo */}
         <div className="lg:hidden flex items-center gap-2">
-          <SigesIcon className="w-24 h-8 text-[#0F4C5C]" />
+          <SIGPADIcon className="w-24 h-8 text-[#0F4C5C]" />
         </div>
 
         {/* Desktop: page title */}

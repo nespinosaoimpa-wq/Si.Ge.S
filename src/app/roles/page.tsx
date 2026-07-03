@@ -13,7 +13,7 @@ import {
   Users
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { SigesIcon } from '@/components/ui/SigesLogo';
+import { SIGPADIcon } from '@/components/ui/SIGPADLogo';
 
 const roles = [
   {
@@ -69,7 +69,7 @@ export default function RolesPage() {
           </div>
           <div className="flex justify-center mb-4">
             <div className="w-48 h-16 bg-[#09090b] border border-zinc-800 rounded-2xl p-1.5 shadow-lg flex items-center justify-center">
-              <SigesIcon className="w-full h-full object-contain" />
+              <SIGPADIcon className="w-full h-full object-contain" />
             </div>
           </div>
           <h1 className="text-5xl font-black text-gray-900 tracking-tighter mb-4 uppercase">

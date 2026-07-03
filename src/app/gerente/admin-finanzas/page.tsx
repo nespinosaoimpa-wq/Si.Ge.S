@@ -77,11 +77,11 @@ export default function AdminFinanzas() {
   ];
 
   const contracts = data?.contracts || [
-    { id: 1, title: 'Consorcio Portofino', amount: '$1.450.000', expiry: '15 MAY', status: 'Pagado', contractCode: 'SIGES_CONTRACT_E_9201' },
-    { id: 2, title: 'Barrio Torremolinos', amount: '$2.180.000', expiry: '12 JUN', status: 'Facturado', contractCode: 'SIGES_CONTRACT_E_9202' },
-    { id: 3, title: 'Planta Industrial Norte', amount: '$3.500.000', expiry: '05 MAY', status: 'Vencido', contractCode: 'SIGES_CONTRACT_E_9203' },
-    { id: 4, title: 'Edificio Las Marías', amount: '$1.050.000', expiry: '20 MAY', status: 'Pagado', contractCode: 'SIGES_CONTRACT_E_9204' },
-    { id: 5, title: 'Centro Comercial Si.Ge.S', amount: '$5.400.000', expiry: '01 JUN', status: 'Facturado', contractCode: 'SIGES_CONTRACT_E_9205' },
+    { id: 1, title: 'Consorcio Portofino', amount: '$1.450.000', expiry: '15 MAY', status: 'Pagado', contractCode: 'SIGPAD_CONTRACT_E_9201' },
+    { id: 2, title: 'Barrio Torremolinos', amount: '$2.180.000', expiry: '12 JUN', status: 'Facturado', contractCode: 'SIGPAD_CONTRACT_E_9202' },
+    { id: 3, title: 'Planta Industrial Norte', amount: '$3.500.000', expiry: '05 MAY', status: 'Vencido', contractCode: 'SIGPAD_CONTRACT_E_9203' },
+    { id: 4, title: 'Edificio Las Marías', amount: '$1.050.000', expiry: '20 MAY', status: 'Pagado', contractCode: 'SIGPAD_CONTRACT_E_9204' },
+    { id: 5, title: 'Centro Comercial SIGPAD', amount: '$5.400.000', expiry: '01 JUN', status: 'Facturado', contractCode: 'SIGPAD_CONTRACT_E_9205' },
   ];
 
   return (
@@ -162,7 +162,7 @@ export default function AdminFinanzas() {
         <div className="col-span-12 lg:col-span-8 flex flex-col gap-6">
            
            <div className="flex gap-8 border-b border-white/10 px-4">
-              {['Finanzas Globales', 'Contratos Si.Ge.S', 'Legales y Seguros'].map((tab, i) => {
+              {['Finanzas Globales', 'Contratos SIGPAD', 'Legales y Seguros'].map((tab, i) => {
                 const id = ['financial', 'contracts', 'documents'][i] as any;
                 const active = activeTab === id;
                 return (
@@ -209,7 +209,7 @@ export default function AdminFinanzas() {
                              </div>
                              <div>
                                <p className="text-sm font-black text-white uppercase group-hover:text-primary transition-all">{row.title}</p>
-                               <p className="text-[9px] text-zinc-600 font-mono italic">{row.contractCode || `SIGES_CONTRACT_E_920${row.id}`}</p>
+                               <p className="text-[9px] text-zinc-600 font-mono italic">{row.contractCode || `SIGPAD_CONTRACT_E_920${row.id}`}</p>
                              </div>
                           </div>
                         </td>
@@ -277,7 +277,7 @@ export default function AdminFinanzas() {
                     <div className="space-y-3">
                        {[
                          { name: 'Plan_Evacuacion_Oct_24.pdf', size: '2.4 MB', icon: FileText, color: 'text-zinc-500' },
-                         { name: 'Contrato_SIGES_Portofino.pdf', size: '1.2 MB', icon: FileText, color: 'text-primary' },
+                         { name: 'Contrato_SIGPAD_Portofino.pdf', size: '1.2 MB', icon: FileText, color: 'text-primary' },
                        ].map((doc, i) => (
                          <motion.div 
                            key={i} 

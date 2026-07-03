@@ -1,5 +1,5 @@
 /**
- * Si.Ge.S API Client Utility
+ * SIGPAD API Client Utility
  * Unified fetcher for tactical modules
  */
 

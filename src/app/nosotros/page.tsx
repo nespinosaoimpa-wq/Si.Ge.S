@@ -16,7 +16,7 @@ import {
   TrendingUp,
   X,
 } from 'lucide-react';
-import { SigesIcon } from '@/components/ui/SigesLogo';
+import { SIGPADIcon } from '@/components/ui/SIGPADLogo';
 
 export default function NosotrosPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -61,7 +61,7 @@ export default function NosotrosPage() {
       {/* ── Navigation ──────────────────────────────────────────────────── */}
       <header className="sticky top-0 w-full z-50 bg-[#071E22]/90 backdrop-blur-2xl border-b border-[#237893]/10 h-16 flex items-center justify-between px-6 lg:px-12">
         <Link href="/" className="flex items-center gap-3">
-          <SigesIcon className="w-8 h-8 text-[#3ABEFF]" />
+          <SIGPADIcon className="w-8 h-8 text-[#3ABEFF]" />
           <div>
             <span className="font-black text-lg tracking-tight uppercase text-white block leading-none">SIGPAD</span>
             <span className="text-[7px] font-bold tracking-[0.1em] uppercase text-[#3ABEFF] block leading-none">Sistema Inteligente de Gestión y Seguridad Dinámica</span>
@@ -269,7 +269,7 @@ export default function NosotrosPage() {
       <footer className="bg-[#041215] border-t border-[#237893]/10 py-12 px-6 lg:px-12 z-10">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-3">
-            <SigesIcon className="w-6 h-6 text-[#3ABEFF]" />
+            <SIGPADIcon className="w-6 h-6 text-[#3ABEFF]" />
             <span className="font-black text-sm tracking-widest uppercase text-white">SIGPAD OS</span>
           </div>
           <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">

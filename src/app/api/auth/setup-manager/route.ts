@@ -6,7 +6,7 @@ export async function POST(request: Request) {
     const supabase = createServiceClient();
     const body = await request.json().catch(() => ({}));
     
-    const managerEmail = (body.email || 'gerente@Si.Ge.S-security.com').toLowerCase().trim();
+    const managerEmail = (body.email || 'gerente@SIGPAD-security.com').toLowerCase().trim();
     const managerName = body.name || 'GERENTE ADMINISTRADOR';
 
     // Check if already in resources

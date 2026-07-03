@@ -40,11 +40,11 @@ export function DocumentScanner({ objectiveId, operatorId, location, onUploadSuc
           // Digital Watermark
           ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
           ctx.fillRect(0, canvas.height - 40, canvas.width, 40);
-          ctx.fillStyle = '#0F4C5C'; // Dorado Si.Ge.S
+          ctx.fillStyle = '#0F4C5C'; // Dorado SIGPAD
           ctx.font = '20px monospace';
           const timestamp = new Date().toLocaleString('es-AR');
           const gps = location ? `${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}` : 'GPS OFFLINE';
-          ctx.fillText(`Si.Ge.S OS | ${timestamp} | ${gps}`, 10, canvas.height - 15);
+          ctx.fillText(`SIGPAD OS | ${timestamp} | ${gps}`, 10, canvas.height - 15);
 
           canvas.toBlob((blob) => {
             if (blob) {

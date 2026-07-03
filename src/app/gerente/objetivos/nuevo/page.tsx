@@ -31,7 +31,7 @@ const MapView = dynamic(() => import('@/components/MapView'), { ssr: false });
 
 export default function NuevoObjetivo() {
   const router = useRouter();
-  const [coords, setCoords] = useState<{lat: number, lng: number}>({ lat: -31.6107, lng: -60.6973 }); // Si.Ge.S default
+  const [coords, setCoords] = useState<{lat: number, lng: number}>({ lat: -31.6107, lng: -60.6973 }); // SIGPAD default
   const [formData, setFormData] = useState({ name: '', address: '', client_name: '', contact_phone: '', geofence_radius: 200 });
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -113,7 +113,7 @@ export default function NuevoObjetivo() {
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6">
           <div>
             <h1 className="text-3xl font-black text-gray-900 tracking-tight uppercase">Alta de <span className="text-primary">Nuevo Objetivo</span></h1>
-            <p className="text-sm text-gray-500 mt-1">Registra un nuevo punto de custodia para la red operativa de Si.Ge.S.</p>
+            <p className="text-sm text-gray-500 mt-1">Registra un nuevo punto de custodia para la red operativa de SIGPAD.</p>
           </div>
           
           {/* Progress Stepper */}
@@ -401,7 +401,7 @@ export default function NuevoObjetivo() {
                 </div>
 
                 <div className="pt-12 mt-auto">
-                   <p className="text-[10px] font-black text-primary/60 uppercase tracking-widest text-center italic">Si.Ge.S Business Operational System</p>
+                   <p className="text-[10px] font-black text-primary/60 uppercase tracking-widest text-center italic">SIGPAD Business Operational System</p>
                 </div>
               </div>
            </Card>
@@ -436,7 +436,7 @@ export default function NuevoObjetivo() {
                 </div>
                 <div>
                   <h2 className="text-4xl font-black text-gray-900 uppercase tracking-tighter mb-3">Objetivo Creado</h2>
-                  <p className="text-gray-500 text-sm font-medium">El nuevo puesto de vigilancia ha sido registrado correctamente y georeferenciado en la red Si.Ge.S.</p>
+                  <p className="text-gray-500 text-sm font-medium">El nuevo puesto de vigilancia ha sido registrado correctamente y georeferenciado en la red SIGPAD.</p>
                 </div>
                 <div className="flex flex-col gap-3">
                   <Button className="h-14 font-black uppercase text-xs" onClick={() => router.push('/gerente')}>Ver en el Mapa</Button>

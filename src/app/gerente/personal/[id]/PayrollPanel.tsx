@@ -153,7 +153,7 @@ export function PayrollPanel({
 
       {/* ── Print Header ─────────────────────────────────────────────── */}
       <div className="hidden print:block text-center mb-8 border-b border-gray-200 pb-4">
-        <h1 className="text-2xl font-black uppercase text-gray-900 tracking-widest">SIGES SEGURIDAD PRIVADA</h1>
+        <h1 className="text-2xl font-black uppercase text-gray-900 tracking-widest">SIGPAD SEGURIDAD PRIVADA</h1>
         <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mt-1">Cómputo de Haberes — Liquidación Individual</p>
         <p className="text-[10px] text-gray-400 font-mono mt-2">
           Prestador: {operatorName} | Período: {startDate} al {endDate} | Emisión: {new Date().toLocaleDateString('es-AR')}

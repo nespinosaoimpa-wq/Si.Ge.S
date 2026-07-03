@@ -1,5 +1,5 @@
 /**
- * Si.Ge.S Geocoding Engine — Precision Grade
+ * SIGPAD Geocoding Engine — Precision Grade
  * Hybrid approach: Geocoding v5 (primary, addresses) + Search Box v1 (POIs).
  * Optimized for Santa Fe, Argentina with autocomplete and smart context injection.
  */
@@ -32,7 +32,7 @@ const GOOGLE_MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
 const MAPBOX_GEO_BASE = 'https://api.mapbox.com/geocoding/v5/mapbox.places';
 const MAPBOX_SEARCH_BASE = 'https://api.mapbox.com/search/searchbox/v1';
 
-// Si.Ge.S operational center
+// SIGPAD operational center
 const SANTA_FE_CENTER = { lng: -60.6973, lat: -31.6107 };
 const SANTA_FE_BBOX = '-63.3,-34.8,-59.4,-28.0'; // Entire Santa Fe Province
 
@@ -151,7 +151,7 @@ function injectContext(query: string): string {
 
 /**
  * Forward Geocoding v5 — the most precise engine for addresses.
- * Runs two parallel queries: one with Si.Ge.S context, one raw.
+ * Runs two parallel queries: one with SIGPAD context, one raw.
  * Proximity biasing ensures local results rank first.
  */
 export async function geocodeForward(query: string): Promise<GeocodingResult[]> {
@@ -319,7 +319,7 @@ export async function searchNominatim(query: string): Promise<GeocodingResult[]>
     const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(contextualized)}&countrycodes=ar&limit=5&addressdetails=1`, {
       headers: {
         'Accept-Language': 'es',
-        'User-Agent': 'SiGeS-Manager-App/1.0'
+        'User-Agent': 'SIGPAD-Manager-App/1.0'
       }
     });
     if (!res.ok) return [];

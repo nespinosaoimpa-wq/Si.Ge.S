@@ -37,7 +37,7 @@ export async function generateEvidencePDF({
   doc.setTextColor(24, 24, 27);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(24);
-  doc.text('Si.Ge.S OS', 22, 22);
+  doc.text('SIGPAD OS', 22, 22);
   
   doc.setTextColor(15, 76, 92);
   doc.setFontSize(9);
@@ -101,7 +101,7 @@ export async function generateEvidencePDF({
     doc.setFont("helvetica", "italic");
     doc.setFontSize(8);
     doc.setTextColor(100, 100, 100);
-    doc.text('Documento generado automáticamente por el sistema Si.Ge.S OS.', 15, 280);
+    doc.text('Documento generado automáticamente por el sistema SIGPAD OS.', 15, 280);
     doc.text('La evidencia cuenta con sello de agua inalterable.', 15, 285);
 
     doc.save(`Evidencia_${operatorName}_${Date.now()}.pdf`);

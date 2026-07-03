@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Key, Mail, User, ChevronRight, ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { SigesIcon } from '@/components/ui/SigesLogo';
+import { SIGPADIcon } from '@/components/ui/SIGPADLogo';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -66,7 +66,7 @@ export default function RegisterPage() {
           <ArrowLeft size={14} /> Volver al inicio de sesión
         </Link>
         <div className="w-60 h-20 bg-[#09090b]/95 border border-zinc-800 flex items-center justify-center rounded-2xl mb-4 p-1 shadow-xl">
-          <SigesIcon className="w-full h-full object-contain" />
+          <SIGPADIcon className="w-full h-full object-contain" />
         </div>
         <h1 className="text-2xl font-bold tracking-tight text-white font-display">Crear cuenta</h1>
         <p className="text-zinc-500 text-xs font-normal mt-0.5">Gestión de seguridad privada</p>

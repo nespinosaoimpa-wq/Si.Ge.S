@@ -48,7 +48,7 @@ export default function CamarasWall() {
              <div className="h-[2px] w-12 bg-sky-500/40" />
              <span className="text-[11px] text-sky-400 uppercase font-black tracking-[0.4em] animate-pulse">Vision Intelligence Network</span>
           </div>
-          <h1 className="text-6xl font-black text-white tracking-tighter">Si.Ge.S <span className="text-sky-500">VISION</span></h1>
+          <h1 className="text-6xl font-black text-white tracking-tighter">SIGPAD <span className="text-sky-500">VISION</span></h1>
           <p className="text-zinc-500 text-[10px] tracking-[0.3em] font-mono italic uppercase">Neural Video Streaming Platform V.2.1</p>
         </div>
 

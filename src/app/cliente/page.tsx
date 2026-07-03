@@ -51,7 +51,7 @@ export default function ClienteHome() {
   useEffect(() => {
     // Read client session from cookie
     let activeSession: any = null;
-    const cookieMatch = document.cookie.match(/siges_client_session=([^;]+)/);
+    const cookieMatch = document.cookie.match(/SIGPAD_client_session=([^;]+)/);
     if (cookieMatch) {
       try {
         activeSession = JSON.parse(decodeURIComponent(cookieMatch[1]));
@@ -61,7 +61,7 @@ export default function ClienteHome() {
     }
 
     if (!activeSession) {
-      const stored = localStorage.getItem('siges_client');
+      const stored = localStorage.getItem('SIGPAD_client');
       if (stored) {
         try {
           activeSession = JSON.parse(stored);

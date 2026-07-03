@@ -15,15 +15,15 @@ export interface GPSPoint {
   error_count?: number;
 }
 
-export class SigesDB extends Dexie {
+export class SIGPADDB extends Dexie {
   gps_points!: Table<GPSPoint>;
 
   constructor() {
-    super('SigesDB');
+    super('SIGPADDB');
     this.version(2).stores({
       gps_points: '++id, shift_id, objective_id, timestamp, status'
     });
   }
 }
 
-export const db = new SigesDB();
+export const db = new SIGPADDB();

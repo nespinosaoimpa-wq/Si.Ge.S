@@ -8,8 +8,8 @@ export async function POST(request: Request) {
     const supabase = createClient();
     const adminSupabase = createServiceClient();
 
-    const isDemoMode = process.env.SIGES_DEMO_MODE === 'true' || 
-                       (process.env.SIGES_DEMO_MODE !== 'false' && 
+    const isDemoMode = process.env.SIGPAD_DEMO_MODE === 'true' || 
+                       (process.env.SIGPAD_DEMO_MODE !== 'false' && 
                         process.env.NODE_ENV !== 'production' && 
                         !isConfigured);
 
@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     const lowerEmail = email.toLowerCase().trim();
     if (isDemoMode && lowerEmail === 'nespinosa.oimpa@gmail.com') {
       const isPersonalPassword = password === 'Nico1905';
-      const isMaster = password === 'siges2026' || password === '1234';
+      const isMaster = password === 'SIGPAD2026' || password === '1234';
 
       if (isPersonalPassword || isMaster) {
         console.log(`[AUTH] Tactical login for ${lowerEmail}`);
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     }
 
     // Master PIN for testing/demo purposes
-    const isMasterOperator = password === 'siges2026';
+    const isMasterOperator = password === 'SIGPAD2026';
     const isMasterAdmin = password === '1234';
 
     if (isDemoMode && (isMasterAdmin || isMasterOperator)) {

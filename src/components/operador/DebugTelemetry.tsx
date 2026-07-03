@@ -46,7 +46,7 @@ export default function DebugTelemetry({
             <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
             <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-green-500 flex items-center gap-1.5">
               <Terminal className="w-3 h-3" />
-              Si.Ge.S Telemetry
+              SIGPAD Telemetry
             </h4>
           </div>
           <span className="text-[8px] font-mono text-white/30 uppercase tracking-widest">

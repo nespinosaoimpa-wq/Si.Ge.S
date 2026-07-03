@@ -3,7 +3,7 @@
 import React from 'react';
 import { usePathname } from 'next/navigation';
 import { Bell, Search } from 'lucide-react';
-import { SigesIcon } from '@/components/ui/SigesLogo';
+import { SIGPADIcon } from '@/components/ui/SIGPADLogo';
 
 export const MobileHeader = () => {
   const pathname = usePathname();
@@ -16,7 +16,7 @@ export const MobileHeader = () => {
     <header className="lg:hidden fixed top-0 left-0 right-0 h-20 bg-zinc-950/80 backdrop-blur-2xl border-b border-white/5 z-[80] flex items-center justify-between px-6 safe-top transition-all duration-500">
       <div className="flex items-center gap-3">
         <div className="flex items-center h-10">
-          <SigesIcon className="text-primary w-28 h-8" />
+          <SIGPADIcon className="text-primary w-28 h-8" />
         </div>
         <div className="h-6 w-px bg-white/10 mx-1" />
         <div>
