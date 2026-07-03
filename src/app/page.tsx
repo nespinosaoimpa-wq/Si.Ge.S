@@ -274,7 +274,7 @@ export default function RootLandingPage() {
           >
             <SectionTag>Tecnología de Seguridad de Vanguardia</SectionTag>
 
-            <h1 className="text-4xl lg:text-6xl font-black tracking-tight text-white uppercase leading-[0.95] font-display max-w-3xl">
+            <h1 className="text-4xl lg:text-6xl font-black tracking-tight text-white leading-[1.1] font-display max-w-3xl">
               La plataforma que{' '}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-zinc-200 to-zinc-400">transforma</span>{' '}
               la gestión de seguridad privada

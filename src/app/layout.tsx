@@ -11,11 +11,11 @@ const inter = Inter({
   variable: "--font-inter",
 });
 
-import { Syne } from "next/font/google";
-const syne = Syne({
+import { Plus_Jakarta_Sans } from "next/font/google";
+const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  variable: "--font-syne",
-  weight: ["700", "800"],
+  variable: "--font-plus-jakarta-sans",
+  weight: ["500", "700", "800"],
 });
 
 import { Space_Grotesk } from "next/font/google";
@@ -65,7 +65,7 @@ export default function RootLayout({
         <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192x192.png" />
       </head>
       <body
-        className={`${inter.variable} ${syne.variable} ${spaceGrotesk.variable} font-sans bg-zinc-50 text-zinc-900 h-full overflow-x-hidden antialiased`}
+        className={`${inter.variable} ${plusJakartaSans.variable} ${spaceGrotesk.variable} font-sans bg-zinc-50 text-zinc-900 h-full overflow-x-hidden antialiased`}
       >
         <AuthProvider>
           <ShiftProvider>
