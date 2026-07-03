@@ -18,7 +18,7 @@
   --color-success: #10b981;   /* Emerald 500 */
   
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-display: var(--font-syncopate), var(--font-sans);
+  --font-display: var(--font-syne), var(--font-sans);
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 
   --radius-sm: 8px;

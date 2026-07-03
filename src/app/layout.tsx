@@ -11,17 +11,18 @@ const inter = Inter({
   variable: "--font-inter",
 });
 
-import { Outfit } from "next/font/google";
-const outfit = Outfit({
+import { Syne } from "next/font/google";
+const syne = Syne({
   subsets: ["latin"],
-  variable: "--font-outfit",
+  variable: "--font-syne",
+  weight: ["700", "800"],
 });
 
-import { Syncopate } from "next/font/google";
-const syncopate = Syncopate({
+import { Space_Grotesk } from "next/font/google";
+const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
-  variable: "--font-syncopate",
-  weight: ["400", "700"],
+  variable: "--font-space-grotesk",
+  weight: ["400", "500", "700"],
 });
 
 export const metadata: Metadata = {
@@ -64,7 +65,7 @@ export default function RootLayout({
         <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192x192.png" />
       </head>
       <body
-        className={`${inter.variable} ${outfit.variable} ${syncopate.variable} font-sans bg-zinc-50 text-zinc-900 h-full overflow-x-hidden antialiased`}
+        className={`${inter.variable} ${syne.variable} ${spaceGrotesk.variable} font-sans bg-zinc-50 text-zinc-900 h-full overflow-x-hidden antialiased`}
       >
         <AuthProvider>
           <ShiftProvider>
