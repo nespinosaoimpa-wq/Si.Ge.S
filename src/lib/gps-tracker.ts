@@ -64,6 +64,13 @@ export class GPSTracker {
   private boundVisibilityHandler: () => void;
   private boundOnlineHandler: () => void;
 
+  // Kalman Filter GPS Smoothing State
+  private kalmanLat = 0;
+  private kalmanLng = 0;
+  private kalmanVariance = -1; // -1 = uninitialized
+  private kalmanLastTimestamp = 0;
+  private readonly Q_PROCESS_NOISE = 1.5; // Base process variance (meters^2 per second)
+
   constructor(
     shiftId: string,
     operatorId: string,
@@ -232,11 +239,58 @@ export class GPSTracker {
     }, 60000); // Every 60 seconds
   }
 
+  private applyKalmanFilter(measuredLat: number, measuredLng: number, accuracyMeters: number, speedMs: number, timestampMs: number) {
+    const measurementNoise = accuracyMeters * accuracyMeters;
+
+    if (this.kalmanVariance < 0) {
+      this.kalmanLat = measuredLat;
+      this.kalmanLng = measuredLng;
+      this.kalmanVariance = measurementNoise;
+      this.kalmanLastTimestamp = timestampMs;
+    } else {
+      const dt = Math.max((timestampMs - this.kalmanLastTimestamp) / 1000, 0.1);
+      this.kalmanLastTimestamp = timestampMs;
+
+      // Adjust process noise dynamically based on speed (more noise allowed at speed to allow faster updates)
+      const currentProcessNoise = speedMs > 1.0 ? this.Q_PROCESS_NOISE * (speedMs * speedMs) : this.Q_PROCESS_NOISE;
+      this.kalmanVariance += dt * currentProcessNoise;
+
+      const gain = this.kalmanVariance / (this.kalmanVariance + measurementNoise);
+      this.kalmanLat += gain * (measuredLat - this.kalmanLat);
+      this.kalmanLng += gain * (measuredLng - this.kalmanLng);
+      this.kalmanVariance = (1 - gain) * this.kalmanVariance;
+    }
+
+    return {
+      lat: this.kalmanLat,
+      lng: this.kalmanLng,
+      accuracy: Math.sqrt(this.kalmanVariance)
+    };
+  }
+
   private handlePosition(pos: GeolocationPosition) {
     const now = Date.now();
-    const speed = pos.coords.speed || 0;
-    const lat = pos.coords.latitude;
-    const lng = pos.coords.longitude;
+    const rawSpeed = pos.coords.speed || 0;
+    const rawAccuracy = pos.coords.accuracy || 30;
+
+    // Discard extremely noisy measurements (>120 meters accuracy) to prevent jumps
+    if (rawAccuracy > 120 && this.kalmanVariance !== -1) {
+      console.warn(`[SIGPAD GPS] Discarding highly inaccurate coordinate: ${rawAccuracy}m`);
+      return;
+    }
+
+    const filtered = this.applyKalmanFilter(
+      pos.coords.latitude,
+      pos.coords.longitude,
+      rawAccuracy,
+      rawSpeed,
+      now
+    );
+
+    const lat = filtered.lat;
+    const lng = filtered.lng;
+    const accuracy = filtered.accuracy;
+    const speed = rawSpeed;
 
     // 1. High-Frequency Distance-based logic (3m threshold for smooth Uber-like trace)
     if (this.highFrequencyMode && this.roundId) {
@@ -253,8 +307,8 @@ export class GPSTracker {
           round_id: this.roundId,
           latitude: lat,
           longitude: lng,
-          accuracy: pos.coords.accuracy,
-          speed: pos.coords.speed,
+          accuracy: accuracy,
+          speed: speed,
           heading: pos.coords.heading
         });
 
@@ -262,8 +316,8 @@ export class GPSTracker {
           this.onTracePoint({
             lat,
             lng,
-            accuracy: pos.coords.accuracy,
-            speed: pos.coords.speed,
+            accuracy: accuracy,
+            speed: speed,
             heading: pos.coords.heading,
             timestamp: new Date().toISOString(),
             totalDistance: this.accumulatedDistance
@@ -315,8 +369,8 @@ export class GPSTracker {
       const payload = {
         latitude: lat,
         longitude: lng,
-        accuracy: pos.coords.accuracy,
-        speed: pos.coords.speed,
+        accuracy: accuracy,
+        speed: speed,
         heading: pos.coords.heading,
         timestamp: pos.timestamp,
         isStationary,
