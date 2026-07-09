@@ -21,7 +21,7 @@ export function BottomSheet({
   isOpen,
   onClose,
   children,
-  snapPoints = [160, 420, window ? window.innerHeight * 0.85 : 700],
+  snapPoints = [160, 420, typeof window !== 'undefined' ? window.innerHeight * 0.85 : 700],
   defaultSnapIndex = 1,
   title,
   className,
