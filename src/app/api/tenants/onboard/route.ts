@@ -37,6 +37,7 @@ export async function POST(req: NextRequest) {
       countryCode = 'ar',
       taxId,
       phone,
+      planTier,
     } = body;
 
     if (!companyName || !adminEmail) {
@@ -46,6 +47,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const finalPlanTier = (!planTier || planTier === 'trial') ? 'professional' : planTier;
     const hasPasswordAndName = !!(adminPassword && adminFullName);
     let tenantId: string;
     let userId: string | null = null;
@@ -95,7 +97,7 @@ export async function POST(req: NextRequest) {
           p_admin_email: adminEmail.toLowerCase().trim(),
           p_admin_user_id: userId,
           p_country_code: countryCode,
-          p_plan_tier: 'trial',
+          p_plan_tier: finalPlanTier,
         }
       );
 
@@ -123,7 +125,7 @@ export async function POST(req: NextRequest) {
           p_admin_email: adminEmail.toLowerCase().trim(),
           p_admin_user_id: null, // El usuario no está registrado aún
           p_country_code: countryCode,
-          p_plan_tier: 'trial',
+          p_plan_tier: finalPlanTier,
         }
       );
 
