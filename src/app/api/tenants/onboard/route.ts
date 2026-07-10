@@ -117,6 +117,14 @@ export async function POST(req: NextRequest) {
       full_name: adminFullName,
     });
 
+    // 5.b Autorizar correo en whitelist (authorized_users) para compatibilidad absoluta
+    await supabaseAdmin.from('authorized_users').upsert({
+      email: adminEmail.toLowerCase().trim(),
+      role: 'gerente',
+      status: 'approved',
+      notes: `Creado desde onboarding de ${companyName}`
+    }, { onConflict: 'email' });
+
     // 6. Registrar evento de billing: trial_started
     await supabaseAdmin.from('billing_events').insert({
       tenant_id: tenantId,

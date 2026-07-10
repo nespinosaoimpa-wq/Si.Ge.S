@@ -7,7 +7,8 @@ import {
   Building2, Users, Shield, TrendingUp, Globe,
   CheckCircle2, XCircle, AlertTriangle, Clock,
   ChevronDown, Search, RefreshCw, Crown, Zap, Star,
-  Activity, ShieldAlert, DollarSign, ListFilter, Play
+  Activity, ShieldAlert, DollarSign, ListFilter, Play,
+  Plus, X, Mail, Key, Phone
 } from 'lucide-react';
 
 interface TenantMetric {
@@ -99,6 +100,73 @@ export default function SuperAdminDashboard() {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  // New Tenant Modal State
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [createLoading, setCreateLoading] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+  
+  // Form State
+  const [companyName, setCompanyName] = useState('');
+  const [taxId, setTaxId] = useState('');
+  const [phone, setPhone] = useState('');
+  const [countryCode, setCountryCode] = useState('ar');
+  const [planTier, setPlanTier] = useState('professional');
+  const [adminFullName, setAdminFullName] = useState('');
+  const [adminEmail, setAdminEmail] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
+
+  const handleCreateTenant = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreateError(null);
+    setCreateLoading(true);
+    try {
+      const res = await fetch('/api/tenants/onboard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyName,
+          taxId,
+          phone,
+          countryCode,
+          planTier,
+          adminFullName,
+          adminEmail,
+          adminPassword,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al crear la empresa.');
+      
+      // Si el plan no es trial, actualizar estado a active y asignar plan correcto
+      if (planTier !== 'trial') {
+        await fetch('/api/tenants', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tenantId: data.tenantId, plan_tier: planTier, billing_status: 'active' }),
+        });
+      }
+
+      // Reset form
+      setCompanyName('');
+      setTaxId('');
+      setPhone('');
+      setCountryCode('ar');
+      setPlanTier('professional');
+      setAdminFullName('');
+      setAdminEmail('');
+      setAdminPassword('');
+      
+      setIsCreateModalOpen(false);
+      fetchTenants();
+      fetchAuditLogs();
+      alert(`¡Empresa "${companyName}" y su Gerente administrativo creados con éxito!`);
+    } catch (err: any) {
+      setCreateError(err.message);
+    } finally {
+      setCreateLoading(false);
+    }
+  };
 
   const fetchTenants = useCallback(async () => {
     setLoading(true);
@@ -206,7 +274,14 @@ export default function SuperAdminDashboard() {
             </button>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-400 text-black transition-all shadow-md shadow-amber-500/10"
+            >
+              <Plus size={13} />
+              Crear Empresa
+            </button>
             <button
               onClick={handleRefresh}
               className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-white transition-colors"
@@ -518,6 +593,201 @@ export default function SuperAdminDashboard() {
                   )}
                 </div>
               </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* MODAL CREAR EMPRESA */}
+        <AnimatePresence>
+          {isCreateModalOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 backdrop-blur-md p-4"
+            >
+              <motion.div
+                initial={{ scale: 0.95, y: 10 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.95, y: 10 }}
+                className="bg-zinc-950 border border-zinc-800 rounded-3xl w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl p-6"
+              >
+                <div className="flex justify-between items-center mb-6 border-b border-zinc-900 pb-4">
+                  <div className="flex items-center gap-3">
+                    <Building2 className="text-amber-400" size={20} />
+                    <h2 className="text-base font-black text-white uppercase tracking-wider">Crear Nueva Empresa (SaaS)</h2>
+                  </div>
+                  <button
+                    onClick={() => setIsCreateModalOpen(false)}
+                    className="p-1.5 hover:bg-zinc-900 rounded-lg transition-colors text-zinc-500 hover:text-white"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+
+                {createError && (
+                  <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-xs font-semibold">
+                    {createError}
+                  </div>
+                )}
+
+                <form onSubmit={handleCreateTenant} className="space-y-4">
+                  {/* SECCIÓN 1: DATOS DE LA EMPRESA */}
+                  <div className="space-y-3">
+                    <h3 className="text-[10px] font-black text-amber-500 uppercase tracking-widest">1. Datos de la Empresa</h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-semibold text-zinc-400">Razón Social</label>
+                        <div className="relative">
+                          <Building2 size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+                          <input
+                            type="text"
+                            required
+                            placeholder="Ej: Seguridad Norte S.A."
+                            value={companyName}
+                            onChange={(e) => setCompanyName(e.target.value)}
+                            className="w-full h-10 rounded-xl border border-zinc-800 bg-zinc-900/60 text-white text-xs pl-9 pr-3 focus:border-zinc-600 focus:outline-none placeholder:text-zinc-600 transition-colors"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-semibold text-zinc-400">CUIT / ID Fiscal (Opcional)</label>
+                        <input
+                          type="text"
+                          placeholder="Ej: 30-12345678-9"
+                          value={taxId}
+                          onChange={(e) => setTaxId(e.target.value)}
+                          className="w-full h-10 rounded-xl border border-zinc-800 bg-zinc-900/60 text-white text-xs px-3 focus:border-zinc-600 focus:outline-none placeholder:text-zinc-600 transition-colors"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="space-y-1.5 col-span-2">
+                        <label className="text-[10px] font-semibold text-zinc-400">Teléfono</label>
+                        <div className="relative">
+                          <Phone size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+                          <input
+                            type="text"
+                            placeholder="Ej: +54 341 555-0000"
+                            value={phone}
+                            onChange={(e) => setPhone(e.target.value)}
+                            className="w-full h-10 rounded-xl border border-zinc-800 bg-zinc-900/60 text-white text-xs pl-9 pr-3 focus:border-zinc-600 focus:outline-none placeholder:text-zinc-600 transition-colors"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-semibold text-zinc-400">País</label>
+                        <select
+                          value={countryCode}
+                          onChange={(e) => setCountryCode(e.target.value)}
+                          className="w-full h-10 rounded-xl border border-zinc-800 bg-zinc-900/60 text-white text-xs px-3 focus:border-zinc-600 focus:outline-none transition-colors"
+                        >
+                          <option value="ar">🇦🇷 Argentina</option>
+                          <option value="mx">🇲🇽 México</option>
+                          <option value="cl">🇨🇱 Chile</option>
+                          <option value="co">🇨🇴 Colombia</option>
+                          <option value="uy">🇺🇾 Uruguay</option>
+                          <option value="br">🇧🇷 Brasil</option>
+                          <option value="pe">🇵🇪 Perú</option>
+                          <option value="us">🇺🇸 EE.UU.</option>
+                          <option value="es">🇪🇸 España</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-semibold text-zinc-400">Plan Inicial</label>
+                      <select
+                        value={planTier}
+                        onChange={(e) => setPlanTier(e.target.value)}
+                        className="w-full h-10 rounded-xl border border-zinc-800 bg-zinc-900/60 text-white text-xs px-3 focus:border-zinc-600 focus:outline-none transition-colors"
+                      >
+                        <option value="trial">Prueba Gratis (14 días)</option>
+                        <option value="starter">Starter (Suscripción Activa)</option>
+                        <option value="professional">Professional (Suscripción Activa)</option>
+                        <option value="enterprise">Enterprise (Suscripción Activa)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="h-px bg-zinc-900 my-2" />
+
+                  {/* SECCIÓN 2: DATOS DEL ADMINISTRADOR */}
+                  <div className="space-y-3">
+                    <h3 className="text-[10px] font-black text-amber-500 uppercase tracking-widest">2. Cuenta de Administrador (Gerente)</h3>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-semibold text-zinc-400">Nombre Completo del Gerente</label>
+                      <div className="relative">
+                        <Users size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+                        <input
+                          type="text"
+                          required
+                          placeholder="Ej: Juan Pérez"
+                          value={adminFullName}
+                          onChange={(e) => setAdminFullName(e.target.value)}
+                          className="w-full h-10 rounded-xl border border-zinc-800 bg-zinc-900/60 text-white text-xs pl-9 pr-3 focus:border-zinc-600 focus:outline-none placeholder:text-zinc-600 transition-colors"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-semibold text-zinc-400">Correo Electrónico</label>
+                        <div className="relative">
+                          <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+                          <input
+                            type="email"
+                            required
+                            placeholder="Ej: gerente@empresa.com"
+                            value={adminEmail}
+                            onChange={(e) => setAdminEmail(e.target.value)}
+                            className="w-full h-10 rounded-xl border border-zinc-800 bg-zinc-900/60 text-white text-xs pl-9 pr-3 focus:border-zinc-600 focus:outline-none placeholder:text-zinc-600 transition-colors"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-semibold text-zinc-400">Contraseña Temporal</label>
+                        <div className="relative">
+                          <Key size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+                          <input
+                            type="text"
+                            required
+                            placeholder="Mínimo 8 caracteres"
+                            value={adminPassword}
+                            onChange={(e) => setAdminPassword(e.target.value)}
+                            className="w-full h-10 rounded-xl border border-zinc-800 bg-zinc-900/60 text-white text-xs pl-9 pr-3 focus:border-zinc-600 focus:outline-none placeholder:text-zinc-600 transition-colors"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setIsCreateModalOpen(false)}
+                      className="flex-1 h-11 bg-zinc-900 hover:bg-zinc-850 text-white text-xs font-bold rounded-xl transition-all"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={createLoading}
+                      className="flex-1 h-11 bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2"
+                    >
+                      {createLoading ? (
+                        <>
+                          <span className="w-3.5 h-3.5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                          Creando...
+                        </>
+                      ) : (
+                        'Crear e Iniciar SaaS'
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
