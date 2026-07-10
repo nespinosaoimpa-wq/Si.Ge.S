@@ -27,7 +27,7 @@ export async function POST(request: Request) {
 
     const { data: resource } = await supabase
       .from('resources')
-      .select('id, name, role, email')
+      .select('id, name, role, email, tenant_id')
       .ilike('email', normalizedEmail)
       .limit(1)
       .maybeSingle();
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
       // Fallback: check authorized_users
       const { data: authUser } = await supabase
         .from('authorized_users')
-        .select('id, role')
+        .select('id, role, tenant_id')
         .ilike('email', normalizedEmail)
         .eq('status', 'approved')
         .limit(1)
@@ -48,7 +48,8 @@ export async function POST(request: Request) {
         resourceData = {
           id: authUser.id || 'GER-AUTO',
           name: fullName || 'Gerente Autorizado',
-          role: authUser.role || 'gerente'
+          role: authUser.role || 'gerente',
+          tenant_id: authUser.tenant_id
         };
       }
     }
@@ -110,6 +111,7 @@ export async function POST(request: Request) {
         email: normalizedEmail,
         full_name: finalName,
         role: finalRole,
+        tenant_id: resourceData.tenant_id,
         is_active: true
       }, { onConflict: 'id' });
 

@@ -39,71 +39,103 @@ export async function POST(req: NextRequest) {
       phone,
     } = body;
 
-    if (!companyName || !adminEmail || !adminPassword || !adminFullName) {
+    if (!companyName || !adminEmail) {
       return NextResponse.json(
-        { error: 'Faltan campos requeridos: companyName, adminEmail, adminPassword, adminFullName' },
+        { error: 'Faltan campos requeridos: companyName, adminEmail' },
         { status: 400 }
       );
     }
 
-    // 1. Crear usuario en Supabase Auth
-    const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email: adminEmail.toLowerCase().trim(),
-      password: adminPassword,
-      email_confirm: true,
-      user_metadata: {
-        full_name: adminFullName,
-        role: 'gerente',
-      },
-    });
+    const hasPasswordAndName = !!(adminPassword && adminFullName);
+    let tenantId: string;
+    let userId: string | null = null;
 
-    if (authError) {
-      console.error('[Onboard] Auth error:', authError);
-      return NextResponse.json({ error: authError.message }, { status: 400 });
-    }
-
-    const userId = authUser.user.id;
-
-    // 2. Crear entrada en public.users primero (sin tenant_id aún)
-    const { error: userInsertError } = await supabaseAdmin
-      .from('users')
-      .upsert({
-        id: userId,
+    if (hasPasswordAndName) {
+      // ── Flujo A: Registro Completo Directo (Autogestión) ──
+      const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
         email: adminEmail.toLowerCase().trim(),
-        role: 'gerente',
-        tenant_id: null,
+        password: adminPassword,
+        email_confirm: true,
+        user_metadata: {
+          full_name: adminFullName,
+          role: 'gerente',
+        },
       });
 
-    if (userInsertError) {
-      console.error('[Onboard] User insert error:', userInsertError);
-      // Cleanup: remove auth user
-      await supabaseAdmin.auth.admin.deleteUser(userId);
-      return NextResponse.json({ error: userInsertError.message }, { status: 500 });
-    }
-
-    // 3. Llamar a la función SQL atómica para crear tenant + vincular admin
-    const slug = slugify(companyName);
-    const { data: tenantData, error: tenantError } = await supabaseAdmin.rpc(
-      'create_tenant_with_admin',
-      {
-        p_tenant_name: companyName,
-        p_tenant_slug: slug,
-        p_admin_email: adminEmail.toLowerCase().trim(),
-        p_admin_user_id: userId,
-        p_country_code: countryCode,
-        p_plan_tier: 'trial',
+      if (authError) {
+        console.error('[Onboard] Auth error:', authError);
+        return NextResponse.json({ error: authError.message }, { status: 400 });
       }
-    );
 
-    if (tenantError) {
-      console.error('[Onboard] Tenant creation error:', tenantError);
-      await supabaseAdmin.auth.admin.deleteUser(userId);
-      return NextResponse.json({ error: tenantError.message }, { status: 500 });
+      userId = authUser.user.id;
+
+      // Crear entrada en public.users primero (sin tenant_id aún)
+      const { error: userInsertError } = await supabaseAdmin
+        .from('users')
+        .upsert({
+          id: userId,
+          email: adminEmail.toLowerCase().trim(),
+          role: 'gerente',
+          tenant_id: null,
+        });
+
+      if (userInsertError) {
+        console.error('[Onboard] User insert error:', userInsertError);
+        await supabaseAdmin.auth.admin.deleteUser(userId);
+        return NextResponse.json({ error: userInsertError.message }, { status: 500 });
+      }
+
+      // Llamar a la función SQL atómica para crear tenant + vincular admin
+      const slug = slugify(companyName);
+      const { data: tenantData, error: tenantError } = await supabaseAdmin.rpc(
+        'create_tenant_with_admin',
+        {
+          p_tenant_name: companyName,
+          p_tenant_slug: slug,
+          p_admin_email: adminEmail.toLowerCase().trim(),
+          p_admin_user_id: userId,
+          p_country_code: countryCode,
+          p_plan_tier: 'trial',
+        }
+      );
+
+      if (tenantError) {
+        console.error('[Onboard] Tenant creation error:', tenantError);
+        await supabaseAdmin.auth.admin.deleteUser(userId);
+        return NextResponse.json({ error: tenantError.message }, { status: 500 });
+      }
+
+      tenantId = tenantData as string;
+
+      // Crear perfil del admin
+      await supabaseAdmin.from('profiles').upsert({
+        id: userId,
+        full_name: adminFullName,
+      });
+    } else {
+      // ── Flujo B: Invitación / Pre-alta (Super Admin) ──
+      const slug = slugify(companyName);
+      const { data: tenantData, error: tenantError } = await supabaseAdmin.rpc(
+        'create_tenant_with_admin',
+        {
+          p_tenant_name: companyName,
+          p_tenant_slug: slug,
+          p_admin_email: adminEmail.toLowerCase().trim(),
+          p_admin_user_id: null, // El usuario no está registrado aún
+          p_country_code: countryCode,
+          p_plan_tier: 'trial',
+        }
+      );
+
+      if (tenantError) {
+        console.error('[Onboard] Tenant creation error (Invite Flow):', tenantError);
+        return NextResponse.json({ error: tenantError.message }, { status: 500 });
+      }
+
+      tenantId = tenantData as string;
     }
 
-    const tenantId = tenantData as string;
-
-    // 4. Actualizar datos adicionales del tenant (tax_id, phone)
+    // ── Configuración Común Posterior (Tenants, Whitelist y Facturación) ──
     if (taxId || phone) {
       await supabaseAdmin
         .from('tenants')
@@ -111,21 +143,18 @@ export async function POST(req: NextRequest) {
         .eq('id', tenantId);
     }
 
-    // 5. Crear perfil del admin
-    await supabaseAdmin.from('profiles').upsert({
-      id: userId,
-      full_name: adminFullName,
-    });
-
-    // 5.b Autorizar correo en whitelist (authorized_users) para compatibilidad absoluta
+    // Autorizar correo en whitelist (authorized_users) con su tenant_id
     await supabaseAdmin.from('authorized_users').upsert({
       email: adminEmail.toLowerCase().trim(),
       role: 'gerente',
       status: 'approved',
-      notes: `Creado desde onboarding de ${companyName}`
+      tenant_id: tenantId,
+      notes: hasPasswordAndName 
+        ? `Creado desde onboarding de ${companyName}`
+        : `Pre-creado por Super Admin. Pendiente registro del gerente.`
     }, { onConflict: 'email' });
 
-    // 6. Registrar evento de billing: trial_started
+    // Registrar evento de billing: trial_started
     await supabaseAdmin.from('billing_events').insert({
       tenant_id: tenantId,
       event_type: 'trial_started',
@@ -136,7 +165,10 @@ export async function POST(req: NextRequest) {
       success: true,
       tenantId,
       userId,
-      message: `¡Empresa "${companyName}" registrada con éxito! Trial de 14 días activo.`,
+      inviteLink: `https://sigpad.com.ar/register?email=${encodeURIComponent(adminEmail.toLowerCase().trim())}`,
+      message: hasPasswordAndName
+        ? `¡Empresa "${companyName}" registrada con éxito!`
+        : `¡Empresa "${companyName}" pre-registrada! Envía el link al gerente para que elija su contraseña.`,
     });
   } catch (err: any) {
     console.error('[Onboard] Unexpected error:', err);
