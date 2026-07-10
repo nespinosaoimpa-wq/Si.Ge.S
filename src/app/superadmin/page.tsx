@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { cn } from '@/lib/utils';
 import {
   Building2, Users, Shield, TrendingUp, Globe,
   CheckCircle2, XCircle, AlertTriangle, Clock,
