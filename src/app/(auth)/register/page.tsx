@@ -169,42 +169,44 @@ export default function RegisterPage() {
           </form>
 
           {/* MODO PRUEBA / SETUP RÁPIDO */}
-          <div className="pt-6 border-t border-zinc-850 mt-6">
-            <p className="text-[8px] text-center text-zinc-500 font-black uppercase tracking-[0.3em] mb-4">
-              — PROTOCOLO DE PRUEBA —
-            </p>
-            <button
-              type="button"
-              onClick={async () => {
-                if (!email) {
-                  alert("Por favor, ingresá primero el correo real que querés usar.");
-                  return;
-                }
-                setLoading(true);
-                try {
-                  const res = await fetch('/api/auth/setup-manager', { 
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, name: fullName || 'GERENTE SIGPAD' })
-                  });
-                  const data = await res.json();
-                  if (data.error) throw new Error(data.error);
-                  
-                  setRole('gerente');
-                  setPassword('gerente123'); // Sugerir una pass inicial, pero pueden cambiarla
-                  alert(`¡${email} habilitado como Gerente! Ya podés hacer clic en 'CREAR CUENTA'.`);
-                } catch (err: any) {
-                  alert("Error: " + err.message);
-                } finally {
-                  setLoading(false);
-                }
-              }}
-              className="w-full py-3 rounded-xl border border-zinc-800 bg-zinc-950/50 hover:bg-zinc-900 transition-all group flex flex-col items-center justify-center gap-1 text-white"
-            >
-              <span className="text-[10px] font-black uppercase tracking-tighter text-white">HABILITAR MI EMAIL COMO GERENTE</span>
-              <span className="text-[8px] text-zinc-500 font-medium">Usa el mail escrito arriba para darte de alta</span>
-            </button>
-          </div>
+          {(process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_DEMO_MODE === 'true') && (
+            <div className="pt-6 border-t border-zinc-850 mt-6">
+              <p className="text-[8px] text-center text-zinc-500 font-black uppercase tracking-[0.3em] mb-4">
+                — PROTOCOLO DE PRUEBA —
+              </p>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!email) {
+                    alert("Por favor, ingresá primero el correo real que querés usar.");
+                    return;
+                  }
+                  setLoading(true);
+                  try {
+                    const res = await fetch('/api/auth/setup-manager', { 
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ email, name: fullName || 'GERENTE SIGPAD' })
+                    });
+                    const data = await res.json();
+                    if (data.error) throw new Error(data.error);
+                    
+                    setRole('gerente');
+                    setPassword('gerente123'); // Sugerir una pass inicial, pero pueden cambiarla
+                    alert(`¡${email} habilitado como Gerente! Ya podés hacer clic en 'CREAR CUENTA'.`);
+                  } catch (err: any) {
+                    alert("Error: " + err.message);
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                className="w-full py-3 rounded-xl border border-zinc-800 bg-zinc-950/50 hover:bg-zinc-900 transition-all group flex flex-col items-center justify-center gap-1 text-white"
+              >
+                <span className="text-[10px] font-black uppercase tracking-tighter text-white">HABILITAR MI EMAIL COMO GERENTE</span>
+                <span className="text-[8px] text-zinc-500 font-medium">Usa el mail escrito arriba para darte de alta</span>
+              </button>
+            </div>
+          )}
         </CardContent>
       </Card>
     </motion.div>

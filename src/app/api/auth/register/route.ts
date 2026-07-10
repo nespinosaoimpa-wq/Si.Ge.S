@@ -59,15 +59,13 @@ export async function POST(request: Request) {
       }, { status: 403 });
     }
 
-    // 2. CHECK if user already exists in Supabase Auth
-    const { data: existingUsers } = await supabase.auth.admin.listUsers({ 
-      page: 1, 
-      perPage: 1 
-    });
-    
-    const existingUser = existingUsers?.users?.find(
-      (u: any) => u.email?.toLowerCase() === normalizedEmail
-    );
+    // 2. CHECK if user already exists in public.users table
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', normalizedEmail)
+      .limit(1)
+      .maybeSingle();
 
     if (existingUser) {
       return NextResponse.json({

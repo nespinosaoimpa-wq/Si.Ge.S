@@ -1,10 +1,10 @@
 import { isConfigured } from '@/lib/supabase';
 import { createServiceClient } from '@/lib/supabase-server';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     if (!isConfigured) {
       return NextResponse.json({
@@ -22,6 +22,26 @@ export async function GET() {
       });
     }
 
+    const userCookie = req.cookies.get('SIGPAD_user');
+    if (!userCookie) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+
+    let tenantId: string | null = null;
+    let isSuper = false;
+
+    try {
+      const user = JSON.parse(decodeURIComponent(userCookie.value));
+      tenantId = user?.tenant_id || user?.user_metadata?.tenant_id;
+      isSuper = user?.role === 'superadmin' || user?.user_metadata?.role === 'superadmin';
+    } catch {
+      return NextResponse.json({ error: 'Sesión inválida' }, { status: 401 });
+    }
+
+    if (!tenantId && !isSuper) {
+      return NextResponse.json({ error: 'Inquilino no especificado' }, { status: 400 });
+    }
+
     const supabase = createServiceClient();
 
     // Auto-generate alerts for unassigned shifts in the next 24 hours
@@ -29,22 +49,34 @@ export async function GET() {
       const now = new Date();
       const next24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
       
-      const { data: unassignedReqs } = await supabase
+      let unassignedQuery = supabase
         .from('shift_requirements')
         .select('id, objective_id, start_time, objectives:objective_id(name)')
         .eq('status', 'unassigned')
         .lte('start_time', next24h.toISOString())
         .gt('start_time', now.toISOString());
 
+      if (!isSuper && tenantId) {
+        unassignedQuery = unassignedQuery.eq('tenant_id', tenantId);
+      }
+
+      const { data: unassignedReqs } = await unassignedQuery;
+
       if (unassignedReqs && unassignedReqs.length > 0) {
         for (const req of unassignedReqs) {
-          const { data: existingAlarm } = await supabase
+          let alarmCheck = supabase
             .from('alarms')
             .select('id')
             .eq('objective_id', req.objective_id)
             .eq('alarm_type', 'cobertura_pendiente')
             .eq('status', 'active')
             .limit(1);
+
+          if (!isSuper && tenantId) {
+            alarmCheck = alarmCheck.eq('tenant_id', tenantId);
+          }
+
+          const { data: existingAlarm } = await alarmCheck;
 
           if (!existingAlarm || existingAlarm.length === 0) {
             const formattedTime = new Date(req.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -53,7 +85,8 @@ export async function GET() {
               objective_id: req.objective_id,
               alarm_type: 'cobertura_pendiente',
               message: `🚨 ALERTA COBERTURA: Falta asignar personal para el turno de las ${formattedTime} hs en ${req.objectives?.name || 'objetivo'}`,
-              status: 'active'
+              status: 'active',
+              tenant_id: tenantId // inject tenant ID for the alarm
             });
           }
         }
@@ -62,32 +95,51 @@ export async function GET() {
       console.error('[AUTO_ALERT_SCHEDULER_ERROR]', e);
     }
 
-    // Parallel fetch — using select('*') for objectives to avoid column name mismatches
+    // Set up parallel fetch queries
+    let objectivesQuery = supabase.from('objectives')
+      .select('*, assigned_personnel:resources!current_objective_id(*)')
+      .eq('is_active', true);
+
+    let resourcesQuery = supabase.from('resources')
+      .select('*')
+      .in('status', ['activo', 'active'])
+      .gte('last_gps_update', new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString());
+
+    let guardBookQuery = supabase.from('guard_book_entries')
+      .select('*')
+      .neq('status', 'resolved')
+      .neq('status', 'resuelto')
+      .neq('entry_type', 'fichaje')
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    let shiftsQuery = supabase.from('guard_shifts')
+      .select('id, checkin_time, operator_id, objective_id, status')
+      .is('checkout_time', null)
+      .order('checkin_time', { ascending: false });
+
+    let incidentsQuery = supabase.from('incidents')
+      .select('*')
+      .neq('status', 'resolved')
+      .neq('status', 'resuelto')
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    // Apply tenant filters if not superadmin
+    if (!isSuper && tenantId) {
+      objectivesQuery = objectivesQuery.eq('tenant_id', tenantId);
+      resourcesQuery = resourcesQuery.eq('tenant_id', tenantId);
+      guardBookQuery = guardBookQuery.eq('tenant_id', tenantId);
+      shiftsQuery = shiftsQuery.eq('tenant_id', tenantId);
+      incidentsQuery = incidentsQuery.eq('tenant_id', tenantId);
+    }
+
     const [objectivesRes, resourcesRes, incidentsRes, shiftsRes, rawIncidentsRes] = await Promise.all([
-      supabase.from('objectives')
-        .select('*, assigned_personnel:resources!current_objective_id(*)')
-        .eq('is_active', true),
-      supabase.from('resources')
-        .select('*')
-        .in('status', ['activo', 'active'])
-        .gte('last_gps_update', new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString()),
-      supabase.from('guard_book_entries')
-        .select('*')
-        .neq('status', 'resolved')
-        .neq('status', 'resuelto')
-        .neq('entry_type', 'fichaje')
-        .order('created_at', { ascending: false })
-        .limit(10),
-      supabase.from('guard_shifts')
-        .select('id, checkin_time, operator_id, objective_id, status')
-        .is('checkout_time', null)
-        .order('checkin_time', { ascending: false }),
-      supabase.from('incidents')
-        .select('*')
-        .neq('status', 'resolved')
-        .neq('status', 'resuelto')
-        .order('created_at', { ascending: false })
-        .limit(10)
+      objectivesQuery,
+      resourcesQuery,
+      guardBookQuery,
+      shiftsQuery,
+      incidentsQuery
     ]);
 
     if (objectivesRes.error) console.error("❌ Objectives fetch error:", JSON.stringify(objectivesRes.error));

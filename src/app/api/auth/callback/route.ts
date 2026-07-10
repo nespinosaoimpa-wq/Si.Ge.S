@@ -43,27 +43,48 @@ export async function GET(request: Request) {
 
       const resource = resources?.[0];
 
+      let userDataToSync = null;
+
       if (resource) {
         const dbRole = (resource.role || '').toLowerCase();
         const role = dbRole.includes('gerente') ? 'gerente' : 'operador';
-        
-        const response = NextResponse.redirect(`${origin}/${role}`);
+        userDataToSync = {
+          email,
+          role,
+          id: resource.id,
+          name: resource.name
+        };
+      } else {
+        // Fallback: check authorized_users whitelist
+        const { data: authUsers } = await supabase
+          .from('authorized_users')
+          .select('id, role')
+          .ilike('email', email)
+          .eq('status', 'approved')
+          .limit(1);
+          
+        const authUser = authUsers?.[0];
+        if (authUser) {
+          userDataToSync = {
+            email,
+            role: authUser.role || 'gerente',
+            id: authUser.id || 'GER-AUTO',
+            name: 'Usuario Autorizado'
+          };
+        }
+      }
+
+      if (userDataToSync) {
+        const response = NextResponse.redirect(`${origin}/${userDataToSync.role}`);
         
         // Tactical bypass for middleware and session persistence
         response.cookies.set('SIGPAD_bypass_active', 'true', { path: '/', maxAge: 3600 });
         
-        response.cookies.set('SIGPAD_auth_temp', JSON.stringify({
-          email,
-          role: role,
-          id: resource.id,
-          name: resource.name
-        }), { path: '/', maxAge: 60 });
+        response.cookies.set('SIGPAD_auth_temp', JSON.stringify(userDataToSync), { path: '/', maxAge: 60 });
         
         return response;
       } else {
-        // If not a resource, maybe they are a manager? 
-        // For now, if not found in resources, we strictly allow nothing or 
-        // allow them only if they are the admin (we can check a managers table if it exists)
+        // If not a resource and not whitelisted, reject
         return NextResponse.redirect(`${origin}/login?error=Email no autorizado como personal.`);
       }
     }
