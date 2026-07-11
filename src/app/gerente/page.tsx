@@ -780,6 +780,18 @@ export default function AdminDashboard() {
             onIncidentResolve={handleResolveIncident}
             isRelocating={isRelocating}
             onRelocationEnd={handleRelocateObjective}
+            searchQuery={searchQuery}
+            onAddObjectiveAtCoords={(lat, lng) => {
+              setIsAddingPoint(true);
+              setLastClickedCoords({ lat, lng });
+              setNewObjective({
+                name: '',
+                address: searchQuery || '',
+                client_name: '',
+                contact_phone: ''
+              });
+              setPreviewCoords(null);
+            }}
           />
         </div>
         

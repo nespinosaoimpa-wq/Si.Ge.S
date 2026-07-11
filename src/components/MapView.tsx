@@ -5,7 +5,7 @@ import Map, { Marker, Popup, Source, Layer, NavigationControl, FullscreenControl
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { cn } from '@/lib/utils';
 import { reverseGeocode } from '@/lib/geocoding';
-import { Shield, MapPin, AlertTriangle, User, Target, Layers, Car, UserX, DoorOpen, Package, Lightbulb, Zap, Navigation, Clock, Building2, CheckCircle2 } from 'lucide-react';
+import { Shield, MapPin, AlertTriangle, User, Target, Layers, Car, UserX, DoorOpen, Package, Lightbulb, Zap, Navigation, Clock, Building2, CheckCircle2, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fetchNearbyEmergencyServices, getPOIStyle, NearbyPOI } from '@/lib/nearby-services';
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || ('pk.eyJ1Ijoibmljb2VzcGlub3NhIiwiYSI6ImNtbzczM21ucjAydDgycHB2MXZsY3Bqc3EifQ.' + 'LeVW1Jfcr6Rr6q1o15Kkzw');
@@ -89,6 +89,8 @@ interface MapViewProps {
   isRelocating?: boolean;
   onRelocationEnd?: (id: string, lat: number, lng: number) => void;
   onDraftDragEnd?: (lat: number, lng: number) => void;
+  onAddObjectiveAtCoords?: (lat: number, lng: number) => void;
+  searchQuery?: string;
 }
 
 const googleSatelliteStyle = {
@@ -399,6 +401,8 @@ export default function MapView({
   isRelocating = false,
   onRelocationEnd,
   onDraftDragEnd,
+  onAddObjectiveAtCoords,
+  searchQuery = "",
 }: MapViewProps) {
   const mapRef = useRef<MapRef>(null);
   const isValidCoords = (lat: any, lng: any) => lat !== undefined && lng !== undefined && !isNaN(Number(lat)) && !isNaN(Number(lng)) && Number(lat) !== 0 && Number(lng) !== 0;
@@ -1028,16 +1032,48 @@ export default function MapView({
         
         {/* Search Preview Drop-Pin */}
         {previewCoords && (
-          <Marker latitude={previewCoords.lat} longitude={previewCoords.lng} anchor="bottom" rotationAlignment="viewport" pitchAlignment="viewport">
-             <div className="relative flex flex-col items-center">
-                <div className="bg-[#0F4C5C] p-2 rounded-full shadow-[0_0_20px_rgba(15, 76, 92,0.6)] border-2 border-white animate-bounce">
-                   <MapPin size={24} className="text-black" />
-                </div>
-                <div className="mt-1 px-2 py-0.5 bg-black/80 backdrop-blur-sm rounded text-[8px] font-black text-white uppercase tracking-[0.2em] border border-[#0F4C5C]/30">
-                  Punto de Interés
-                </div>
-             </div>
-          </Marker>
+          <>
+            <Marker latitude={previewCoords.lat} longitude={previewCoords.lng} anchor="bottom" rotationAlignment="viewport" pitchAlignment="viewport">
+               <div className="relative flex flex-col items-center">
+                  <div className="bg-emerald-500 p-2 rounded-full shadow-[0_0_20px_rgba(16,185,129,0.6)] border-2 border-white animate-bounce">
+                     <MapPin size={24} className="text-white" />
+                  </div>
+                  <div className="mt-1 px-2 py-0.5 bg-black/80 backdrop-blur-sm rounded text-[8px] font-black text-white uppercase tracking-[0.2em] border border-emerald-500/30">
+                    Punto Encontrado
+                  </div>
+               </div>
+            </Marker>
+            <Popup
+              latitude={previewCoords.lat}
+              longitude={previewCoords.lng}
+              closeButton={false}
+              offset={35}
+              anchor="top"
+              maxWidth="320px"
+            >
+              <div className="p-3 text-zinc-950 max-w-[280px]">
+                <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mb-1.5 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping" />
+                  📍 Dirección Encontrada
+                </p>
+                <p className="text-xs font-semibold text-zinc-800 leading-snug">
+                  {searchQuery || "Dirección geocodificada"}
+                </p>
+                
+                {onAddObjectiveAtCoords && (
+                  <div className="mt-3.5 pt-3 border-t border-zinc-100">
+                    <button
+                      onClick={() => onAddObjectiveAtCoords(previewCoords.lat, previewCoords.lng)}
+                      className="w-full py-2 bg-zinc-900 hover:bg-black text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                    >
+                      <Plus size={12} className="text-emerald-400" />
+                      Agregar al Mapa
+                    </button>
+                  </div>
+                )}
+              </div>
+            </Popup>
+          </>
         )}
 
         {selectedObjective && (
