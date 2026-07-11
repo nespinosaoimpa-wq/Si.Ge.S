@@ -103,21 +103,29 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Error inesperado al crear usuario' }, { status: 500 });
     }
 
-    // 4. CREATE PROFILE in users table
-    const { error: profileError } = await supabase
+    // 4. CREATE PROFILE in users table & profiles table
+    const { error: userInsertError } = await supabase
       .from('users')
       .upsert({
         id: authData.user.id,
         email: normalizedEmail,
-        full_name: finalName,
         role: finalRole,
-        tenant_id: resourceData.tenant_id,
-        is_active: true
+        tenant_id: resourceData.tenant_id
+      }, { onConflict: 'id' });
+
+    if (userInsertError) {
+      console.warn('[REGISTER] public.users upsert warning:', userInsertError);
+    }
+
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .upsert({
+        id: authData.user.id,
+        full_name: finalName
       }, { onConflict: 'id' });
 
     if (profileError) {
-      console.warn('[REGISTER] Profile upsert warning:', profileError);
-      // Non-fatal — the user was created in Auth, they can still login
+      console.warn('[REGISTER] public.profiles upsert warning:', profileError);
     }
 
     // 5. LINK resource to Auth user
