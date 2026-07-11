@@ -16,13 +16,27 @@ export async function GET(request: NextRequest) {
 
     let tenantId: string | null = null;
     let isSuper = false;
+    let userId: string | null = null;
 
     try {
       const user = JSON.parse(decodeURIComponent(userCookie.value));
+      userId = user?.id;
       tenantId = user?.tenant_id || user?.user_metadata?.tenant_id;
       isSuper = user?.role === 'superadmin' || user?.user_metadata?.role === 'superadmin';
     } catch {
       return NextResponse.json({ error: 'Sesión inválida' }, { status: 401 });
+    }
+
+    if (!tenantId && !isSuper && userId) {
+      const supabase = createServiceClient();
+      const { data: dbUser } = await supabase
+        .from('users')
+        .select('tenant_id')
+        .eq('id', userId)
+        .maybeSingle();
+      if (dbUser?.tenant_id) {
+        tenantId = dbUser.tenant_id;
+      }
     }
 
     if (!tenantId && !isSuper) {
@@ -154,13 +168,27 @@ export async function POST(request: NextRequest) {
 
     let tenantId: string | null = null;
     let isSuper = false;
+    let userId: string | null = null;
 
     try {
       const user = JSON.parse(decodeURIComponent(userCookie.value));
+      userId = user?.id;
       tenantId = user?.tenant_id || user?.user_metadata?.tenant_id;
       isSuper = user?.role === 'superadmin' || user?.user_metadata?.role === 'superadmin';
     } catch {
       return NextResponse.json({ error: 'Sesión inválida' }, { status: 401 });
+    }
+
+    if (!tenantId && !isSuper && userId) {
+      const supabase = createServiceClient();
+      const { data: dbUser } = await supabase
+        .from('users')
+        .select('tenant_id')
+        .eq('id', userId)
+        .maybeSingle();
+      if (dbUser?.tenant_id) {
+        tenantId = dbUser.tenant_id;
+      }
     }
 
     const body = await request.json();
