@@ -43,7 +43,7 @@ export async function GET(request: Request) {
 
       const resource = resources?.[0];
 
-      let userDataToSync = null;
+      let userDataToSync: any = null;
 
       if (resource) {
         const dbRole = (resource.role || '').toLowerCase();
