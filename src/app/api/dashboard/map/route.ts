@@ -1,6 +1,7 @@
 import { isConfigured } from '@/lib/supabase';
 import { createServiceClient } from '@/lib/supabase-server';
 import { NextRequest, NextResponse } from 'next/server';
+import { serverCache } from '@/lib/cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,6 +41,18 @@ export async function GET(req: NextRequest) {
 
     if (!tenantId && !isSuper) {
       return NextResponse.json({ error: 'Inquilino no especificado' }, { status: 400 });
+    }
+
+    // 🚀 CACHE CHECK: Prevent DB hit if requested within 4 seconds
+    const cacheKey = `dashboard-map-${isSuper ? 'super' : tenantId}`;
+    const cachedData = serverCache.get(cacheKey, 4000); // 4 seconds TTL
+    if (cachedData) {
+      return NextResponse.json(cachedData, {
+        headers: {
+          'X-Cache': 'HIT',
+          'Cache-Control': 'public, max-age=4'
+        }
+      });
     }
 
     const supabase = createServiceClient();
@@ -164,13 +177,19 @@ export async function GET(req: NextRequest) {
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, 15);
 
-    return NextResponse.json({
+    const responseData = {
       objectives: objectivesRes.data || [],
       resources: resourcesRes.data || [],
       recentIncidents,
       activeShifts: shiftsRes.data || []
-    }, {
+    };
+
+    // Save to serverCache
+    serverCache.set(cacheKey, responseData);
+
+    return NextResponse.json(responseData, {
       headers: {
+        'X-Cache': 'MISS',
         'Cache-Control': 'no-store, max-age=0, must-revalidate',
         'Pragma': 'no-cache',
         'Expires': '0'

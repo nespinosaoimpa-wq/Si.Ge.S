@@ -1,6 +1,7 @@
 import { isConfigured } from '@/lib/supabase';
 import { createServiceClient } from '@/lib/supabase-server';
 import { NextRequest, NextResponse } from 'next/server';
+import { serverCache } from '@/lib/cache';
 
 export async function GET(req: NextRequest) {
   try {
@@ -33,6 +34,18 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Inquilino no especificado' }, { status: 400 });
     }
 
+    // 🚀 CACHE CHECK: Prevent DB hit if requested within 5 seconds
+    const cacheKey = `objectives-${isSuper ? 'super' : tenantId}`;
+    const cachedData = serverCache.get(cacheKey, 5000); // 5 seconds TTL
+    if (cachedData) {
+      return NextResponse.json(cachedData, {
+        headers: {
+          'X-Cache': 'HIT',
+          'Cache-Control': 'public, max-age=5'
+        }
+      });
+    }
+
     const supabase = createServiceClient();
     let query = supabase
       .from('objectives')
@@ -46,7 +59,16 @@ export async function GET(req: NextRequest) {
     const { data, error } = await query.order('name');
 
     if (error) throw error;
-    return NextResponse.json(data);
+
+    // Save to serverCache
+    serverCache.set(cacheKey, data);
+
+    return NextResponse.json(data, {
+      headers: {
+        'X-Cache': 'MISS',
+        'Cache-Control': 'no-store, max-age=0, must-revalidate'
+      }
+    });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
@@ -105,6 +127,13 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (error) throw error;
+
+    // 🚀 CACHE INVALIDATION: Clean cached objectives & map for this tenant
+    serverCache.invalidate(`objectives-${targetTenantId}`);
+    serverCache.invalidate(`dashboard-map-${targetTenantId}`);
+    serverCache.invalidate(`objectives-super`);
+    serverCache.invalidate(`dashboard-map-super`);
+
     return NextResponse.json(data);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
