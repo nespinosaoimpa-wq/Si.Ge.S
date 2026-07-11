@@ -381,8 +381,8 @@ export default function MapView({
   incidents = [],
   checkpoints = [],
   onCheckpointDragEnd,
-  center = [-31.6350, -60.7000],
-  zoom = 13,
+  center = [-31.6230, -60.6950],
+  zoom = 12,
   className = "",
   pathData = [],
   onObjectiveSelect,
@@ -406,8 +406,8 @@ export default function MapView({
   const [is3D, setIs3D] = useState(true); 
   const [showStyles, setShowStyles] = useState(false);
   const [viewState, setViewState] = useState(() => {
-    const lat = center && center[0] && !isNaN(Number(center[0])) ? Number(center[0]) : -31.6350;
-    const lng = center && center[1] && !isNaN(Number(center[1])) ? Number(center[1]) : -60.7000;
+    const lat = center && center[0] && !isNaN(Number(center[0])) ? Number(center[0]) : -31.6230;
+    const lng = center && center[1] && !isNaN(Number(center[1])) ? Number(center[1]) : -60.6950;
     return {
       latitude: lat,
       longitude: lng,
@@ -481,6 +481,55 @@ export default function MapView({
       }));
     }
   }, [center?.[0], center?.[1]]);
+
+  // Auto-fit bounds on initial load to show all objectives of the tenant
+  const fittedRef = useRef(false);
+  useEffect(() => {
+    if (objectives && objectives.length > 0 && !fittedRef.current && mapRef.current) {
+      const validObjs = objectives.filter(obj => isValidCoords(obj.latitude, obj.longitude));
+      if (validObjs.length === 0) return;
+
+      fittedRef.current = true;
+
+      if (validObjs.length === 1) {
+        // Center on the single objective with moderate zoom
+        setViewState(prev => ({
+          ...prev,
+          latitude: validObjs[0].latitude,
+          longitude: validObjs[0].longitude,
+          zoom: 14.5,
+          pitch: 45,
+          bearing: -10,
+          transitionDuration: 1500
+        }));
+      } else {
+        // Fit bounds to all objectives
+        let minLat = Infinity, maxLat = -Infinity;
+        let minLng = Infinity, maxLng = -Infinity;
+        validObjs.forEach(obj => {
+          if (obj.latitude < minLat) minLat = obj.latitude;
+          if (obj.latitude > maxLat) maxLat = obj.latitude;
+          if (obj.longitude < minLng) minLng = obj.longitude;
+          if (obj.longitude > maxLng) maxLng = obj.longitude;
+        });
+
+        try {
+          const map = mapRef.current.getMap();
+          map.fitBounds(
+            [[minLng, minLat], [maxLng, maxLat]],
+            { 
+              padding: isMobile 
+                ? { top: 120, bottom: 50, left: 50, right: 50 } 
+                : { top: 120, bottom: 120, left: 380, right: 120 }, // Extra left padding for desktop sidebar
+              duration: 1800 
+            }
+          );
+        } catch (e) {
+          console.error("Error fitting map bounds:", e);
+        }
+      }
+    }
+  }, [objectives, isMobile]);
   
   const getAvatarUrl = (item: any) => {
     if (!item) return null;
