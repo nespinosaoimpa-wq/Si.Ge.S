@@ -60,8 +60,8 @@ export default function LoginPage() {
         localStorage.setItem('SIGPAD_user', JSON.stringify(userData));
         
         // Write the cookie so the middleware and server APIs can read the user session
-        document.cookie = `SIGPAD_user=${encodeURIComponent(JSON.stringify(userData))}; path=/; max-age=3600`;
-        document.cookie = "SIGPAD_bypass_active=true; path=/; max-age=3600";
+        document.cookie = `SIGPAD_user=${encodeURIComponent(JSON.stringify(userData))}; path=/; max-age=2592000`;
+        document.cookie = "SIGPAD_bypass_active=true; path=/; max-age=2592000";
         router.push(`/${result.user.role}`);
       }
     } catch (err: any) {

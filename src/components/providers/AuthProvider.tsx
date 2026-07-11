@@ -78,8 +78,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           }
         };
         localStorage.setItem('SIGPAD_user', JSON.stringify(userData));
-        document.cookie = `SIGPAD_user=${encodeURIComponent(JSON.stringify(userData))}; path=/; max-age=3600`;
-        document.cookie = "SIGPAD_bypass_active=true; path=/; max-age=3600";
+        document.cookie = `SIGPAD_user=${encodeURIComponent(JSON.stringify(userData))}; path=/; max-age=2592000`;
+        document.cookie = "SIGPAD_bypass_active=true; path=/; max-age=2592000";
       } else {
         // 🛡️ TACTICAL FALLBACK: Check localStorage for Master PIN sessions
         const localUserJson = localStorage.getItem('SIGPAD_user');
@@ -88,7 +88,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             const localUser = JSON.parse(localUserJson);
             setUser(localUser);
             setRole(localUser.role || localUser.user_metadata?.role || null);
-            console.log('[Tactical Auth] Session restored from physical storage.');
+            console.log('[Tactical Auth] Session restored from physical storage. Syncing cookies...');
+            document.cookie = `SIGPAD_user=${encodeURIComponent(JSON.stringify(localUser))}; path=/; max-age=2592000`;
+            document.cookie = "SIGPAD_bypass_active=true; path=/; max-age=2592000";
           } catch (e) {
             console.error('[Tactical Auth] Failed to restore session:', e);
           }
@@ -126,8 +128,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           }
         };
         localStorage.setItem('SIGPAD_user', JSON.stringify(userData));
-        document.cookie = `SIGPAD_user=${encodeURIComponent(JSON.stringify(userData))}; path=/; max-age=3600`;
-        document.cookie = "SIGPAD_bypass_active=true; path=/; max-age=3600";
+        document.cookie = `SIGPAD_user=${encodeURIComponent(JSON.stringify(userData))}; path=/; max-age=2592000`;
+        document.cookie = "SIGPAD_bypass_active=true; path=/; max-age=2592000";
       } else {
         // Fallback for tactical sessions during state changes
         const localUserJson = localStorage.getItem('SIGPAD_user');
@@ -135,6 +137,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
            const localUser = JSON.parse(localUserJson);
            setUser(localUser);
            setRole(localUser.role || localUser.user_metadata?.role || null);
+           document.cookie = `SIGPAD_user=${encodeURIComponent(JSON.stringify(localUser))}; path=/; max-age=2592000`;
+           document.cookie = "SIGPAD_bypass_active=true; path=/; max-age=2592000";
         } else {
            setRole(null);
         }
