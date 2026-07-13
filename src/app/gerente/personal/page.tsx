@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
-import { useTenant } from '@/hooks/useTenant';
+import { useAuth } from '@/components/providers/AuthProvider';
 
 // --- CONSTANTS & UTILS OUTSIDE ---
 
@@ -45,7 +45,10 @@ function Field({ label, ...props }: any) {
 // --- MAIN COMPONENT ---
 
 export default function PersonalPage() {
-  const { tenantId } = useTenant();
+  const { user, role } = useAuth();
+  const tenantId = (user as any)?.tenant_id || user?.user_metadata?.tenant_id || null;
+  const isSuper = role === 'superadmin' || (user as any)?.role === 'superadmin';
+
   const [activeTab, setActiveTab] = useState<'staff' | 'access'>('staff');
   const [searchTerm, setSearchTerm] = useState('');
   const [staff, setStaff] = useState<any[]>([]);
@@ -86,7 +89,7 @@ export default function PersonalPage() {
   };
 
   const fetchAuthorizedUsers = async () => {
-    if (!tenantId) return;
+    if (!tenantId && !isSuper) return;
     try {
       const data = await api.authorizedUsers.list();
       setAuthorizedUsers(data || []);
@@ -100,16 +103,16 @@ export default function PersonalPage() {
   }, []);
 
   useEffect(() => {
-    if (tenantId) {
+    if (tenantId || isSuper) {
       fetchAuthorizedUsers();
     }
-  }, [tenantId]);
+  }, [tenantId, isSuper]);
 
   const handleAddAuthUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newAuthEmail) return;
-    if (!tenantId) {
-      setAuthStatusMsg({ type: 'error', text: 'Error: No se pudo verificar la empresa del gerente (cargando).' });
+    if (!tenantId && !isSuper) {
+      setAuthStatusMsg({ type: 'error', text: 'Error: No se pudo verificar la empresa del gerente.' });
       return;
     }
     setAuthSaving(true);
