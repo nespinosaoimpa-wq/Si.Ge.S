@@ -88,13 +88,7 @@ export default function PersonalPage() {
   const fetchAuthorizedUsers = async () => {
     if (!tenantId) return;
     try {
-      const { data, error } = await supabase
-        .from('authorized_users')
-        .select('*')
-        .eq('tenant_id', tenantId)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
+      const data = await api.authorizedUsers.list();
       setAuthorizedUsers(data || []);
     } catch (err: any) {
       console.error('Error fetching authorized users:', err);
@@ -130,25 +124,19 @@ export default function PersonalPage() {
     }
 
     try {
-      const { error } = await supabase
-        .from('authorized_users')
-        .insert({
-          email: emailNormalized,
-          role: newAuthRole,
-          status: 'approved',
-          tenant_id: tenantId,
-          approved_at: new Date().toISOString(),
-        });
-
-      if (error) throw error;
+      await api.authorizedUsers.create({
+        email: emailNormalized,
+        role: newAuthRole,
+        status: 'approved'
+      });
 
       setNewAuthEmail('');
       setIsAuthModalOpen(false);
       fetchAuthorizedUsers();
     } catch (err: any) {
       console.error('Error adding user:', err);
-      let errorMsg = 'Error al autorizar';
-      if (err.message?.includes('duplicate key') || err.code === '23505') {
+      let errorMsg = err.message || 'Error al autorizar';
+      if (err.message?.includes('duplicate key') || err.message?.includes('ya se encuentra')) {
         errorMsg = 'El correo ya se encuentra autorizado.';
       }
       setAuthStatusMsg({ type: 'error', text: errorMsg });
@@ -164,12 +152,7 @@ export default function PersonalPage() {
     setAuthorizedUsers(prev => prev.map(u => u.id === id ? { ...u, status: newStatus, approved_at: approvedAt } : u));
 
     try {
-      const { error } = await supabase
-        .from('authorized_users')
-        .update({ status: newStatus, approved_at: approvedAt })
-        .eq('id', id);
-
-      if (error) throw error;
+      await api.authorizedUsers.update(id, newStatus);
     } catch (err: any) {
       alert('Error: ' + err.message);
       fetchAuthorizedUsers();
@@ -182,12 +165,7 @@ export default function PersonalPage() {
     setAuthorizedUsers(prev => prev.filter(u => u.id !== id));
 
     try {
-      const { error } = await supabase
-        .from('authorized_users')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
+      await api.authorizedUsers.delete(id);
     } catch (err: any) {
       alert('Error: ' + err.message);
       fetchAuthorizedUsers();

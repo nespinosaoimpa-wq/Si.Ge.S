@@ -52,6 +52,12 @@ export const api = {
     update: (id: string, data: any) => apiFetch(`employees/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
     list: () => apiFetch('employees'),
   },
+  authorizedUsers: {
+    list: () => apiFetch('authorized-users'),
+    create: (data: any) => apiFetch('authorized-users', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, status: string) => apiFetch(`authorized-users/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+    delete: (id: string) => apiFetch(`authorized-users/${id}`, { method: 'DELETE' }),
+  },
   objectives: {
     create: (data: any) => apiFetch('objectives', { method: 'POST', body: JSON.stringify(data) }),
     list: () => apiFetch('objectives'),
