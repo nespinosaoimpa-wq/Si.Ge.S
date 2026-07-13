@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
+import { useTenant } from '@/hooks/useTenant';
 
 // --- CONSTANTS & UTILS OUTSIDE ---
 
@@ -44,6 +45,7 @@ function Field({ label, ...props }: any) {
 // --- MAIN COMPONENT ---
 
 export default function PersonalPage() {
+  const { tenantId } = useTenant();
   const [activeTab, setActiveTab] = useState<'staff' | 'access'>('staff');
   const [searchTerm, setSearchTerm] = useState('');
   const [staff, setStaff] = useState<any[]>([]);
@@ -84,10 +86,12 @@ export default function PersonalPage() {
   };
 
   const fetchAuthorizedUsers = async () => {
+    if (!tenantId) return;
     try {
       const { data, error } = await supabase
         .from('authorized_users')
         .select('*')
+        .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -99,12 +103,21 @@ export default function PersonalPage() {
 
   useEffect(() => {
     fetchStaff();
-    fetchAuthorizedUsers();
   }, []);
+
+  useEffect(() => {
+    if (tenantId) {
+      fetchAuthorizedUsers();
+    }
+  }, [tenantId]);
 
   const handleAddAuthUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newAuthEmail) return;
+    if (!tenantId) {
+      setAuthStatusMsg({ type: 'error', text: 'Error: No se pudo verificar la empresa del gerente (cargando).' });
+      return;
+    }
     setAuthSaving(true);
     setAuthStatusMsg(null);
 
@@ -123,6 +136,7 @@ export default function PersonalPage() {
           email: emailNormalized,
           role: newAuthRole,
           status: 'approved',
+          tenant_id: tenantId,
           approved_at: new Date().toISOString(),
         });
 
