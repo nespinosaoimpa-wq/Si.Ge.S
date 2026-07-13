@@ -983,7 +983,7 @@ export default function MapView({
               key={`obj-${obj.id}`}
               latitude={Number(obj.latitude)}
               longitude={Number(obj.longitude)}
-              anchor="bottom"
+              anchor="center"
               rotationAlignment="viewport"
               pitchAlignment="viewport"
               draggable={isRelocating && isSelected}
@@ -1012,7 +1012,7 @@ export default function MapView({
             rotationAlignment="viewport"
             pitchAlignment="viewport"
             onDragEnd={(e) => onDraftDragEnd && onDraftDragEnd(e.lngLat.lat, e.lngLat.lng)}
-            anchor="bottom"
+            anchor="center"
           >
             <div className="relative flex flex-col items-center group cursor-grab active:cursor-grabbing">
               {isPickerMode && (
@@ -1033,7 +1033,7 @@ export default function MapView({
         {/* Search Preview Drop-Pin */}
         {previewCoords && (
           <>
-            <Marker latitude={previewCoords.lat} longitude={previewCoords.lng} anchor="bottom" rotationAlignment="viewport" pitchAlignment="viewport">
+            <Marker latitude={previewCoords.lat} longitude={previewCoords.lng} anchor="center" rotationAlignment="viewport" pitchAlignment="viewport">
                <div className="relative flex flex-col items-center">
                   <div className="bg-emerald-500 p-2 rounded-full shadow-[0_0_20px_rgba(16,185,129,0.6)] border-2 border-white animate-bounce">
                      <MapPin size={24} className="text-white" />
