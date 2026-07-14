@@ -46,8 +46,44 @@ function Field({ label, ...props }: any) {
 
 export default function PersonalPage() {
   const { user, role } = useAuth();
-  const tenantId = (user as any)?.tenant_id || user?.user_metadata?.tenant_id || null;
+  const [resolvedTenantId, setResolvedTenantId] = useState<string | null>(null);
   const isSuper = role === 'superadmin' || (user as any)?.role === 'superadmin';
+
+  useEffect(() => {
+    const getTenant = async () => {
+      const tid = (user as any)?.tenant_id || user?.user_metadata?.tenant_id || null;
+      if (tid) {
+        setResolvedTenantId(tid);
+        return;
+      }
+      
+      // Fallback: lookup directly in the database users table
+      if (user?.id) {
+        try {
+          const { data } = await supabase
+            .from('users')
+            .select('tenant_id')
+            .eq('id', user.id)
+            .single();
+          if (data?.tenant_id) {
+            setResolvedTenantId(data.tenant_id);
+            
+            // Self-healing: cache the tenant_id to local session storage and cookie
+            const localUserJson = localStorage.getItem('SIGPAD_user');
+            if (localUserJson) {
+              const localUser = JSON.parse(localUserJson);
+              localUser.tenant_id = data.tenant_id;
+              localStorage.setItem('SIGPAD_user', JSON.stringify(localUser));
+              document.cookie = `SIGPAD_user=${encodeURIComponent(JSON.stringify(localUser))}; path=/; max-age=2592000`;
+            }
+          }
+        } catch (err) {
+          console.error('[Fallback Tenant] Failed to resolve:', err);
+        }
+      }
+    };
+    getTenant();
+  }, [user]);
 
   const [activeTab, setActiveTab] = useState<'staff' | 'access'>('staff');
   const [searchTerm, setSearchTerm] = useState('');
@@ -89,7 +125,7 @@ export default function PersonalPage() {
   };
 
   const fetchAuthorizedUsers = async () => {
-    if (!tenantId && !isSuper) return;
+    if (!resolvedTenantId && !isSuper) return;
     try {
       const data = await api.authorizedUsers.list();
       setAuthorizedUsers(data || []);
@@ -103,15 +139,15 @@ export default function PersonalPage() {
   }, []);
 
   useEffect(() => {
-    if (tenantId || isSuper) {
+    if (resolvedTenantId || isSuper) {
       fetchAuthorizedUsers();
     }
-  }, [tenantId, isSuper]);
+  }, [resolvedTenantId, isSuper]);
 
   const handleAddAuthUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newAuthEmail) return;
-    if (!tenantId && !isSuper) {
+    if (!resolvedTenantId && !isSuper) {
       setAuthStatusMsg({ type: 'error', text: 'Error: No se pudo verificar la empresa del gerente.' });
       return;
     }
