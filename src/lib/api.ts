@@ -43,6 +43,7 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
 export const api = {
   auth: {
     login: (credentials: any) => apiFetch('auth/login', { method: 'POST', body: JSON.stringify(credentials) }),
+    session: () => apiFetch('auth/session'),
   },
   dashboard: {
     getMapData: () => apiFetch('dashboard/map'),

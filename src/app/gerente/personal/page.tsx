@@ -57,28 +57,24 @@ export default function PersonalPage() {
         return;
       }
       
-      // Fallback: lookup directly in the database users table
+      // Fallback: request from the secure server-side session API
       if (user?.id) {
         try {
-          const { data } = await supabase
-            .from('users')
-            .select('tenant_id')
-            .eq('id', user.id)
-            .single();
-          if (data?.tenant_id) {
-            setResolvedTenantId(data.tenant_id);
+          const dbUser = await api.auth.session();
+          if (dbUser?.tenant_id) {
+            setResolvedTenantId(dbUser.tenant_id);
             
             // Self-healing: cache the tenant_id to local session storage and cookie
             const localUserJson = localStorage.getItem('SIGPAD_user');
             if (localUserJson) {
               const localUser = JSON.parse(localUserJson);
-              localUser.tenant_id = data.tenant_id;
+              localUser.tenant_id = dbUser.tenant_id;
               localStorage.setItem('SIGPAD_user', JSON.stringify(localUser));
               document.cookie = `SIGPAD_user=${encodeURIComponent(JSON.stringify(localUser))}; path=/; max-age=2592000`;
             }
           }
         } catch (err) {
-          console.error('[Fallback Tenant] Failed to resolve:', err);
+          console.error('[Fallback Tenant API] Failed to resolve:', err);
         }
       }
     };
