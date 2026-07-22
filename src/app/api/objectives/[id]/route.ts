@@ -38,10 +38,10 @@ export async function DELETE(
     // Soft delete: set is_active to false
     const { data, error } = await supabase
       .from('objectives')
-      .update({ is_active: false, status: 'Inactivo' })
+      .update({ is_active: false })
       .eq('id', id)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
     

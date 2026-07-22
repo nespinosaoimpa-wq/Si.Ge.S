@@ -66,8 +66,35 @@ export async function GET(request: NextRequest) {
         .lte('created_at', `${date}T23:59:59.999Z`);
     }
 
-    const { data, error } = await query;
-    if (error) throw error;
+    let { data, error } = await query;
+    
+    if (error && (error.message.includes('relationship') || error.message.includes('operator_id'))) {
+      console.warn('[GUARD_BOOK_GET] operator_id relationship missing, falling back to resource_id join');
+      
+      let fallbackQuery = supabase
+        .from('guard_book_entries')
+        .select(`
+          *,
+          resources:resource_id ( id, name, avatar_url, role ),
+          objectives:objective_id ( id, name, address )
+        `)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (!isSuper && tenantId) fallbackQuery = fallbackQuery.eq('tenant_id', tenantId);
+      if (objectiveId) fallbackQuery = fallbackQuery.eq('objective_id', objectiveId);
+      if (date) {
+        fallbackQuery = fallbackQuery
+          .gte('created_at', `${date}T00:00:00.000Z`)
+          .lte('created_at', `${date}T23:59:59.999Z`);
+      }
+
+      const fallbackResult = await fallbackQuery;
+      if (fallbackResult.error) throw fallbackResult.error;
+      data = fallbackResult.data;
+    } else if (error) {
+      throw error;
+    }
 
     const entries = data || [];
 
