@@ -1,0 +1,15 @@
+name: Keep Supabase Alive
+
+on:
+  schedule:
+    # Runs every 2 days at 06:00 UTC
+    - cron: '0 6 */2 * *'
+  workflow_dispatch:
+
+jobs:
+  ping-supabase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Keep-Alive API Endpoint
+        run: |
+          curl -s -X GET "https://sigpad.vercel.app/api/keep-alive" || echo "Ping completed"
