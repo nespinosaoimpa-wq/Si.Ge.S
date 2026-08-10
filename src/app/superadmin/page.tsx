@@ -8,7 +8,7 @@ import {
   CheckCircle2, XCircle, AlertTriangle, Clock,
   ChevronDown, Search, RefreshCw, Crown, Zap, Star,
   Activity, ShieldAlert, DollarSign, ListFilter, Play,
-  Plus, X, Mail, Key, Phone, Copy, Check
+  Plus, X, Mail, Key, Phone, Copy, Check, Trash2
 } from 'lucide-react';
 
 interface TenantMetric {
@@ -222,6 +222,26 @@ export default function SuperAdminDashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tenantId, ...updates }),
       });
+      await fetchTenants();
+      await fetchAuditLogs();
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const deleteTenant = async (tenantId: string, tenantName: string) => {
+    if (!confirm(`¿Estás seguro de ELIMINAR permanentemente la empresa "${tenantName}"?\nEsta acción borrará sus objetivos, turnos y personal asociado.`)) {
+      return;
+    }
+    setActionLoading(tenantId);
+    try {
+      const res = await fetch(`/api/tenants?tenantId=${tenantId}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        alert(`Error al eliminar: ${data.error || 'No se pudo eliminar la empresa'}`);
+      }
       await fetchTenants();
       await fetchAuditLogs();
     } finally {
@@ -450,6 +470,14 @@ export default function SuperAdminDashboard() {
                                       Reactivar
                                     </button>
                                   )}
+                                  <button
+                                    onClick={() => deleteTenant(tenant.tenant_id, tenant.tenant_name)}
+                                    disabled={isLoading}
+                                    className="p-1.5 rounded-xl bg-zinc-800 hover:bg-red-950/60 text-zinc-400 hover:text-red-400 border border-zinc-700 hover:border-red-800 transition-all disabled:opacity-50"
+                                    title="Eliminar Empresa Permanentemente"
+                                  >
+                                    <Trash2 size={13} />
+                                  </button>
                                 </div>
                               </td>
                             </tr>
