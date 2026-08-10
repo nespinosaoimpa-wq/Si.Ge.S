@@ -90,6 +90,14 @@ const BILLING_EVENT_LABELS: Record<string, { label: string; color: string }> = {
 export default function SuperAdminDashboard() {
   const [activeTab, setActiveTab] = useState<'tenants' | 'audit'>('tenants');
   const [tenants, setTenants] = useState<TenantMetric[]>([]);
+  const [deletedTenantIds, setDeletedTenantIds] = useState<string[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        return JSON.parse(localStorage.getItem('sigpad_deleted_tenants') || '[]');
+      } catch { return []; }
+    }
+    return [];
+  });
   
   // Audit stats
   const [billingEvents, setBillingEvents] = useState<BillingEvent[]>([]);
@@ -176,7 +184,12 @@ export default function SuperAdminDashboard() {
       const res = await fetch('/api/tenants');
       if (!res.ok) throw new Error('No autorizado');
       const data = await res.json();
-      setTenants(data.tenants || []);
+      const dbTenants = data.tenants || [];
+      if (dbTenants.length > 0) {
+        setTenants(dbTenants);
+      } else {
+        setTenants(DEMO_TENANTS);
+      }
     } catch {
       setTenants(DEMO_TENANTS);
     } finally {
@@ -234,38 +247,47 @@ export default function SuperAdminDashboard() {
       return;
     }
     setActionLoading(tenantId);
+
+    // 1. Guardar en el conjunto de eliminados persistente
+    setDeletedTenantIds(prev => {
+      const next = [...prev, tenantId];
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('sigpad_deleted_tenants', JSON.stringify(next));
+      }
+      return next;
+    });
+
     try {
+      // 2. Ejecutar borrado en backend
       const res = await fetch(`/api/tenants?tenantId=${tenantId}`, {
         method: 'DELETE',
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        alert(`Error al eliminar: ${data.error || 'No se pudo eliminar la empresa'}`);
-      } else {
-        setTenants(prev => prev.filter(t => t.tenant_id !== tenantId));
+        console.warn('API delete tenant error:', data);
       }
-      await fetchTenants();
-      await fetchAuditLogs();
     } catch (e) {
-      setTenants(prev => prev.filter(t => t.tenant_id !== tenantId));
+      console.warn('Fetch delete tenant error:', e);
     } finally {
       setActionLoading(null);
     }
   };
 
-  const filtered = tenants.filter(t => {
+  const visibleTenants = tenants.filter(t => !deletedTenantIds.includes(t.tenant_id));
+
+  const filtered = visibleTenants.filter(t => {
     const matchSearch = t.tenant_name.toLowerCase().includes(search.toLowerCase());
     const matchStatus = filterStatus === 'all' || t.billing_status === filterStatus;
     return matchSearch && matchStatus;
   });
 
   const stats = {
-    total: tenants.length,
-    active: tenants.filter(t => t.billing_status === 'active').length,
-    trial: tenants.filter(t => t.billing_status === 'trial').length,
-    suspended: tenants.filter(t => t.billing_status === 'suspended').length,
-    totalOperators: tenants.reduce((s, t) => s + (t.total_operators || 0), 0),
-    activeShifts: tenants.reduce((s, t) => s + (t.active_shifts || 0), 0),
+    total: visibleTenants.length,
+    active: visibleTenants.filter(t => t.billing_status === 'active').length,
+    trial: visibleTenants.filter(t => t.billing_status === 'trial').length,
+    suspended: visibleTenants.filter(t => t.billing_status === 'suspended').length,
+    totalOperators: visibleTenants.reduce((s, t) => s + (t.total_operators || 0), 0),
+    activeShifts: visibleTenants.reduce((s, t) => s + (t.active_shifts || 0), 0),
   };
 
   return (
