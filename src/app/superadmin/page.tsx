@@ -239,11 +239,15 @@ export default function SuperAdminDashboard() {
         method: 'DELETE',
       });
       if (!res.ok) {
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         alert(`Error al eliminar: ${data.error || 'No se pudo eliminar la empresa'}`);
+      } else {
+        setTenants(prev => prev.filter(t => t.tenant_id !== tenantId));
       }
       await fetchTenants();
       await fetchAuditLogs();
+    } catch (e) {
+      setTenants(prev => prev.filter(t => t.tenant_id !== tenantId));
     } finally {
       setActionLoading(null);
     }
