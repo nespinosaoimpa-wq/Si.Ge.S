@@ -38,7 +38,8 @@ export async function POST(request: Request) {
             role: 'superadmin', 
             id: managerRes?.id || 'S-701', 
             name: managerRes?.name || 'Nico Espinosa (Dueño)',
-            tenant_id: null // El dueño de la plataforma no está atado a un único tenant
+            company_name: 'Matriz SIGPAD OS (Global)',
+            tenant_id: null
           },
           session: { access_token: 'platform-owner-token' } 
         });
@@ -56,7 +57,8 @@ export async function POST(request: Request) {
           email: lowerEmail, 
           role: 'superadmin', 
           id: 'super-admin-master', 
-          name: 'Dueño de Plataforma (Master)' 
+          name: 'Dueño de Plataforma (Master)',
+          company_name: 'Matriz SIGPAD OS (Global)'
         },
         session: { access_token: 'superadmin-master-token' } 
       });
@@ -78,6 +80,12 @@ export async function POST(request: Request) {
           if (resource) {
             const dbRole = (resource.role || '').toLowerCase();
             const effectiveRole = requestedRole || (dbRole.includes('gerente') ? 'gerente' : 'operador');
+
+            let companyName = null;
+            if (resource.tenant_id) {
+              const { data: tenant } = await adminSupabase.from('tenants').select('name').eq('id', resource.tenant_id).maybeSingle();
+              if (tenant?.name) companyName = tenant.name;
+            }
             
             console.log(`[AUTH] Master PIN Login Success for ${lowerEmail} as ${effectiveRole}`);
 
@@ -87,6 +95,7 @@ export async function POST(request: Request) {
                 role: effectiveRole, 
                 id: resource.id, 
                 name: resource.name,
+                company_name: companyName || 'Empresa de Seguridad',
                 tenant_id: resource.tenant_id
               },
               session: { access_token: 'master-pin-token' } 
@@ -96,7 +105,7 @@ export async function POST(request: Request) {
       }
 
       return NextResponse.json({ 
-        user: { email: lowerEmail, role: requestedRole || 'gerente', id: 'demo-user', name: 'Usuario Demo' },
+        user: { email: lowerEmail, role: requestedRole || 'gerente', id: 'demo-user', name: 'Usuario Demo', company_name: 'Empresa Demo' },
         session: { access_token: 'master-pin-fallback' } 
       });
     }
@@ -118,7 +127,6 @@ export async function POST(request: Request) {
     if (error) {
       console.warn(`[AUTH] Primary Supabase Auth failed for ${lowerEmail}: ${error.message}. Checking auto-recovery...`);
       
-      // Check if user is whitelisted in resources or authorized_users
       const { data: resource } = await adminSupabase
         .from('resources')
         .select('id, name, role, tenant_id')
@@ -139,7 +147,6 @@ export async function POST(request: Request) {
         const userName = resource?.name || 'Usuario SIGPAD';
         const tenantId = resource?.tenant_id || authUser?.tenant_id || null;
 
-        // Auto-provision or update password in auth.users
         try {
           const { data: existingAuthUsers } = await adminSupabase.auth.admin.listUsers();
           const existingAuth = existingAuthUsers?.users?.find(u => u.email?.toLowerCase() === lowerEmail);
@@ -176,7 +183,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 401 });
     }
 
-    // Fetch the role from users table or metadata
+    // Fetch the role and tenant company name from DB
     const { data: profile } = await supabase
       .from('users')
       .select('role, tenant_id')
@@ -184,6 +191,15 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     const role = requestedRole === 'superadmin' ? 'superadmin' : (profile?.role || data.user.user_metadata?.role || 'operador');
+    const tenantId = profile?.tenant_id || data.user.user_metadata?.tenant_id || null;
+
+    let companyName = data.user.user_metadata?.company_name || null;
+    if (tenantId && !companyName) {
+      try {
+        const { data: tenant } = await adminSupabase.from('tenants').select('name').eq('id', tenantId).maybeSingle();
+        if (tenant?.name) companyName = tenant.name;
+      } catch {}
+    }
 
     // AUTO-LINKING: Link Auth user to Resource record
     try {
@@ -210,7 +226,8 @@ export async function POST(request: Request) {
       user: {
         ...data.user,
         role: role,
-        tenant_id: profile?.tenant_id || data.user.user_metadata?.tenant_id || null
+        tenant_id: tenantId,
+        company_name: companyName || 'Empresa de Seguridad'
       }, 
       session: data.session 
     });

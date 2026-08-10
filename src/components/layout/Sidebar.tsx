@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   MapPin, Users, Settings, LogOut, Shield,
   ClipboardList, Home, User, BookOpen,
-  CheckCircle2, Package, Calculator, Download
+  CheckCircle2, Package, Calculator, Download, Building2
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -136,8 +136,11 @@ export function Sidebar() {
                   <p className="text-[13px] font-semibold text-white truncate leading-tight">
                     {user.user_metadata?.full_name || user.email?.split('@')[0] || 'Usuario'}
                   </p>
-                  <p className="text-[11px] text-primary/80 font-medium mt-0.5">
-                    {role === 'gerente' ? 'Administración' : 'Operativo'}
+                  <p className="text-[11px] text-amber-400 font-bold mt-0.5 flex items-center gap-1 truncate">
+                    <Building2 size={11} className="shrink-0 text-amber-400" />
+                    <span className="truncate">
+                      {(user as any)?.company_name || user?.user_metadata?.company_name || (role === 'superadmin' ? 'Matriz SIGPAD' : 'Empresa de Seguridad')}
+                    </span>
                   </p>
                 </div>
                 <button

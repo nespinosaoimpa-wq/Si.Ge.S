@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
-import { Bell } from 'lucide-react';
+import { Bell, Building2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { SIGPADIcon } from '@/components/ui/SIGPADLogo';
@@ -39,8 +39,14 @@ export function AppHeader() {
           <SIGPADIcon className="w-24 h-8 text-[#0F4C5C]" />
         </div>
 
-        {/* Desktop: page title */}
-        <div className="hidden lg:block">
+        {/* Desktop: page title + Company Badge */}
+        <div className="hidden lg:flex items-center gap-3">
+          <div className="flex items-center gap-1.5 px-3 py-1 bg-zinc-900 text-amber-400 border border-zinc-800 rounded-xl">
+            <Building2 size={13} className="shrink-0 text-amber-400" />
+            <span className="text-xs font-bold truncate max-w-[220px]">
+              {(user as any)?.company_name || user?.user_metadata?.company_name || (role === 'superadmin' ? 'Matriz SIGPAD OS' : 'Empresa de Seguridad')}
+            </span>
+          </div>
           <p className="text-[13px] text-gray-500 font-normal">
             {mounted ? time.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }) : ''}
           </p>
