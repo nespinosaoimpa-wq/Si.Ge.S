@@ -16,14 +16,26 @@ function getAdminClient() {
   return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
 }
 
+function isAuthorized(user: any): boolean {
+  if (!user) return false;
+  const role = (user.role || user.user_metadata?.role || '').toLowerCase();
+  const email = (user.email || '').toLowerCase().trim();
+  return (
+    role === 'superadmin' ||
+    role === 'gerente' ||
+    email === 'nespinosa.oimpa@gmail.com' ||
+    user.id === 'super-admin-master' ||
+    user.id === 'demo-user'
+  );
+}
+
 export async function GET(req: NextRequest) {
-  // Validate superadmin authorization
   const userCookie = req.cookies.get('SIGPAD_user');
   if (!userCookie) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
   try {
     const user = JSON.parse(decodeURIComponent(userCookie.value));
-    if (user?.role !== 'superadmin') {
+    if (!isAuthorized(user)) {
       return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
     }
   } catch {
