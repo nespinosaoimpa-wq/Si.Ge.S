@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { isConfigured } from '@/lib/supabase';
-import { geocodeForward } from '@/lib/geocoding';
+import { geocodeForward, searchAddresses, searchBoxRetrieve } from '@/lib/geocoding';
 
 export default function ObjetivosPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -26,6 +26,49 @@ export default function ObjetivosPage() {
   const [newObjective, setNewObjective] = useState({
     id: '', name: '', address: '', client_name: '', contact_phone: '', status: 'Activo'
   });
+
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [selectedCoords, setSelectedCoords] = useState<{lat: number, lng: number} | null>(null);
+
+  const handleAddressChange = async (val: string) => {
+    setNewObjective(prev => ({ ...prev, address: val }));
+    setSelectedCoords(null);
+    
+    if (val.length < 3) {
+      setSuggestions([]);
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const results = await searchAddresses(val);
+      setSuggestions(results);
+    } catch (err) {
+      console.error("Error fetching suggestions:", err);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleSelectSuggestion = async (sug: any) => {
+    let displayName = sug.displayName;
+    let lat = sug.lat;
+    let lng = sug.lng;
+
+    if (sug.mapbox_id) {
+      const details = await searchBoxRetrieve(sug.mapbox_id);
+      if (details) {
+        lat = details.lat;
+        lng = details.lng;
+        displayName = details.displayName;
+      }
+    }
+
+    setNewObjective(prev => ({ ...prev, address: displayName }));
+    setSelectedCoords({ lat, lng });
+    setSuggestions([]);
+  };
 
   const fetchObjectives = async () => {
     try {
@@ -64,14 +107,19 @@ export default function ObjetivosPage() {
       
       // Automatic Geocoding
       let coords = { latitude: -31.6107, longitude: -60.6973 }; // Default SIGPAD
-      try {
-        const results = await geocodeForward(objectiveData.address);
-        if (results.length > 0) {
-          coords.latitude = results[0].lat;
-          coords.longitude = results[0].lng;
+      if (selectedCoords) {
+        coords.latitude = selectedCoords.lat;
+        coords.longitude = selectedCoords.lng;
+      } else {
+        try {
+          const results = await geocodeForward(objectiveData.address);
+          if (results.length > 0) {
+            coords.latitude = results[0].lat;
+            coords.longitude = results[0].lng;
+          }
+        } catch (gErr) {
+          console.warn("Geocoding failed, using default", gErr);
         }
-      } catch (gErr) {
-        console.warn("Geocoding failed, using default", gErr);
       }
 
       await api.objectives.create({
@@ -80,6 +128,7 @@ export default function ObjetivosPage() {
       });
       setIsModalOpen(false);
       setNewObjective({ id: '', name: '', address: '', client_name: '', contact_phone: '', status: 'Activo' });
+      setSelectedCoords(null);
       fetchObjectives();
     } catch (err) {
       alert("Error al crear: " + (err as any).message);
@@ -268,10 +317,36 @@ export default function ObjetivosPage() {
                 <Input required placeholder="Ej: Banco Galicia" value={newObjective.client_name}
                   onChange={e => setNewObjective({...newObjective, client_name: e.target.value})} />
               </div>
-              <div className="space-y-1.5 sm:col-span-2">
+              <div className="space-y-1.5 sm:col-span-2 relative">
                 <label className="text-xs font-medium text-zinc-500 ml-0.5">Dirección física</label>
-                <Input required placeholder="Ej: Av. Alem 1234, SIGPAD" value={newObjective.address}
-                  onChange={e => setNewObjective({...newObjective, address: e.target.value})} />
+                <div className="relative">
+                  <Input 
+                    required 
+                    placeholder="Ej: Gorriti 4490, Santa Fe" 
+                    value={newObjective.address}
+                    onChange={e => handleAddressChange(e.target.value)} 
+                  />
+                  {isSearching && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center">
+                      <div className="w-4 h-4 border-2 border-zinc-200 border-t-zinc-800 rounded-full animate-spin" />
+                    </div>
+                  )}
+                </div>
+                {suggestions.length > 0 && (
+                  <div className="absolute left-0 right-0 top-[100%] mt-1 bg-white border border-zinc-200 rounded-2xl shadow-xl z-50 max-h-52 overflow-y-auto divide-y divide-zinc-100/60 p-1.5">
+                    {suggestions.map((sug, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => handleSelectSuggestion(sug)}
+                        className="w-full text-left px-3.5 py-2.5 text-xs text-zinc-700 hover:bg-zinc-50 rounded-xl hover:text-zinc-950 transition-colors font-medium flex items-center gap-2"
+                      >
+                        <MapPin size={14} className="text-[#0F4C5C] shrink-0" />
+                        <span className="truncate">{sug.displayName}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-zinc-500 ml-0.5">Teléfono directo</label>

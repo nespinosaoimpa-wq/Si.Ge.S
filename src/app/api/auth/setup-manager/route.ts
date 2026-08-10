@@ -2,6 +2,9 @@ import { createServiceClient } from '@/lib/supabase-server';
 import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
+  if (process.env.NODE_ENV === 'production' && process.env.SIGPAD_DEMO_MODE !== 'true') {
+    return NextResponse.json({ error: 'Endpoint deshabilitado en producción' }, { status: 403 });
+  }
   try {
     const supabase = createServiceClient();
     const body = await request.json().catch(() => ({}));

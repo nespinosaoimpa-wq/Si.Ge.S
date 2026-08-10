@@ -27,7 +27,7 @@ export async function POST(request: Request) {
 
     const { data: resource } = await supabase
       .from('resources')
-      .select('id, name, role, email')
+      .select('id, name, role, email, tenant_id')
       .ilike('email', normalizedEmail)
       .limit(1)
       .maybeSingle();
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
       // Fallback: check authorized_users
       const { data: authUser } = await supabase
         .from('authorized_users')
-        .select('id, role')
+        .select('id, role, tenant_id')
         .ilike('email', normalizedEmail)
         .eq('status', 'approved')
         .limit(1)
@@ -48,7 +48,8 @@ export async function POST(request: Request) {
         resourceData = {
           id: authUser.id || 'GER-AUTO',
           name: fullName || 'Gerente Autorizado',
-          role: authUser.role || 'gerente'
+          role: authUser.role || 'gerente',
+          tenant_id: authUser.tenant_id
         };
       }
     }
@@ -59,15 +60,13 @@ export async function POST(request: Request) {
       }, { status: 403 });
     }
 
-    // 2. CHECK if user already exists in Supabase Auth
-    const { data: existingUsers } = await supabase.auth.admin.listUsers({ 
-      page: 1, 
-      perPage: 1 
-    });
-    
-    const existingUser = existingUsers?.users?.find(
-      (u: any) => u.email?.toLowerCase() === normalizedEmail
-    );
+    // 2. CHECK if user already exists in public.users table
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', normalizedEmail)
+      .limit(1)
+      .maybeSingle();
 
     if (existingUser) {
       return NextResponse.json({
@@ -104,20 +103,29 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Error inesperado al crear usuario' }, { status: 500 });
     }
 
-    // 4. CREATE PROFILE in users table
-    const { error: profileError } = await supabase
+    // 4. CREATE PROFILE in users table & profiles table
+    const { error: userInsertError } = await supabase
       .from('users')
       .upsert({
         id: authData.user.id,
         email: normalizedEmail,
-        full_name: finalName,
         role: finalRole,
-        is_active: true
+        tenant_id: resourceData.tenant_id
+      }, { onConflict: 'id' });
+
+    if (userInsertError) {
+      console.warn('[REGISTER] public.users upsert warning:', userInsertError);
+    }
+
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .upsert({
+        id: authData.user.id,
+        full_name: finalName
       }, { onConflict: 'id' });
 
     if (profileError) {
-      console.warn('[REGISTER] Profile upsert warning:', profileError);
-      // Non-fatal — the user was created in Auth, they can still login
+      console.warn('[REGISTER] public.profiles upsert warning:', profileError);
     }
 
     // 5. LINK resource to Auth user

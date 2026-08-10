@@ -1,29 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * SIGPAD — Route Protection Middleware
+ * SIGPAD — Route Protection Middleware (Enterprise Edition)
  *
  * Protege las rutas de la plataforma verificando la sesión activa.
- * Los usuarios no autenticados son redirigidos a /login.
- * La validación de ROL se hace server-side para evitar acceso cruzado.
+ * Implementa aislamiento de roles (operador / gerente / superadmin).
+ * Añade headers de seguridad HTTP enterprise-grade.
  */
 
-// Rutas que requieren autenticación de operador/gerente
+// Rutas protegidas por rol
 const PROTECTED_ROUTES = ['/gerente', '/operador'];
-
-// Rutas que requieren sesión de cliente final
+const SUPERADMIN_ROUTES = ['/superadmin'];
 const CLIENT_ROUTES = ['/cliente'];
+const AUTH_ROUTES = ['/login', '/register', '/register-company', '/cliente-login'];
+const PUBLIC_ROUTES = ['/presupuesto', '/legal', '/', '/api', '/roles', '/nosotros'];
 
-// Rutas de autenticación (no redirigir si ya estás aquí)
-const AUTH_ROUTES = ['/login', '/register', '/cliente-login'];
+// Security headers para producción enterprise
+const SECURITY_HEADERS = {
+  'X-DNS-Prefetch-Control': 'on',
+  'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
+  'X-Frame-Options': 'SAMEORIGIN',
+  'X-Content-Type-Options': 'nosniff',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'camera=self, geolocation=self, microphone=self',
+  'X-XSS-Protection': '1; mode=block',
+};
 
-// Rutas públicas que nunca requieren auth
-const PUBLIC_ROUTES = ['/presupuesto', '/legal', '/', '/api', '/roles'];
+function addSecurityHeaders(response: NextResponse): NextResponse {
+  Object.entries(SECURITY_HEADERS).forEach(([key, value]) => {
+    response.headers.set(key, value);
+  });
+  return response;
+}
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // ── Dejar pasar rutas públicas y de API ──────────────────────────────
+  // ── Dejar pasar rutas estáticas y públicas ──────────────────
   if (
     PUBLIC_ROUTES.some((r) => pathname.startsWith(r)) ||
     AUTH_ROUTES.some((r) => pathname.startsWith(r)) ||
@@ -33,27 +46,55 @@ export function middleware(request: NextRequest) {
     pathname.startsWith('/sw.js') ||
     pathname.startsWith('/icons')
   ) {
-    return NextResponse.next();
+    return addSecurityHeaders(NextResponse.next());
   }
 
-  // ── Rutas protegidas del operador y gerente ──────────────────────────
+  // ── Super Admin Panel (rol superadmin requerido) ─────────────
+  if (SUPERADMIN_ROUTES.some((r) => pathname.startsWith(r))) {
+    const userCookie = request.cookies.get('SIGPAD_user');
+    if (!userCookie) {
+      const loginUrl = new URL('/login', request.url);
+      loginUrl.searchParams.set('redirect', pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+    try {
+      const user = JSON.parse(decodeURIComponent(userCookie.value));
+      const role = user?.role || user?.user_metadata?.role;
+      if (role !== 'superadmin') {
+        // No superadmin → redirigir a su panel correspondiente
+        return NextResponse.redirect(
+          new URL(role === 'operador' ? '/operador' : '/gerente', request.url)
+        );
+      }
+    } catch {
+      const loginUrl = new URL('/login', request.url);
+      return NextResponse.redirect(loginUrl);
+    }
+    return addSecurityHeaders(NextResponse.next());
+  }
+
+  // ── Rutas del operador y gerente ─────────────────────────────
   if (PROTECTED_ROUTES.some((r) => pathname.startsWith(r))) {
     const sessionCookie = request.cookies.get('SIGPAD_bypass_active');
     const userCookie = request.cookies.get('SIGPAD_user');
 
-    // Si no hay sesión, redirigir al login
     if (!sessionCookie && !userCookie) {
       const loginUrl = new URL('/login', request.url);
       loginUrl.searchParams.set('redirect', pathname);
       return NextResponse.redirect(loginUrl);
     }
 
-    // Validación de ROL: un operador no puede acceder a /gerente y viceversa
     if (userCookie) {
       try {
         const user = JSON.parse(decodeURIComponent(userCookie.value));
         const role = user?.role || user?.user_metadata?.role;
 
+        // Superadmin puede acceder a todo
+        if (role === 'superadmin') {
+          return addSecurityHeaders(NextResponse.next());
+        }
+
+        // Cruce de roles → redirigir al panel correcto
         if (pathname.startsWith('/gerente') && role === 'operador') {
           return NextResponse.redirect(new URL('/operador', request.url));
         }
@@ -61,40 +102,34 @@ export function middleware(request: NextRequest) {
           return NextResponse.redirect(new URL('/gerente', request.url));
         }
       } catch {
-        // Cookie malformada → redirigir al login
         const loginUrl = new URL('/login', request.url);
         loginUrl.searchParams.set('redirect', pathname);
         return NextResponse.redirect(loginUrl);
       }
     }
 
-    return NextResponse.next();
+    return addSecurityHeaders(NextResponse.next());
   }
 
-  // ── Rutas del portal de clientes ─────────────────────────────────────
+  // ── Portal de clientes ───────────────────────────────────────
   if (CLIENT_ROUTES.some((r) => pathname.startsWith(r))) {
     const clientSession = request.cookies.get('SIGPAD_client_session');
-
-    // Si no hay sesión de cliente, redirigir al login de cliente
     if (!clientSession) {
-      // En modo demo/desarrollo, permitir acceso libre al portal de cliente
-      const isDemoMode = process.env.SIGPAD_DEMO_MODE === 'true' ||
-                         process.env.NODE_ENV === 'development';
+      const isDemoMode =
+        process.env.SIGPAD_DEMO_MODE === 'true' || process.env.NODE_ENV === 'development';
       if (!isDemoMode) {
         const clientLoginUrl = new URL('/cliente-login', request.url);
         clientLoginUrl.searchParams.set('redirect', pathname);
         return NextResponse.redirect(clientLoginUrl);
       }
     }
-
-    return NextResponse.next();
+    return addSecurityHeaders(NextResponse.next());
   }
 
-  return NextResponse.next();
+  return addSecurityHeaders(NextResponse.next());
 }
 
 export const config = {
-  // Aplicar middleware a todas las rutas excepto archivos estáticos
   matcher: [
     '/((?!_next/static|_next/image|favicon.ico|icons/|sw.js|manifest.json).*)',
   ],

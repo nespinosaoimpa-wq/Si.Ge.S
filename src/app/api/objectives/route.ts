@@ -1,8 +1,9 @@
 import { isConfigured } from '@/lib/supabase';
 import { createServiceClient } from '@/lib/supabase-server';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { serverCache } from '@/lib/cache';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     if (!isConfigured) {
       // Mock data for local testing without Supabase keys
@@ -13,24 +14,124 @@ export async function GET() {
       ]);
     }
 
+    const userCookie = req.cookies.get('SIGPAD_user');
+    if (!userCookie) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+
+    let tenantId: string | null = null;
+    let isSuper = false;
+    let userId: string | null = null;
+
+    try {
+      const user = JSON.parse(decodeURIComponent(userCookie.value));
+      userId = user?.id;
+      tenantId = user?.tenant_id || user?.user_metadata?.tenant_id;
+      isSuper = user?.role === 'superadmin' || user?.user_metadata?.role === 'superadmin';
+    } catch {
+      return NextResponse.json({ error: 'Sesión inválida' }, { status: 401 });
+    }
+
+    if (!tenantId && !isSuper && userId) {
+      const supabase = createServiceClient();
+      const { data: dbUser } = await supabase
+        .from('users')
+        .select('tenant_id')
+        .eq('id', userId)
+        .maybeSingle();
+      if (dbUser?.tenant_id) {
+        tenantId = dbUser.tenant_id;
+      }
+    }
+
+    if (!tenantId && !isSuper) {
+      return NextResponse.json({ error: 'Inquilino no especificado' }, { status: 400 });
+    }
+
+    // 🚀 CACHE CHECK: Prevent DB hit if requested within 5 seconds
+    const cacheKey = `objectives-${isSuper ? 'super' : tenantId}`;
+    const cachedData = serverCache.get(cacheKey, 5000); // 5 seconds TTL
+    if (cachedData) {
+      return NextResponse.json(cachedData, {
+        headers: {
+          'X-Cache': 'HIT',
+          'Cache-Control': 'public, max-age=5'
+        }
+      });
+    }
+
     const supabase = createServiceClient();
-    const { data, error } = await supabase
+    let query = supabase
       .from('objectives')
       .select('*')
-      .eq('is_active', true)
-      .order('name');
+      .eq('is_active', true);
+
+    if (!isSuper && tenantId) {
+      query = query.eq('tenant_id', tenantId);
+    }
+
+    const { data, error } = await query.order('name');
 
     if (error) throw error;
-    return NextResponse.json(data);
+
+    // Save to serverCache
+    serverCache.set(cacheKey, data);
+
+    return NextResponse.json(data, {
+      headers: {
+        'X-Cache': 'MISS',
+        'Cache-Control': 'no-store, max-age=0, must-revalidate'
+      }
+    });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const supabase = createServiceClient();
-    const body = await request.json();
+    if (!isConfigured) {
+      return NextResponse.json({ id: 'mock-post-id', name: 'Mock Objective' });
+    }
+
+    const userCookie = req.cookies.get('SIGPAD_user');
+    if (!userCookie) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+
+    let tenantId: string | null = null;
+    let isSuper = false;
+    let userId: string | null = null;
+
+    try {
+      const user = JSON.parse(decodeURIComponent(userCookie.value));
+      userId = user?.id;
+      tenantId = user?.tenant_id || user?.user_metadata?.tenant_id;
+      isSuper = user?.role === 'superadmin' || user?.user_metadata?.role === 'superadmin';
+    } catch {
+      return NextResponse.json({ error: 'Sesión inválida' }, { status: 401 });
+    }
+
+    if (!tenantId && !isSuper && userId) {
+      const supabase = createServiceClient();
+      const { data: dbUser } = await supabase
+        .from('users')
+        .select('tenant_id')
+        .eq('id', userId)
+        .maybeSingle();
+      if (dbUser?.tenant_id) {
+        tenantId = dbUser.tenant_id;
+      }
+    }
+
+    const body = await req.json();
+
+    // Enforce tenant_id injection. Non-superadmins must use their own tenantId.
+    const targetTenantId = isSuper ? (body.tenant_id || tenantId) : tenantId;
+
+    if (!targetTenantId) {
+      return NextResponse.json({ error: 'tenant_id es requerido' }, { status: 400 });
+    }
 
     // Explicitly map only existing physical columns to prevent schema cache mismatches
     const payload = {
@@ -42,9 +143,11 @@ export async function POST(request: Request) {
       longitude: parseFloat(body.longitude),
       geofence_radius: body.geofence_radius ? parseFloat(body.geofence_radius) : 200,
       hourly_billing_rate: body.hourly_billing_rate ? parseFloat(body.hourly_billing_rate) : null,
-      is_active: true
+      is_active: true,
+      tenant_id: targetTenantId
     };
 
+    const supabase = createServiceClient();
     const { data, error } = await supabase
       .from('objectives')
       .insert([payload])
@@ -52,6 +155,13 @@ export async function POST(request: Request) {
       .single();
 
     if (error) throw error;
+
+    // 🚀 CACHE INVALIDATION: Clean cached objectives & map for this tenant
+    serverCache.invalidate(`objectives-${targetTenantId}`);
+    serverCache.invalidate(`dashboard-map-${targetTenantId}`);
+    serverCache.invalidate(`objectives-super`);
+    serverCache.invalidate(`dashboard-map-super`);
+
     return NextResponse.json(data);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

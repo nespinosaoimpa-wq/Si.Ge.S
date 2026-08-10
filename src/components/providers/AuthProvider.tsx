@@ -60,10 +60,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         
         const { data: profile } = await supabase
           .from('users')
-          .select('role')
+          .select('role, tenant_id')
           .eq('id', supabaseSession.user.id)
           .single();
-        setRole(profile?.role || (supabaseSession.user.user_metadata?.role as string) || null);
+        
+        const finalRole = profile?.role || (supabaseSession.user.user_metadata?.role as string) || null;
+        setRole(finalRole);
+
+        const userData = {
+          id: supabaseSession.user.id,
+          email: supabaseSession.user.email,
+          role: finalRole,
+          tenant_id: profile?.tenant_id || supabaseSession.user.user_metadata?.tenant_id || null,
+          user_metadata: {
+            ...supabaseSession.user.user_metadata,
+            role: finalRole
+          }
+        };
+        localStorage.setItem('SIGPAD_user', JSON.stringify(userData));
+        document.cookie = `SIGPAD_user=${encodeURIComponent(JSON.stringify(userData))}; path=/; max-age=2592000`;
+        document.cookie = "SIGPAD_bypass_active=true; path=/; max-age=2592000";
       } else {
         // 🛡️ TACTICAL FALLBACK: Check localStorage for Master PIN sessions
         const localUserJson = localStorage.getItem('SIGPAD_user');
@@ -72,7 +88,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             const localUser = JSON.parse(localUserJson);
             setUser(localUser);
             setRole(localUser.role || localUser.user_metadata?.role || null);
-            console.log('[Tactical Auth] Session restored from physical storage.');
+            console.log('[Tactical Auth] Session restored from physical storage. Syncing cookies...');
+            document.cookie = `SIGPAD_user=${encodeURIComponent(JSON.stringify(localUser))}; path=/; max-age=2592000`;
+            document.cookie = "SIGPAD_bypass_active=true; path=/; max-age=2592000";
           } catch (e) {
             console.error('[Tactical Auth] Failed to restore session:', e);
           }
@@ -92,10 +110,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (session?.user) {
         const { data: profile } = await supabase
           .from('users')
-          .select('role')
+          .select('role, tenant_id')
           .eq('id', session.user.id)
           .single();
-        setRole(profile?.role || (session.user.user_metadata?.role as string) || null);
+        
+        const finalRole = profile?.role || (session.user.user_metadata?.role as string) || null;
+        setRole(finalRole);
+
+        const userData = {
+          id: session.user.id,
+          email: session.user.email,
+          role: finalRole,
+          tenant_id: profile?.tenant_id || session.user.user_metadata?.tenant_id || null,
+          user_metadata: {
+            ...session.user.user_metadata,
+            role: finalRole
+          }
+        };
+        localStorage.setItem('SIGPAD_user', JSON.stringify(userData));
+        document.cookie = `SIGPAD_user=${encodeURIComponent(JSON.stringify(userData))}; path=/; max-age=2592000`;
+        document.cookie = "SIGPAD_bypass_active=true; path=/; max-age=2592000";
       } else {
         // Fallback for tactical sessions during state changes
         const localUserJson = localStorage.getItem('SIGPAD_user');
@@ -103,6 +137,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
            const localUser = JSON.parse(localUserJson);
            setUser(localUser);
            setRole(localUser.role || localUser.user_metadata?.role || null);
+           document.cookie = `SIGPAD_user=${encodeURIComponent(JSON.stringify(localUser))}; path=/; max-age=2592000`;
+           document.cookie = "SIGPAD_bypass_active=true; path=/; max-age=2592000";
         } else {
            setRole(null);
         }
@@ -119,7 +155,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const signOut = async () => {
     await supabase.auth.signOut();
     localStorage.removeItem('SIGPAD_user'); 
-    // Clear tactical bypass cookie
+    // Clear cookies
+    document.cookie = "SIGPAD_user=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
     document.cookie = "SIGPAD_bypass_active=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
     window.location.href = '/login';
   };

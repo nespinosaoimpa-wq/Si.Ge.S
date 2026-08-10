@@ -32,9 +32,26 @@ const GOOGLE_MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
 const MAPBOX_GEO_BASE = 'https://api.mapbox.com/geocoding/v5/mapbox.places';
 const MAPBOX_SEARCH_BASE = 'https://api.mapbox.com/search/searchbox/v1';
 
-// SIGPAD operational center
-const SANTA_FE_CENTER = { lng: -60.6973, lat: -31.6107 };
-const SANTA_FE_BBOX = '-63.3,-34.8,-59.4,-28.0'; // Entire Santa Fe Province
+// Tenant Geocoding Configurations for Global SaaS
+export interface TenantGeocodingConfig {
+  center: { lat: number; lng: number };
+  countryCode: string;       // ISO 2-letter country code (e.g., 'ar', 'mx', 'cl', 'us')
+  contextSuffix: string;     // Fallback text appended to search queries for local biasing
+  bbox?: string;             // Bounding box constraint
+}
+
+let activeTenantConfig: TenantGeocodingConfig = {
+  center: { lat: -31.6107, lng: -60.6973 },
+  countryCode: 'ar',
+  contextSuffix: 'Santa Fe de la Vera Cruz, Santa Fe, Argentina'
+};
+
+export function setTenantGeocodingConfig(config: Partial<TenantGeocodingConfig>) {
+  activeTenantConfig = {
+    ...activeTenantConfig,
+    ...config
+  };
+}
 
 // Session token for Search Box API
 let currentSessionToken: string | null = null;
@@ -124,28 +141,25 @@ export function parseCoordinates(query: string): { lat: number, lng: number } | 
 function injectContext(query: string): string {
   const lower = query.toLowerCase();
   
-  // List of other cities/towns in Santa Fe province to avoid overriding them if explicitly specified
-  const hasOtherCity = /rosario|rafaela|reconquista|santo tom[eé]|sauce viejo|esperanza|franck|coronda|venado tuerto|sunchales|villa constitucion|san lorenzo|ca[nñ]ada de gomez|casilda|santa rosa de calchines|calchines|helvecia|cayasta/i.test(lower);
-  
-  // If the query mentions "santa fe" but no other city in the province is specified,
-  // we replace it with "Santa Fe de la Vera Cruz, Santa Fe" to ensure geocoders lock to the capital
-  // instead of treating it as the broad province and matching other towns like Calchines or Rosario.
+  // If the tenant is based in Argentina and the query has 'santa fe', apply local Santa Fe optimizations
   let adjustedQuery = query;
-  if (/santa fe/i.test(lower) && !hasOtherCity) {
-    adjustedQuery = query.replace(/santa fe/gi, 'Santa Fe de la Vera Cruz, Santa Fe');
+  if (activeTenantConfig.countryCode === 'ar' && /santa fe/i.test(lower)) {
+    const hasOtherCity = /rosario|rafaela|reconquista|santo tom[eé]|sauce viejo|esperanza|franck|coronda|venado tuerto|sunchales|villa constitucion|san lorenzo|ca[nñ]ada de gomez|casilda|santa rosa de calchines|calchines|helvecia|cayasta/i.test(lower);
+    if (!hasOtherCity) {
+      adjustedQuery = query.replace(/santa fe/gi, 'Santa Fe de la Vera Cruz, Santa Fe');
+    }
   }
 
   const lowerAdjusted = adjustedQuery.toLowerCase();
-  const hasExternalContext = /buenos aires|caba|capital federal|cordoba|crdoba|mendoza|tucuman|tucumán|salta|rosario|parana|paraná|entre rios|entre ríos|corrientes|chaco|misiones|formosa|santiago del estero|catamarca|la rioja|san juan|san luis|neuquen|neuquén|rio negro|río negro|chubut|santa cruz|tierra del fuego|ushuaia|mar del plata|la plata|bahia blanca|bahía blanca|rafaela|reconquista|venado tuerto|santa fe de la vera cruz/i.test(lowerAdjusted);
   
-  if (!hasExternalContext) {
-    // Default context for local/incomplete searches (explicitly specify the city capital)
-    return `${adjustedQuery}, Santa Fe de la Vera Cruz, Santa Fe, Argentina`;
+  // Basic search biasing check: check if the query contains any country suffix
+  const hasExternalContext = /buenos aires|caba|capital federal|cordoba|crdoba|mendoza|tucuman|tucumán|salta|rosario|parana|paraná|santiago|bogota|lima|madrid|mexico|méxico|colombia|chile|españa|uruguay|miami/i.test(lowerAdjusted);
+  
+  if (!hasExternalContext && !lowerAdjusted.includes(activeTenantConfig.countryCode)) {
+    // Append tenant specific context (city, province, country)
+    return `${adjustedQuery}, ${activeTenantConfig.contextSuffix}`;
   }
   
-  if (!/argentina/i.test(lowerAdjusted)) {
-    return `${adjustedQuery}, Argentina`;
-  }
   return adjustedQuery;
 }
 
@@ -166,9 +180,9 @@ export async function geocodeForward(query: string): Promise<GeocodingResult[]> 
       const params = new URLSearchParams({
         access_token: MAPBOX_TOKEN!,
         autocomplete: 'true',
-        country: 'ar',
+        country: activeTenantConfig.countryCode,
         language: 'es',
-        proximity: `${SANTA_FE_CENTER.lng},${SANTA_FE_CENTER.lat}`,
+        proximity: `${activeTenantConfig.center.lng},${activeTenantConfig.center.lat}`,
         types: hasNumber ? 'address' : 'address,poi,place,locality',
         limit: '5',
         fuzzyMatch: 'true',
@@ -237,9 +251,9 @@ export async function searchBoxSuggest(query: string): Promise<GeocodingResult[]
       q: query,
       access_token: MAPBOX_TOKEN,
       session_token: getSessionToken(),
-      country: 'ar',
+      country: activeTenantConfig.countryCode,
       language: 'es',
-      proximity: `${SANTA_FE_CENTER.lng},${SANTA_FE_CENTER.lat}`,
+      proximity: `${activeTenantConfig.center.lng},${activeTenantConfig.center.lat}`,
       types: 'poi,place',
       limit: '5'
     });
@@ -316,7 +330,7 @@ export async function searchNominatim(query: string): Promise<GeocodingResult[]>
     const normalized = normalizeAddress(query);
     const contextualized = injectContext(normalized);
     
-    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(contextualized)}&countrycodes=ar&limit=5&addressdetails=1`, {
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(contextualized)}&countrycodes=${activeTenantConfig.countryCode}&limit=5&addressdetails=1`, {
       headers: {
         'Accept-Language': 'es',
         'User-Agent': 'SIGPAD-Manager-App/1.0'
@@ -467,8 +481,8 @@ export function searchAddresses(
           if (isGoogleB && !isGoogleA) return 1;
 
           // Priority 3: Sort by distance to center of operations
-          const distA = a.lat !== 0 ? distanceMeters(a.lat, a.lng, SANTA_FE_CENTER.lat, SANTA_FE_CENTER.lng) : 9999999;
-          const distB = b.lat !== 0 ? distanceMeters(b.lat, b.lng, SANTA_FE_CENTER.lat, SANTA_FE_CENTER.lng) : 9999999;
+          const distA = a.lat !== 0 ? distanceMeters(a.lat, a.lng, activeTenantConfig.center.lat, activeTenantConfig.center.lng) : 9999999;
+          const distB = b.lat !== 0 ? distanceMeters(b.lat, b.lng, activeTenantConfig.center.lat, activeTenantConfig.center.lng) : 9999999;
 
           return distA - distB;
         });

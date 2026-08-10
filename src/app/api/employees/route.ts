@@ -1,8 +1,8 @@
 import { createServiceClient } from '@/lib/supabase-server';
 import { isConfigured } from '@/lib/supabase';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     if (!isConfigured) {
       // Mock data for local testing without Supabase keys
@@ -14,13 +14,51 @@ export async function GET() {
       ]);
     }
 
-    const supabase = createServiceClient();
+    const userCookie = req.cookies.get('SIGPAD_user');
+    if (!userCookie) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
 
-    const { data: rawData, error: fetchError } = await supabase
+    let tenantId: string | null = null;
+    let isSuper = false;
+    let userId: string | null = null;
+
+    try {
+      const user = JSON.parse(decodeURIComponent(userCookie.value));
+      userId = user?.id;
+      tenantId = user?.tenant_id || user?.user_metadata?.tenant_id;
+      isSuper = user?.role === 'superadmin' || user?.user_metadata?.role === 'superadmin';
+    } catch {
+      return NextResponse.json({ error: 'Sesión inválida' }, { status: 401 });
+    }
+
+    if (!tenantId && !isSuper && userId) {
+      const supabase = createServiceClient();
+      const { data: dbUser } = await supabase
+        .from('users')
+        .select('tenant_id')
+        .eq('id', userId)
+        .maybeSingle();
+      if (dbUser?.tenant_id) {
+        tenantId = dbUser.tenant_id;
+      }
+    }
+
+    if (!tenantId && !isSuper) {
+      return NextResponse.json({ error: 'Inquilino no especificado' }, { status: 400 });
+    }
+
+    const supabase = createServiceClient();
+    let query = supabase
       .from('resources')
       .select('*, assigned_objective:objectives(name)')
-      .neq('status', 'baja')
-      .order('name');
+      .neq('status', 'baja');
+
+    if (!isSuper && tenantId) {
+      query = query.eq('tenant_id', tenantId);
+    }
+
+    const { data: rawData, error: fetchError } = await query.order('name');
 
     if (fetchError) throw fetchError;
 
@@ -41,10 +79,50 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const supabase = createServiceClient();
-    const body = await request.json();
+    if (!isConfigured) {
+      return NextResponse.json({ id: 'mock-resource-id', name: 'Mock Resource' });
+    }
+
+    const userCookie = req.cookies.get('SIGPAD_user');
+    if (!userCookie) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+
+    let tenantId: string | null = null;
+    let isSuper = false;
+    let userId: string | null = null;
+
+    try {
+      const user = JSON.parse(decodeURIComponent(userCookie.value));
+      userId = user?.id;
+      tenantId = user?.tenant_id || user?.user_metadata?.tenant_id;
+      isSuper = user?.role === 'superadmin' || user?.user_metadata?.role === 'superadmin';
+    } catch {
+      return NextResponse.json({ error: 'Sesión inválida' }, { status: 401 });
+    }
+
+    if (!tenantId && !isSuper && userId) {
+      const supabase = createServiceClient();
+      const { data: dbUser } = await supabase
+        .from('users')
+        .select('tenant_id')
+        .eq('id', userId)
+        .maybeSingle();
+      if (dbUser?.tenant_id) {
+        tenantId = dbUser.tenant_id;
+      }
+    }
+
+    const body = await req.json();
+
+    // Enforce tenant_id injection. Non-superadmins must use their own tenantId.
+    const targetTenantId = isSuper ? (body.tenant_id || tenantId) : tenantId;
+
+    if (!targetTenantId) {
+      return NextResponse.json({ error: 'tenant_id es requerido' }, { status: 400 });
+    }
 
     // Clean up body: Convert empty strings to null for database compatibility,
     // filter out non-database properties like assigned_objective, objectives, and hourly_pay_rate,
@@ -57,10 +135,13 @@ export async function POST(request: Request) {
       cleanedBody[key] = value === '' ? null : value;
     }
 
+    cleanedBody.tenant_id = targetTenantId;
+
     if ('hourly_pay_rate' in body) {
       cleanedBody.salary = body.hourly_pay_rate === '' ? null : String(body.hourly_pay_rate);
     }
 
+    const supabase = createServiceClient();
     const { data, error } = await supabase
       .from('resources')
       .insert([cleanedBody])

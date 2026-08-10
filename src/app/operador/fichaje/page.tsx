@@ -386,57 +386,66 @@ export default function FichajePage() {
       }
     }, 45000); 
 
-    const { GPSTracker } = await import('@/lib/gps-tracker');
-    const newTracker = new GPSTracker(
-      shiftId || 'pending_validation',
-      OPERATOR_ID,
-      async (pos) => {
-        const coords = { 
-          lat: pos.latitude, 
-          lng: pos.longitude,
-          accuracy: pos.accuracy,
-          speed: pos.speed
-        };
-        setGpsProgress(prev => ({ 
-          accuracy: coords.accuracy, 
-          count: prev.count + 1 
-        }));
+    try {
+      const { GPSTracker } = await import('@/lib/gps-tracker');
+      const newTracker = new GPSTracker(
+        shiftId || 'pending_validation',
+        OPERATOR_ID,
+        async (pos) => {
+          const coords = { 
+            lat: pos.latitude, 
+            lng: pos.longitude,
+            accuracy: pos.accuracy,
+            speed: pos.speed
+          };
+          setGpsProgress(prev => ({ 
+            accuracy: coords.accuracy, 
+            count: prev.count + 1 
+          }));
 
-        const isAccurateEnough = coords.accuracy < 100;
-        
-        if (!isShiftActiveRef.current && !isCheckingInRef.current && isAccurateEnough) {
-          performCheckin(coords);
-          clearTimeout(gpsTimeout);
-          clearTimeout(skipTimer);
-        } else if (isShiftActiveRef.current) {
-        if (!isShiftActiveRef.current) return;
-        setLocation(coords);
-        setLocating(false); 
-        clearTimeout(gpsTimeout);
-        
-        // Update Telemetry
-        setTelemetry({
-          accuracy: pos.accuracy,
-          distanceToTarget: pos.distanceToObjective,
-          syncStatus: navigator.onLine ? 'online' : 'offline',
-          lastPointTimestamp: Date.now()
-        });
-        }
-      },
-      (err) => {
-        setLocating(false);
-        isCheckingInRef.current = false;
-        alert("🔒 ACCESO A GPS BLOQUEADO");
-      },
-      assignedObjective ? {
-        location: { lat: assignedObjective.latitude, lng: assignedObjective.longitude },
-        radius: assignedObjective.geofence_radius_meters || 100,
-        id: assignedObjective.id
-      } : undefined
-    );
+          const isAccurateEnough = coords.accuracy < 100;
+          
+          if (!isShiftActiveRef.current && !isCheckingInRef.current && isAccurateEnough) {
+            performCheckin(coords);
+            clearTimeout(gpsTimeout);
+            clearTimeout(skipTimer);
+          } else if (isShiftActiveRef.current) {
+            if (!isShiftActiveRef.current) return;
+            setLocation(coords);
+            setLocating(false); 
+            clearTimeout(gpsTimeout);
+            
+            // Update Telemetry
+            setTelemetry({
+              accuracy: pos.accuracy,
+              distanceToTarget: pos.distanceToObjective,
+              syncStatus: navigator.onLine ? 'online' : 'offline',
+              lastPointTimestamp: Date.now()
+            });
+          }
+        },
+        (err) => {
+          setLocating(false);
+          isCheckingInRef.current = false;
+          alert("🔒 ACCESO A GPS BLOQUEADO");
+        },
+        assignedObjective ? {
+          location: { lat: assignedObjective.latitude, lng: assignedObjective.longitude },
+          radius: assignedObjective.geofence_radius_meters || 100,
+          id: assignedObjective.id
+        } : undefined
+      );
 
-    newTracker.start();
-    setTracker(newTracker);
+      newTracker.start();
+      setTracker(newTracker);
+    } catch (e: any) {
+      console.error("[Fichaje] Failed to initialize GPS Tracker:", e);
+      alert("⚠️ Error de conexión al iniciar GPS. Por favor, refrescá el navegador e intentá de nuevo.");
+      setLocating(false);
+      isCheckingInRef.current = false;
+      clearTimeout(gpsTimeout);
+      clearTimeout(skipTimer);
+    }
   };
 
   const fetchObjectiveItems = async () => {

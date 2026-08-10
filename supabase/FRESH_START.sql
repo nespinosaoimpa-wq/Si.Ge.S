@@ -628,6 +628,7 @@ ON CONFLICT (id) DO NOTHING;
 -- Usuario gerente autorizado
 INSERT INTO public.authorized_users (email, role, status, notes)
 VALUES
+  ('sigpad.info@gmail.com', 'superadmin', 'approved', 'Super Administrador Global de la Plataforma'),
   ('nespinosa.oimpa@gmail.com', 'gerente', 'approved', 'Gerente General — autorizado por administrador del sistema'),
   ('jugador.nico55@gmail.com', 'gerente', 'approved', 'Cuenta de desarrollo'),
   ('admin@sigessecurity.com', 'gerente', 'approved', 'Cuenta administrativa principal'),

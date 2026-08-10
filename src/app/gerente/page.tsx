@@ -144,14 +144,19 @@ export default function AdminDashboard() {
   const activeGuards = useMemo(() => {
     return (data.resources || []).map((r: any) => {
       const activeShift = (data.activeShifts || []).find((s: any) => s.operator_id === r.id);
-      const isAbandoned = activeShift?.status === 'abandoned' || activeShift?.geofence_status === 'out';
+      const isAbandoned = activeShift?.status === 'abandoned' || activeShift?.geofence_status === 'out' || activeShift?.geofence_status === 'outside';
+      
+      // Calculate offline status (no GPS updates for more than 3 minutes while on an active shift)
+      const lastUpdate = r.last_gps_update ? new Date(r.last_gps_update).getTime() : 0;
+      const isOffline = activeShift && (Date.now() - lastUpdate > 3 * 60 * 1000);
+
       return {
         ...r,
         isOnShift: !!activeShift,
         shiftId: activeShift?.id,
-        status: isAbandoned ? 'abandoned' : r.status
+        status: isAbandoned ? 'abandoned' : (isOffline ? 'offline' : r.status)
       };
-    }).filter((r: any) => r.status === 'active' || r.status === 'activo' || r.status === 'abandoned');
+    }).filter((r: any) => r.status === 'active' || r.status === 'activo' || r.status === 'abandoned' || r.status === 'offline');
   }, [data.resources, data.activeShifts]);
 
   // --- HANDLERS ---
@@ -780,6 +785,18 @@ export default function AdminDashboard() {
             onIncidentResolve={handleResolveIncident}
             isRelocating={isRelocating}
             onRelocationEnd={handleRelocateObjective}
+            searchQuery={searchQuery}
+            onAddObjectiveAtCoords={(lat, lng) => {
+              setIsAddingPoint(true);
+              setLastClickedCoords({ lat, lng });
+              setNewObjective({
+                name: '',
+                address: searchQuery || '',
+                client_name: '',
+                contact_phone: ''
+              });
+              setPreviewCoords(null);
+            }}
           />
         </div>
         

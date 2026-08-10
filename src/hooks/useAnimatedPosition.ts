@@ -111,11 +111,15 @@ export function useAnimatedPosition(
     const prev = prevTarget.current!;
     const dist = haversineDistance(prev.lat, prev.lng, targetLat, targetLng);
 
-    // Ignore jitter (< 1m)
-    if (dist < 1) return;
+    // Ignore minor coordinate jitter (< 1.5m)
+    if (dist < 1.5) return;
 
-    // Calculate bearing from previous to new target
-    const newBearing = calculateBearing(prev.lat, prev.lng, targetLat, targetLng);
+    // To prevent the avatar from spinning in place when stationary, 
+    // only update bearing if the movement is significant (> 4 meters)
+    let newBearing = posRef.current.bearing;
+    if (dist > 4.0) {
+      newBearing = calculateBearing(prev.lat, prev.lng, targetLat, targetLng);
+    }
 
     // Cancel any running animation
     if (rafId.current) cancelAnimationFrame(rafId.current);

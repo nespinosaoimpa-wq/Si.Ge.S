@@ -61,20 +61,24 @@ export default function GuardBookPage() {
     const fetchEntries = async () => {
       setLoading(true);
       try {
-        let query = supabase
+        let { data, error } = await supabase
           .from('guard_book_entries')
-          .select('*, resources:operator_id(id, name, role, avatar_url)')
+          .select('*, resources:resource_id(id, name, role, avatar_url)')
           .eq('objective_id', objectiveId)
           .order('created_at', { ascending: false })
           .limit(200);
 
-        if (filterDate) {
-          query = query
-            .gte('created_at', `${filterDate}T00:00:00.000Z`)
-            .lte('created_at', `${filterDate}T23:59:59.999Z`);
+        if (error && error.message.includes('resource_id')) {
+          const fallback = await supabase
+            .from('guard_book_entries')
+            .select('*, resources:operator_id(id, name, role, avatar_url)')
+            .eq('objective_id', objectiveId)
+            .order('created_at', { ascending: false })
+            .limit(200);
+          data = fallback.data;
+          error = fallback.error;
         }
 
-        const { data, error } = await query;
         if (error) throw error;
         setEntries(data || []);
       } catch (err) {

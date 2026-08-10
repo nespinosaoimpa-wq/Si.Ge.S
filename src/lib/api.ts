@@ -43,6 +43,7 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
 export const api = {
   auth: {
     login: (credentials: any) => apiFetch('auth/login', { method: 'POST', body: JSON.stringify(credentials) }),
+    session: () => apiFetch('auth/session'),
   },
   dashboard: {
     getMapData: () => apiFetch('dashboard/map'),
@@ -51,6 +52,12 @@ export const api = {
     create: (data: any) => apiFetch('employees', { method: 'POST', body: JSON.stringify(data) }),
     update: (id: string, data: any) => apiFetch(`employees/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
     list: () => apiFetch('employees'),
+  },
+  authorizedUsers: {
+    list: () => apiFetch('authorized-users'),
+    create: (data: any) => apiFetch('authorized-users', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, status: string) => apiFetch(`authorized-users/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+    delete: (id: string) => apiFetch(`authorized-users/${id}`, { method: 'DELETE' }),
   },
   objectives: {
     create: (data: any) => apiFetch('objectives', { method: 'POST', body: JSON.stringify(data) }),

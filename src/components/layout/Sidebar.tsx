@@ -21,7 +21,6 @@ const adminItems = [
   { name: 'Libro', href: '/gerente/libro', icon: BookOpen },
   { name: 'Stock', href: '/gerente/inventario', icon: Package },
   { name: 'Planillas', href: '/gerente/planillas', icon: Calculator },
-  { name: 'Accesos', href: '/gerente/accesos', icon: Settings },
 ];
 
 const guardiaItems = [

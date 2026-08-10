@@ -5,7 +5,7 @@ import Map, { Marker, Popup, Source, Layer, NavigationControl, FullscreenControl
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { cn } from '@/lib/utils';
 import { reverseGeocode } from '@/lib/geocoding';
-import { Shield, MapPin, AlertTriangle, User, Target, Layers, Car, UserX, DoorOpen, Package, Lightbulb, Zap, Navigation, Clock, Building2, CheckCircle2 } from 'lucide-react';
+import { Shield, MapPin, AlertTriangle, User, Target, Layers, Car, UserX, DoorOpen, Package, Lightbulb, Zap, Navigation, Clock, Building2, CheckCircle2, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fetchNearbyEmergencyServices, getPOIStyle, NearbyPOI } from '@/lib/nearby-services';
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || ('pk.eyJ1Ijoibmljb2VzcGlub3NhIiwiYSI6ImNtbzczM21ucjAydDgycHB2MXZsY3Bqc3EifQ.' + 'LeVW1Jfcr6Rr6q1o15Kkzw');
@@ -89,6 +89,8 @@ interface MapViewProps {
   isRelocating?: boolean;
   onRelocationEnd?: (id: string, lat: number, lng: number) => void;
   onDraftDragEnd?: (lat: number, lng: number) => void;
+  onAddObjectiveAtCoords?: (lat: number, lng: number) => void;
+  searchQuery?: string;
 }
 
 const googleSatelliteStyle = {
@@ -381,8 +383,8 @@ export default function MapView({
   incidents = [],
   checkpoints = [],
   onCheckpointDragEnd,
-  center = [-31.6350, -60.7000],
-  zoom = 13,
+  center = [-31.6230, -60.6950],
+  zoom = 12,
   className = "",
   pathData = [],
   onObjectiveSelect,
@@ -399,6 +401,8 @@ export default function MapView({
   isRelocating = false,
   onRelocationEnd,
   onDraftDragEnd,
+  onAddObjectiveAtCoords,
+  searchQuery = "",
 }: MapViewProps) {
   const mapRef = useRef<MapRef>(null);
   const isValidCoords = (lat: any, lng: any) => lat !== undefined && lng !== undefined && !isNaN(Number(lat)) && !isNaN(Number(lng)) && Number(lat) !== 0 && Number(lng) !== 0;
@@ -406,8 +410,8 @@ export default function MapView({
   const [is3D, setIs3D] = useState(true); 
   const [showStyles, setShowStyles] = useState(false);
   const [viewState, setViewState] = useState(() => {
-    const lat = center && center[0] && !isNaN(Number(center[0])) ? Number(center[0]) : -31.6350;
-    const lng = center && center[1] && !isNaN(Number(center[1])) ? Number(center[1]) : -60.7000;
+    const lat = center && center[0] && !isNaN(Number(center[0])) ? Number(center[0]) : -31.6230;
+    const lng = center && center[1] && !isNaN(Number(center[1])) ? Number(center[1]) : -60.6950;
     return {
       latitude: lat,
       longitude: lng,
@@ -481,6 +485,117 @@ export default function MapView({
       }));
     }
   }, [center?.[0], center?.[1]]);
+
+  // Auto-fit bounds on initial load to show all objectives of the tenant
+  const fittedRef = useRef(false);
+  useEffect(() => {
+    if (!fittedRef.current && mapRef.current) {
+      const validObjs = objectives.filter(obj => isValidCoords(obj.latitude, obj.longitude));
+      const validGuards = guards.filter(g => isValidCoords(g.latitude, g.longitude));
+
+      if (validObjs.length > 0) {
+        fittedRef.current = true;
+        if (validObjs.length === 1) {
+          // Center on the single objective with moderate zoom
+          setViewState(prev => ({
+            ...prev,
+            latitude: validObjs[0].latitude,
+            longitude: validObjs[0].longitude,
+            zoom: 14.5,
+            pitch: 45,
+            bearing: -10,
+            transitionDuration: 1500
+          }));
+        } else {
+          // Fit bounds to all objectives
+          let minLat = Infinity, maxLat = -Infinity;
+          let minLng = Infinity, maxLng = -Infinity;
+          validObjs.forEach(obj => {
+            if (obj.latitude < minLat) minLat = obj.latitude;
+            if (obj.latitude > maxLat) maxLat = obj.latitude;
+            if (obj.longitude < minLng) minLng = obj.longitude;
+            if (obj.longitude > maxLng) maxLng = obj.longitude;
+          });
+
+          try {
+            const map = mapRef.current.getMap();
+            map.fitBounds(
+              [[minLng, minLat], [maxLng, maxLat]],
+              { 
+                padding: isMobile 
+                  ? { top: 120, bottom: 50, left: 50, right: 50 } 
+                  : { top: 120, bottom: 120, left: 380, right: 120 }, // Extra left padding for desktop sidebar
+                duration: 1800 
+              }
+            );
+          } catch (e) {
+            console.error("Error fitting map bounds:", e);
+          }
+        }
+      } else if (validGuards.length > 0) {
+        // No objectives, but we have guards! Center on them.
+        fittedRef.current = true;
+        if (validGuards.length === 1) {
+          setViewState(prev => ({
+            ...prev,
+            latitude: validGuards[0].latitude,
+            longitude: validGuards[0].longitude,
+            zoom: 14.5,
+            pitch: 45,
+            bearing: -10,
+            transitionDuration: 1500
+          }));
+        } else {
+          let minLat = Infinity, maxLat = -Infinity;
+          let minLng = Infinity, maxLng = -Infinity;
+          validGuards.forEach(g => {
+            if (g.latitude < minLat) minLat = g.latitude;
+            if (g.latitude > maxLat) maxLat = g.latitude;
+            if (g.longitude < minLng) minLng = g.longitude;
+            if (g.longitude > maxLng) maxLng = g.longitude;
+          });
+
+          try {
+            const map = mapRef.current.getMap();
+            map.fitBounds(
+              [[minLng, minLat], [maxLng, maxLat]],
+              { 
+                padding: isMobile 
+                  ? { top: 120, bottom: 50, left: 50, right: 50 } 
+                  : { top: 120, bottom: 120, left: 380, right: 120 },
+                duration: 1800 
+              }
+            );
+          } catch (e) {
+            console.error("Error fitting map bounds:", e);
+          }
+        }
+      } else {
+        // No objectives and no guards. Attempt browser geolocation!
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              if (fittedRef.current) return;
+              fittedRef.current = true;
+              setViewState(prev => ({
+                ...prev,
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+                zoom: 13.5,
+                pitch: 45,
+                bearing: -10,
+                transitionDuration: 1500
+              }));
+            },
+            (error) => {
+              console.log("Geolocation permission denied or error:", error);
+            },
+            { enableHighAccuracy: true, timeout: 5000 }
+          );
+        }
+      }
+    }
+  }, [objectives, guards, isMobile]);
   
   const getAvatarUrl = (item: any) => {
     if (!item) return null;
@@ -868,7 +983,7 @@ export default function MapView({
               key={`obj-${obj.id}`}
               latitude={Number(obj.latitude)}
               longitude={Number(obj.longitude)}
-              anchor="bottom"
+              anchor="center"
               rotationAlignment="viewport"
               pitchAlignment="viewport"
               draggable={isRelocating && isSelected}
@@ -897,7 +1012,7 @@ export default function MapView({
             rotationAlignment="viewport"
             pitchAlignment="viewport"
             onDragEnd={(e) => onDraftDragEnd && onDraftDragEnd(e.lngLat.lat, e.lngLat.lng)}
-            anchor="bottom"
+            anchor="center"
           >
             <div className="relative flex flex-col items-center group cursor-grab active:cursor-grabbing">
               {isPickerMode && (
@@ -917,16 +1032,48 @@ export default function MapView({
         
         {/* Search Preview Drop-Pin */}
         {previewCoords && (
-          <Marker latitude={previewCoords.lat} longitude={previewCoords.lng} anchor="bottom" rotationAlignment="viewport" pitchAlignment="viewport">
-             <div className="relative flex flex-col items-center">
-                <div className="bg-[#0F4C5C] p-2 rounded-full shadow-[0_0_20px_rgba(15, 76, 92,0.6)] border-2 border-white animate-bounce">
-                   <MapPin size={24} className="text-black" />
-                </div>
-                <div className="mt-1 px-2 py-0.5 bg-black/80 backdrop-blur-sm rounded text-[8px] font-black text-white uppercase tracking-[0.2em] border border-[#0F4C5C]/30">
-                  Punto de Interés
-                </div>
-             </div>
-          </Marker>
+          <>
+            <Marker latitude={previewCoords.lat} longitude={previewCoords.lng} anchor="center" rotationAlignment="viewport" pitchAlignment="viewport">
+               <div className="relative flex flex-col items-center">
+                  <div className="bg-emerald-500 p-2 rounded-full shadow-[0_0_20px_rgba(16,185,129,0.6)] border-2 border-white animate-bounce">
+                     <MapPin size={24} className="text-white" />
+                  </div>
+                  <div className="mt-1 px-2 py-0.5 bg-black/80 backdrop-blur-sm rounded text-[8px] font-black text-white uppercase tracking-[0.2em] border border-emerald-500/30">
+                    Punto Encontrado
+                  </div>
+               </div>
+            </Marker>
+            <Popup
+              latitude={previewCoords.lat}
+              longitude={previewCoords.lng}
+              closeButton={false}
+              offset={35}
+              anchor="top"
+              maxWidth="320px"
+            >
+              <div className="p-3 text-zinc-950 max-w-[280px]">
+                <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mb-1.5 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping" />
+                  📍 Dirección Encontrada
+                </p>
+                <p className="text-xs font-semibold text-zinc-800 leading-snug">
+                  {searchQuery || "Dirección geocodificada"}
+                </p>
+                
+                {onAddObjectiveAtCoords && (
+                  <div className="mt-3.5 pt-3 border-t border-zinc-100">
+                    <button
+                      onClick={() => onAddObjectiveAtCoords(previewCoords.lat, previewCoords.lng)}
+                      className="w-full py-2 bg-zinc-900 hover:bg-black text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                    >
+                      <Plus size={12} className="text-emerald-400" />
+                      Agregar al Mapa
+                    </button>
+                  </div>
+                )}
+              </div>
+            </Popup>
+          </>
         )}
 
         {selectedObjective && (

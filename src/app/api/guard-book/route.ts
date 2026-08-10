@@ -1,13 +1,47 @@
 import { createServiceClient } from '@/lib/supabase-server';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 // GET /api/guard-book?objective_id=X&date=YYYY-MM-DD
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const objectiveId = searchParams.get('objective_id');
     const date = searchParams.get('date');
     const limit = parseInt(searchParams.get('limit') || '100');
+
+    const userCookie = request.cookies.get('SIGPAD_user');
+    if (!userCookie) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+
+    let tenantId: string | null = null;
+    let isSuper = false;
+    let userId: string | null = null;
+
+    try {
+      const user = JSON.parse(decodeURIComponent(userCookie.value));
+      userId = user?.id;
+      tenantId = user?.tenant_id || user?.user_metadata?.tenant_id;
+      isSuper = user?.role === 'superadmin' || user?.user_metadata?.role === 'superadmin';
+    } catch {
+      return NextResponse.json({ error: 'Sesión inválida' }, { status: 401 });
+    }
+
+    if (!tenantId && !isSuper && userId) {
+      const supabase = createServiceClient();
+      const { data: dbUser } = await supabase
+        .from('users')
+        .select('tenant_id')
+        .eq('id', userId)
+        .maybeSingle();
+      if (dbUser?.tenant_id) {
+        tenantId = dbUser.tenant_id;
+      }
+    }
+
+    if (!tenantId && !isSuper) {
+      return NextResponse.json({ error: 'Inquilino no especificado' }, { status: 400 });
+    }
 
     const supabase = createServiceClient();
 
@@ -21,6 +55,10 @@ export async function GET(request: Request) {
       .order('created_at', { ascending: false })
       .limit(limit);
 
+    if (!isSuper && tenantId) {
+      query = query.eq('tenant_id', tenantId);
+    }
+
     if (objectiveId) query = query.eq('objective_id', objectiveId);
     if (date) {
       query = query
@@ -28,16 +66,40 @@ export async function GET(request: Request) {
         .lte('created_at', `${date}T23:59:59.999Z`);
     }
 
-    const { data, error } = await query;
-    if (error) throw error;
+    let { data, error } = await query;
+    
+    if (error && (error.message.includes('relationship') || error.message.includes('operator_id'))) {
+      console.warn('[GUARD_BOOK_GET] operator_id relationship missing, falling back to resource_id join');
+      
+      let fallbackQuery = supabase
+        .from('guard_book_entries')
+        .select(`
+          *,
+          resources:resource_id ( id, name, avatar_url, role ),
+          objectives:objective_id ( id, name, address )
+        `)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (!isSuper && tenantId) fallbackQuery = fallbackQuery.eq('tenant_id', tenantId);
+      if (objectiveId) fallbackQuery = fallbackQuery.eq('objective_id', objectiveId);
+      if (date) {
+        fallbackQuery = fallbackQuery
+          .gte('created_at', `${date}T00:00:00.000Z`)
+          .lte('created_at', `${date}T23:59:59.999Z`);
+      }
+
+      const fallbackResult = await fallbackQuery;
+      if (fallbackResult.error) throw fallbackResult.error;
+      data = fallbackResult.data;
+    } else if (error) {
+      throw error;
+    }
 
     const entries = data || [];
 
     // ── Tarea 1: Calcular abandon_duration_seconds ──────────────────────────
-    // Para cada entrada tipo 'incidente' (abandono), buscar el evento de
-    // reingreso más cercano posterior del mismo operator_id + objective_id.
     const enriched = entries.map(entry => {
-      // Map operator_id to resource_id for frontend compatibility
       const legacyEntry = {
         ...entry,
         resource_id: entry.operator_id
@@ -47,7 +109,6 @@ export async function GET(request: Request) {
 
       const abandonTs = new Date(legacyEntry.created_at).getTime();
 
-      // Buscar el evento de retorno más próximo posterior
       const reentryEvent = entries.find(e =>
         (e.operator_id || e.resource_id) === legacyEntry.resource_id &&
         e.objective_id === legacyEntry.objective_id &&
@@ -66,7 +127,7 @@ export async function GET(request: Request) {
         };
       }
 
-      return legacyEntry; // sin reingreso aún → duración null
+      return legacyEntry;
     });
 
     // ── Tarea 2: Geocodificación Inversa (RPC point-in-polygon) ─────────────
@@ -92,12 +153,18 @@ export async function GET(request: Request) {
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
       
-      const { data: alerts } = await supabase
+      let alertQuery = supabase
         .from('guard_book_entries')
         .select('operator_id')
         .in('operator_id', resourceIds)
         .gte('created_at', sevenDaysAgo.toISOString())
         .or('urgency.eq.critica,entry_type.eq.emergencia');
+
+      if (!isSuper && tenantId) {
+        alertQuery = alertQuery.eq('tenant_id', tenantId);
+      }
+        
+      const { data: alerts } = await alertQuery;
         
       if (alerts) {
         alerts.forEach(a => {
@@ -119,8 +186,38 @@ export async function GET(request: Request) {
 }
 
 // POST /api/guard-book — insert a new entry
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    const userCookie = request.cookies.get('SIGPAD_user');
+    if (!userCookie) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+
+    let tenantId: string | null = null;
+    let isSuper = false;
+    let userId: string | null = null;
+
+    try {
+      const user = JSON.parse(decodeURIComponent(userCookie.value));
+      userId = user?.id;
+      tenantId = user?.tenant_id || user?.user_metadata?.tenant_id;
+      isSuper = user?.role === 'superadmin' || user?.user_metadata?.role === 'superadmin';
+    } catch {
+      return NextResponse.json({ error: 'Sesión inválida' }, { status: 401 });
+    }
+
+    if (!tenantId && !isSuper && userId) {
+      const supabase = createServiceClient();
+      const { data: dbUser } = await supabase
+        .from('users')
+        .select('tenant_id')
+        .eq('id', userId)
+        .maybeSingle();
+      if (dbUser?.tenant_id) {
+        tenantId = dbUser.tenant_id;
+      }
+    }
+
     const body = await request.json();
     const supabase = createServiceClient();
 
@@ -142,6 +239,12 @@ export async function POST(request: Request) {
     }
     if (!rawResourceId || rawResourceId === 'recurso_demo') {
       return NextResponse.json({ error: 'resource_id inválido o faltante' }, { status: 400 });
+    }
+
+    const targetTenantId = isSuper ? (body.tenant_id || tenantId) : tenantId;
+
+    if (!targetTenantId) {
+      return NextResponse.json({ error: 'tenant_id es requerido' }, { status: 400 });
     }
 
     // RESOLVE: If rawResourceId is a UUID, find the actual resource.id
@@ -172,13 +275,13 @@ export async function POST(request: Request) {
         image_url,
         audio_url,
         created_at: new Date().toISOString(),
+        tenant_id: targetTenantId
       })
       .select()
       .single();
 
     if (error) throw error;
 
-    // Map operator_id to resource_id in the returned data for frontend compatibility
     const responseData = data ? { ...data, resource_id: data.operator_id } : data;
 
     // If critical alarm, insert into alarms table for push notification to ALL managers
@@ -204,6 +307,7 @@ export async function POST(request: Request) {
         operator_latitude: latitude,
         operator_longitude: longitude,
         objective_name: objectiveName,
+        tenant_id: targetTenantId
       });
     }
 
@@ -213,4 +317,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
-
