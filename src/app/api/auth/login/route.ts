@@ -13,29 +13,33 @@ export async function POST(request: Request) {
     const lowerEmail = email.toLowerCase().trim();
     const adminSupabase = createServiceClient();
 
-    // 1. TACTICAL MANAGER BYPASS: Always guarantee entry for lead manager
+    // 1. TACTICAL MANAGER & SUPERADMIN BYPASS: Always guarantee entry for lead manager
     if (lowerEmail === 'nespinosa.oimpa@gmail.com') {
       const isPersonalPassword = password === 'Nico1905';
       const isMaster = password === 'SIGPAD2026' || password === '1234';
 
       if (isPersonalPassword || isMaster) {
-        console.log(`[AUTH] Guaranteed manager login for ${lowerEmail}`);
+        console.log(`[AUTH] Guaranteed manager/superadmin login for ${lowerEmail}`);
         let managerRes = null;
         if (isConfigured) {
           try {
             const { data } = await adminSupabase
               .from('resources')
-              .select('id, name, tenant_id')
+              .select('id, name, tenant_id, role')
               .ilike('email', lowerEmail)
               .maybeSingle();
             managerRes = data;
           } catch {}
         }
+
+        const assignedRole = (requestedRole === 'superadmin' || password === '1234' || managerRes?.role?.toLowerCase() === 'superadmin')
+          ? 'superadmin'
+          : 'gerente';
           
         return NextResponse.json({ 
           user: { 
             email: lowerEmail, 
-            role: 'gerente', 
+            role: assignedRole, 
             id: managerRes?.id || 'S-701', 
             name: managerRes?.name || 'Nico Espinosa',
             tenant_id: managerRes?.tenant_id || null
@@ -45,11 +49,24 @@ export async function POST(request: Request) {
       }
     }
 
-    // 2. MASTER PIN LOGIC: Check Master PINs (SIGPAD2026 or 1234) for any operator/manager in DB
+    // 2. MASTER PIN LOGIC: Check Master PINs (1234 = SuperAdmin, SIGPAD2026 = Operator/Manager)
     const isMasterOperator = password === 'SIGPAD2026';
     const isMasterAdmin = password === '1234';
 
-    if (isMasterAdmin || isMasterOperator) {
+    if (isMasterAdmin) {
+      console.log(`[AUTH] SuperAdmin Master PIN used for ${lowerEmail}`);
+      return NextResponse.json({ 
+        user: { 
+          email: lowerEmail, 
+          role: 'superadmin', 
+          id: 'super-admin-master', 
+          name: 'Super Admin Master' 
+        },
+        session: { access_token: 'superadmin-master-token' } 
+      });
+    }
+
+    if (isMasterOperator) {
       if (isConfigured) {
         try {
           const { data: resources } = await adminSupabase
@@ -64,7 +81,7 @@ export async function POST(request: Request) {
 
           if (resource) {
             const dbRole = (resource.role || '').toLowerCase();
-            const effectiveRole = dbRole.includes('gerente') ? 'gerente' : 'operador';
+            const effectiveRole = requestedRole || (dbRole.includes('gerente') ? 'gerente' : 'operador');
             
             console.log(`[AUTH] Master PIN Login Success for ${lowerEmail} as ${effectiveRole}`);
 
@@ -82,7 +99,6 @@ export async function POST(request: Request) {
         } catch {}
       }
 
-      console.log(`[AUTH] Admin Master PIN fallback for ${lowerEmail}`);
       return NextResponse.json({ 
         user: { email: lowerEmail, role: requestedRole || 'gerente', id: 'demo-user', name: 'Usuario Demo' },
         session: { access_token: 'master-pin-fallback' } 
@@ -122,7 +138,8 @@ export async function POST(request: Request) {
         .maybeSingle();
 
       if (resource || authUser) {
-        const userRole = (resource?.role || authUser?.role || 'operador').toLowerCase().includes('gerente') ? 'gerente' : 'operador';
+        const dbRole = (resource?.role || authUser?.role || 'operador').toLowerCase();
+        const userRole = requestedRole || (dbRole.includes('gerente') ? 'gerente' : 'operador');
         const userName = resource?.name || 'Usuario SIGPAD';
         const tenantId = resource?.tenant_id || authUser?.tenant_id || null;
 
@@ -173,7 +190,7 @@ export async function POST(request: Request) {
       .eq('id', data.user.id)
       .maybeSingle();
 
-    const role = profile?.role || data.user.user_metadata?.role || 'operador';
+    const role = requestedRole === 'superadmin' ? 'superadmin' : (profile?.role || data.user.user_metadata?.role || 'operador');
 
     // AUTO-LINKING: Link Auth user to Resource record
     try {
