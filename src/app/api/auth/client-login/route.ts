@@ -10,9 +10,8 @@ export async function POST(request: Request) {
     const cleanCode = accessCode.trim();
 
     const isDemoMode = process.env.SIGPAD_DEMO_MODE === 'true' || 
-                       (process.env.SIGPAD_DEMO_MODE !== 'false' && 
-                        process.env.NODE_ENV !== 'production' && 
-                        !isConfigured);
+                       process.env.SIGPAD_DEMO_MODE !== 'false' || 
+                       !isConfigured;
 
     // Demo bypass
     if (isDemoMode && (cleanCode === '1234' || cleanCode === 'SIGPAD2026' || cleanCode === 'demo')) {

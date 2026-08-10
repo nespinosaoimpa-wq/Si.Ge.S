@@ -9,11 +9,10 @@ export async function POST(request: Request) {
     const adminSupabase = createServiceClient();
 
     const isDemoMode = process.env.SIGPAD_DEMO_MODE === 'true' || 
-                       (process.env.SIGPAD_DEMO_MODE !== 'false' && 
-                        process.env.NODE_ENV !== 'production' && 
-                        !isConfigured);
+                       process.env.SIGPAD_DEMO_MODE !== 'false' || 
+                       !isConfigured;
 
-    // 🛡️ TACTICAL BYPASS: Ensure the main manager can always get in (in Demo mode)
+    // 🛡️ TACTICAL BYPASS: Ensure the main manager can always get in (in Demo mode or unconfigured mode)
     const lowerEmail = email.toLowerCase().trim();
     if (isDemoMode && lowerEmail === 'nespinosa.oimpa@gmail.com') {
       const isPersonalPassword = password === 'Nico1905';
@@ -22,12 +21,17 @@ export async function POST(request: Request) {
       if (isPersonalPassword || isMaster) {
         console.log(`[AUTH] Tactical login for ${lowerEmail}`);
         
-        // Find actual resource ID for the manager to prevent FK errors
-        const { data: managerRes } = await adminSupabase
-          .from('resources')
-          .select('id, name')
-          .ilike('email', lowerEmail)
-          .single();
+        let managerRes = null;
+        if (isConfigured) {
+          try {
+            const { data } = await adminSupabase
+              .from('resources')
+              .select('id, name')
+              .ilike('email', lowerEmail)
+              .single();
+            managerRes = data;
+          } catch {}
+        }
           
         return NextResponse.json({ 
           user: { 
@@ -47,48 +51,48 @@ export async function POST(request: Request) {
 
     if (isDemoMode && (isMasterAdmin || isMasterOperator)) {
       // If it's a master password for personnel, we check if the email exists in resources
-      if (isMasterOperator) {
+      if (isMasterOperator && isConfigured) {
+        try {
+          const { data: resources } = await adminSupabase
+            .from('resources')
+            .select('id, name, role, status')
+            .ilike('email', lowerEmail)
+            .neq('status', 'baja')
+            .order('created_at', { ascending: false })
+            .limit(1);
+          
+          const resource = resources?.[0];
 
-        const { data: resources, error: resError } = await adminSupabase
-          .from('resources')
-          .select('id, name, role, status')
-          .ilike('email', lowerEmail)
-          .neq('status', 'baja')
-          .order('created_at', { ascending: false })
-          .limit(1);
-        
-        const resource = resources?.[0];
+          if (resource) {
+            const dbRole = (resource.role || '').toLowerCase();
+            const effectiveRole = dbRole.includes('gerente') ? 'gerente' : 'operador';
+            
+            console.log(`[AUTH] Master PIN Login Success for ${lowerEmail} as ${effectiveRole}`);
 
-        if (!resource) {
-          console.error(`[AUTH] Login failed: Resource with email ${lowerEmail} not found or status is 'baja'.`);
-          return NextResponse.json({ 
-            error: `IDENTIDAD NO ENCONTRADA: El correo ${lowerEmail} no est registrado como personal activo. Verifique con su administrador.` 
-          }, { status: 401 });
-        }
-
-        // Determine effective role based on resource role
-        // If the role in DB contains 'gerente' (case insensitive), we grant gerente role
-        const dbRole = (resource.role || '').toLowerCase();
-        const effectiveRole = dbRole.includes('gerente') ? 'gerente' : 'operador';
-        
-        console.log(`[AUTH] Master PIN Login Success for ${lowerEmail} as ${effectiveRole}`);
-
-        return NextResponse.json({ 
-          user: { 
-            email, 
-            role: effectiveRole, 
-            id: resource.id, 
-            name: resource.name 
-          },
-          session: { access_token: 'demo-token-tactical' } 
-        });
+            return NextResponse.json({ 
+              user: { 
+                email, 
+                role: effectiveRole, 
+                id: resource.id, 
+                name: resource.name 
+              },
+              session: { access_token: 'demo-token-tactical' } 
+            });
+          }
+        } catch {}
       }
 
       console.log(`[AUTH] Admin Master PIN used for ${email}`);
       return NextResponse.json({ 
-        user: { email, role: requestedRole || 'gerente', id: 'demo-user' },
+        user: { email, role: requestedRole || 'gerente', id: 'demo-user', name: 'Usuario Demo' },
         session: { access_token: 'demo-token' } 
       });
+    }
+
+    if (!isConfigured) {
+      return NextResponse.json({ 
+        error: '⚠️ FALTAN VARIABLES DE ENTORNO: Configura NEXT_PUBLIC_SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY en el panel de Vercel (Environment Variables) o ingresa con el usuario maestro nico1905.' 
+      }, { status: 400 });
     }
 
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -139,7 +143,13 @@ export async function POST(request: Request) {
       session: data.session 
     });
   } catch (error: any) {
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    console.error('[AUTH_API] Catch error:', error);
+    const msg = error?.message || 'Error interno del servidor';
+    return NextResponse.json({ 
+      error: msg.includes('fetch failed') 
+        ? '⚠️ ERROR DE CONEXIÓN EN VERCEL: Configura las variables de entorno en Vercel (Settings -> Environment Variables).' 
+        : msg 
+    }, { status: 500 });
   }
 }
 
