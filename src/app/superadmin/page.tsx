@@ -156,6 +156,22 @@ export default function SuperAdminDashboard() {
         });
       }
 
+      const newTenantMetric: TenantMetric = {
+        tenant_id: data.tenantId || `tenant-${Date.now()}`,
+        tenant_name: companyName,
+        billing_status: planTier === 'trial' ? 'trial' : 'active',
+        plan_tier: planTier,
+        country_code: countryCode,
+        created_at: new Date().toISOString(),
+        total_users: 1,
+        total_operators: 0,
+        total_objectives: 0,
+        active_shifts: 0,
+        open_alarms: 0,
+      };
+
+      setTenants(prev => [newTenantMetric, ...prev.filter(t => t.tenant_id !== newTenantMetric.tenant_id)]);
+
       // Establecer estados de éxito de invitación
       setGeneratedInviteLink(data.inviteLink || `https://sigpad.com.ar/register?email=${encodeURIComponent(adminEmail.toLowerCase().trim())}`);
       setCreatedCompanyName(companyName);
