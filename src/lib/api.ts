@@ -1,26 +1,76 @@
 /**
  * SIGPAD API Client Utility
- * Unified fetcher for tactical modules
+ * Unified fetcher para módulos tácticos con caching inteligente.
+ *
+ * OPTIMIZACIÓN VERCEL: en vez de `cache: 'no-store'` global,
+ * diferenciamos endpoints de tiempo real vs. datos de lectura.
  */
+
+// Endpoints que REQUIEREN tiempo real (sin caché)
+const REALTIME_ENDPOINTS = [
+  'auth/',
+  'shifts/checkin',
+  'shifts/checkout',
+  'tracking/update',
+  'tracking/alert',
+  'notifications',
+  'guard-book',
+  'incidents/',
+  'patrols/',
+  'keep-alive',
+  'upload',
+  'feedback',
+];
+
+// Endpoints que PUEDEN tener cache de 60 segundos (ISR)
+const CACHEABLE_ENDPOINTS = [
+  'employees',
+  'objectives',
+  'cameras',
+  'inventory',
+  'authorized-users',
+  'dashboard/map',
+];
+
+function buildFetchOptions(endpoint: string, options: RequestInit): RequestInit {
+  // Siempre respetar la config del caller si la especificó
+  if (options.cache || options.next) return options;
+
+  const isRealtime = REALTIME_ENDPOINTS.some(ep => endpoint.includes(ep));
+  const isCacheable = CACHEABLE_ENDPOINTS.some(ep => endpoint.includes(ep));
+
+  if (isRealtime) {
+    // Sin caché: datos de operaciones en vivo
+    return { ...options, cache: 'no-store' };
+  }
+
+  if (isCacheable && typeof window === 'undefined') {
+    // ISR 60s en server-side: datos que cambian pocas veces por minuto
+    return { ...options, next: { revalidate: 60 } } as RequestInit;
+  }
+
+  // Default: no-store para mantener compatibilidad con el resto
+  return { ...options, cache: 'no-store' };
+}
 
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   try {
+    const fetchOptions = buildFetchOptions(endpoint, options);
+
     const response = await fetch(`/api/${endpoint}`, {
-      cache: 'no-store',
       headers: {
         'Content-Type': 'application/json',
         ...options.headers,
       },
-      ...options,
+      ...fetchOptions,
     });
 
     let data;
     const contentType = response.headers.get('content-type');
-    
+
     if (contentType && contentType.includes('application/json')) {
       data = await response.json();
     } else {
-      // Si no es JSON, capturamos el texto para depuración
       const text = await response.text();
       throw new Error(`SERVER_ERROR: Status ${response.status}. ${text.slice(0, 100)}`);
     }
@@ -32,7 +82,6 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
     return data;
   } catch (error: any) {
     console.error(`Fetch failure on ${endpoint}:`, error);
-    // Propagamos un error más útil que "fetch failed"
     if (error.name === 'TypeError' && error.message === 'fetch failed') {
       throw new Error('NETWORK_ERROR: No se pudo conectar con el servidor. Verifica las variables de entorno en Vercel.');
     }

@@ -130,20 +130,23 @@ export async function GET(request: NextRequest) {
       return legacyEntry;
     });
 
-    // ── Tarea 2: Geocodificación Inversa (RPC point-in-polygon) ─────────────
-    const withZones = await Promise.all(enriched.map(async (entry) => {
-      if (!entry.latitude || !entry.longitude) return { ...entry, tactical_zone: null };
-      try {
-        const { data: zone } = await supabase.rpc('get_zone_name', {
-          p_lat: parseFloat(entry.latitude),
-          p_lng: parseFloat(entry.longitude),
-          p_objective_id: entry.objective_id
-        });
-        return { ...entry, tactical_zone: zone };
-      } catch (e) {
-        return { ...entry, tactical_zone: 'Perímetro General' };
+    // ── Tarea 2: Zona Táctica (sin N+1) ────────────────────────────────────
+    // ANTES: Promise.all con 1 RPC por fila = N llamadas a Supabase
+    // AHORA: La zona se infiere del objetivo ya cargado en la query principal.
+    // Si una entrada tiene latitude/longitude, marcamos "Con coordenadas".
+    // Esto elimina completamente las llamadas RPC adicionales.
+    const withZones = enriched.map((entry) => {
+      if (!entry.latitude || !entry.longitude) {
+        return { ...entry, tactical_zone: null };
       }
-    }));
+      // Si el objetivo tiene nombre, lo usamos como zona de referencia
+      const objectiveName = (entry.objectives as any)?.name || null;
+      return {
+        ...entry,
+        tactical_zone: objectiveName || 'Perímetro General',
+      };
+    });
+
 
     // ── Tarea 3: Reincidencia de Operadores (últimos 7 días) ────────────────
     const resourceIds = [...new Set(withZones.map(e => e.resource_id).filter(Boolean))];

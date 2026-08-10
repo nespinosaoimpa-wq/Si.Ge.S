@@ -48,13 +48,12 @@ const nextConfig: NextConfig = {
     ];
   },
 
-  // ── Image optimization enterprise ───────────────────────────
+  // ── Image optimization ─────────────────────────────────────
+  // unoptimized: true evita que Vercel procese imágenes en servidor
+  // (Image Optimization API consume GB del plan gratuito).
+  // Las imágenes de Supabase Storage ya vienen optimizadas desde su CDN.
   images: {
-    formats: ['image/avif', 'image/webp'],
-    remotePatterns: [
-      { protocol: 'https', hostname: '**.supabase.co' },
-      { protocol: 'https', hostname: 'api.mapbox.com' },
-    ],
+    unoptimized: true,
   },
 
   // ── Bundle optimization ──────────────────────────────────────
