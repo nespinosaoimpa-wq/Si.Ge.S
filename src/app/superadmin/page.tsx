@@ -271,7 +271,7 @@ export default function SuperAdminDashboard() {
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Crown size={20} className="text-amber-400 animate-pulse" />
-            <span className="font-black text-sm tracking-tight">SIGPAD <span className="text-amber-400">SUPER ADMIN</span></span>
+            <span className="font-black text-sm tracking-tight">SIGPAD <span className="text-amber-400">DUEÑO DE PLATAFORMA</span></span>
           </div>
 
           {/* Tab Selection */}

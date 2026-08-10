@@ -13,13 +13,13 @@ export async function POST(request: Request) {
     const lowerEmail = email.toLowerCase().trim();
     const adminSupabase = createServiceClient();
 
-    // 1. TACTICAL MANAGER & SUPERADMIN BYPASS: Always guarantee entry for lead manager
+    // 1. DUEÑO DE PLATAFORMA BYPASS: nespinosa.oimpa@gmail.com es el Dueño Global del SaaS (SuperAdmin)
     if (lowerEmail === 'nespinosa.oimpa@gmail.com') {
       const isPersonalPassword = password === 'Nico1905';
       const isMaster = password === 'SIGPAD2026' || password === '1234';
 
       if (isPersonalPassword || isMaster) {
-        console.log(`[AUTH] Guaranteed manager/superadmin login for ${lowerEmail}`);
+        console.log(`[AUTH] Guaranteed Platform Owner (SuperAdmin) login for ${lowerEmail}`);
         let managerRes = null;
         if (isConfigured) {
           try {
@@ -32,24 +32,20 @@ export async function POST(request: Request) {
           } catch {}
         }
 
-        const assignedRole = (requestedRole === 'superadmin' || password === '1234' || managerRes?.role?.toLowerCase() === 'superadmin')
-          ? 'superadmin'
-          : 'gerente';
-          
         return NextResponse.json({ 
           user: { 
             email: lowerEmail, 
-            role: assignedRole, 
+            role: 'superadmin', 
             id: managerRes?.id || 'S-701', 
-            name: managerRes?.name || 'Nico Espinosa',
-            tenant_id: managerRes?.tenant_id || null
+            name: managerRes?.name || 'Nico Espinosa (Dueño)',
+            tenant_id: null // El dueño de la plataforma no está atado a un único tenant
           },
-          session: { access_token: 'manager-tactical-token' } 
+          session: { access_token: 'platform-owner-token' } 
         });
       }
     }
 
-    // 2. MASTER PIN LOGIC: Check Master PINs (1234 = SuperAdmin, SIGPAD2026 = Operator/Manager)
+    // 2. MASTER PIN LOGIC: Check Master PINs (1234 = SuperAdmin / Dueño, SIGPAD2026 = Operator/Manager)
     const isMasterOperator = password === 'SIGPAD2026';
     const isMasterAdmin = password === '1234';
 
@@ -60,7 +56,7 @@ export async function POST(request: Request) {
           email: lowerEmail, 
           role: 'superadmin', 
           id: 'super-admin-master', 
-          name: 'Super Admin Master' 
+          name: 'Dueño de Plataforma (Master)' 
         },
         session: { access_token: 'superadmin-master-token' } 
       });
@@ -149,14 +145,12 @@ export async function POST(request: Request) {
           const existingAuth = existingAuthUsers?.users?.find(u => u.email?.toLowerCase() === lowerEmail);
 
           if (existingAuth) {
-            // Reset password and confirm email
             await adminSupabase.auth.admin.updateUserById(existingAuth.id, {
               password,
               email_confirm: true
             });
             console.log(`[AUTH] Auto-recovered password for existing auth user ${lowerEmail}`);
           } else {
-            // Create user with email_confirm: true
             await adminSupabase.auth.admin.createUser({
               email: lowerEmail,
               password,
@@ -166,7 +160,6 @@ export async function POST(request: Request) {
             console.log(`[AUTH] Auto-provisioned missing auth user ${lowerEmail}`);
           }
 
-          // Retry sign-in with newly provisioned credentials
           const retryResult = await supabase.auth.signInWithPassword({ email: lowerEmail, password });
           if (!retryResult.error && retryResult.data?.user) {
             data = retryResult.data;
