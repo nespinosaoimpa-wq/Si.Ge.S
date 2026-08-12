@@ -10,6 +10,8 @@ import { useShift } from '@/components/providers/ShiftProvider';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { supabase } from '@/lib/supabase';
 
+import HombreVivoCheckModal from '@/components/operador/HombreVivoCheckModal';
+
 const navItems = [
   { name: 'Inicio', href: '/operador', icon: Home },
   { name: 'Novedades', href: '/operador/novedades', icon: ShieldAlert },
@@ -117,6 +119,11 @@ export default function OperadorLayout({
           </motion.div>
         )}
       </AnimatePresence>
+
+      <HombreVivoCheckModal
+        operatorId={user?.id}
+        isShiftActive={isShiftActive}
+      />
 
       {/* Operator Bottom Navigation */}
       <nav className={cn(

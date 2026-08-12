@@ -134,7 +134,10 @@ export default function InventarioHub() {
     if (!confirm(`¿Eliminar "${name}" del inventario? Esta acción no se puede deshacer.`)) return;
     try {
       const res = await fetch(`/api/inventory?id=${id}`, { method: 'DELETE' });
-      if (!res.ok) { const r = await res.json(); throw new Error(r.error); }
+      if (!res.ok) {
+        const { error } = await supabase.from('resource_inventory').delete().eq('id', id);
+        if (error) throw error;
+      }
       fetchInventory();
     } catch (e: any) {
       console.error('Error deleting item:', e);
@@ -144,12 +147,33 @@ export default function InventarioHub() {
 
   const handleAssignObjective = async (itemId: string, objId: string) => {
     try {
+      const targetObjId = objId || null;
       const res = await fetch('/api/inventory', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: itemId, objective_id: objId || null }),
+        body: JSON.stringify({ id: itemId, objective_id: targetObjId }),
       });
-      if (!res.ok) { const r = await res.json(); throw new Error(r.error); }
+
+      let hasError = !res.ok;
+      let errorText = '';
+      if (hasError) {
+        try {
+          const r = await res.json();
+          errorText = r.error || `HTTP ${res.status}`;
+        } catch (e) {
+          errorText = `HTTP ${res.status}`;
+        }
+      }
+
+      if (hasError) {
+        // Direct Supabase Client fallback
+        const { error } = await supabase
+          .from('resource_inventory')
+          .update({ objective_id: targetObjId })
+          .eq('id', itemId);
+        if (error) throw new Error(errorText || error.message);
+      }
+
       fetchInventory();
     } catch (e: any) {
       console.error('Error assigning objective:', e);
@@ -174,8 +198,22 @@ export default function InventarioHub() {
           notes: selectedEditItem.notes || null,
         }),
       });
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.error || 'Error al actualizar');
+
+      let hasError = !res.ok;
+      if (hasError) {
+        const { error } = await supabase
+          .from('resource_inventory')
+          .update({
+            item_name: selectedEditItem.item_name,
+            category: selectedEditItem.category,
+            serial_number: selectedEditItem.serial_number || null,
+            status: selectedEditItem.status,
+            objective_id: selectedEditItem.objective_id || null,
+          })
+          .eq('id', selectedEditItem.id);
+        if (error) throw error;
+      }
+
       setIsEditSheetOpen(false);
       setSelectedEditItem(null);
       await fetchInventory();
@@ -194,7 +232,15 @@ export default function InventarioHub() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, status: newCondition }),
       });
-      if (!res.ok) { const r = await res.json(); throw new Error(r.error); }
+
+      if (!res.ok) {
+        const { error } = await supabase
+          .from('resource_inventory')
+          .update({ status: newCondition })
+          .eq('id', id);
+        if (error) throw error;
+      }
+
       fetchInventory();
     } catch (e: any) {
       console.error(e);

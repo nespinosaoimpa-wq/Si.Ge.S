@@ -122,10 +122,8 @@ export async function GET(req: NextRequest) {
       console.error('[AUTO_ALERT_SCHEDULER_ERROR]', e);
     }
 
-    // Set up parallel fetch queries
-    let objectivesQuery = supabase.from('objectives')
-      .select('*, assigned_personnel:resources!current_objective_id(*)')
-      .eq('is_active', true);
+    // Set up parallel fetch queries cleanly without fragile PostgREST relation joins
+    let objectivesQuery = supabase.from('objectives').select('*');
 
     let resourcesQuery = supabase.from('resources')
       .select('*')
@@ -175,6 +173,31 @@ export async function GET(req: NextRequest) {
     if (shiftsRes.error) console.error("❌ Shifts fetch error:", JSON.stringify(shiftsRes.error));
     if (rawIncidentsRes.error) console.error("❌ Raw incidents fetch error:", JSON.stringify(rawIncidentsRes.error));
 
+    // Filter out inactive and deleted objectives
+    const rawObjectives = (objectivesRes.data || []).filter((o: any) => 
+      o.is_active !== false && 
+      o.status !== 'Inactivo' && 
+      o.status !== 'inactivo' && 
+      !o.deleted_at
+    );
+    const rawResources = resourcesRes.data || [];
+
+    // Map assigned personnel in memory cleanly
+    const resourcesByObjective: Record<string, any[]> = {};
+    rawResources.forEach((r: any) => {
+      if (r.current_objective_id) {
+        if (!resourcesByObjective[r.current_objective_id]) {
+          resourcesByObjective[r.current_objective_id] = [];
+        }
+        resourcesByObjective[r.current_objective_id].push(r);
+      }
+    });
+
+    const mappedObjectives = rawObjectives.map((obj: any) => ({
+      ...obj,
+      assigned_personnel: resourcesByObjective[obj.id] || []
+    }));
+
     // Consolidate entries from both tables
     const recentIncidentsFromGuardBook = (incidentsRes.data || []).map((inc: any) => ({
       ...inc,
@@ -192,8 +215,8 @@ export async function GET(req: NextRequest) {
       .slice(0, 15);
 
     const responseData = {
-      objectives: objectivesRes.data || [],
-      resources: resourcesRes.data || [],
+      objectives: mappedObjectives,
+      resources: rawResources,
       recentIncidents,
       activeShifts: shiftsRes.data || []
     };

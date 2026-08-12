@@ -57,6 +57,8 @@ async function getEvidence(id: string) {
   return data || [];
 }
 
+import { OperatorAvatarUploader } from '@/components/gerente/OperatorAvatarUploader';
+
 export default async function OperatorProfilePage(props: { params: Promise<{ id: string }> }) {
   const { id } = await props.params;
   
@@ -101,16 +103,14 @@ export default async function OperatorProfilePage(props: { params: Promise<{ id:
       {/* HEADER */}
       <div className="flex flex-col md:flex-row items-center md:items-start gap-8 pb-10 border-b border-zinc-200">
         <div className="relative">
-          <div className="w-32 h-32 rounded-3xl bg-white border border-zinc-200 shadow-md flex items-center justify-center overflow-hidden">
-             {operator.avatar_url ? (
-               <img src={operator.avatar_url} className="w-full h-full object-cover" alt="Avatar" />
-             ) : (
-               <ShieldCheck size={48} className="text-[#0F4C5C]/40" />
-             )}
-          </div>
+          <OperatorAvatarUploader
+            operatorId={operator.id}
+            currentAvatarUrl={operator.avatar_url}
+            operatorName={operator.name}
+          />
           {isExpiringSoon && (
-            <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-amber-400 rounded-xl flex items-center justify-center border-4 border-zinc-50 shadow-md">
-               <AlertTriangle size={16} className="text-black" />
+            <div className="absolute -bottom-2 -right-2 w-7 h-7 bg-amber-400 rounded-xl flex items-center justify-center border-2 border-zinc-50 shadow-md">
+               <AlertTriangle size={14} className="text-black" />
             </div>
           )}
         </div>

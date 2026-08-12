@@ -35,18 +35,28 @@ export async function DELETE(
     const { id } = await params;
     const supabase = createServiceClient();
 
-    // Soft delete: set is_active to false
-    const { data, error } = await supabase
-      .from('objectives')
-      .update({ is_active: false })
-      .eq('id', id)
-      .select()
-      .maybeSingle();
+    // 1. Unassign resources linked to this objective
+    await supabase.from('resources').update({ current_objective_id: null }).eq('current_objective_id', id);
 
-    if (error) throw error;
+    // 2. Perform real delete from Supabase
+    const { data: targetObj } = await supabase.from('objectives').select('tenant_id').eq('id', id).maybeSingle();
+    const { error: deleteErr } = await supabase.from('objectives').delete().eq('id', id);
+
+    if (deleteErr) {
+      console.warn("Hard delete failed in SIGPAD, performing soft delete:", deleteErr.message);
+      // Soft delete fallback if foreign keys exist
+      await supabase
+        .from('objectives')
+        .update({ 
+          is_active: false, 
+          status: 'Inactivo', 
+          deleted_at: new Date().toISOString() 
+        })
+        .eq('id', id);
+    }
     
-    // 🚀 CACHE INVALIDATION: Clean cached objectives & map for this tenant
-    const targetTenantId = data?.tenant_id;
+    // CACHE INVALIDATION: Clean cached objectives & map for this tenant
+    const targetTenantId = targetObj?.tenant_id;
     if (targetTenantId) {
       serverCache.invalidate(`objectives-${targetTenantId}`);
       serverCache.invalidate(`dashboard-map-${targetTenantId}`);
@@ -54,7 +64,7 @@ export async function DELETE(
     serverCache.invalidate(`objectives-super`);
     serverCache.invalidate(`dashboard-map-super`);
 
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({ success: true, id });
   } catch (error: any) {
     console.error("Error deleting objective:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
