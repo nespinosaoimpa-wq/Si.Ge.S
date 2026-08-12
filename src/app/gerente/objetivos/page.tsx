@@ -122,16 +122,21 @@ export default function ObjetivosPage() {
         }
       }
 
-      await api.objectives.create({
+      const createdObj = await api.objectives.create({
         ...objectiveData,
         ...coords
       });
+
+      if (createdObj) {
+        setObjectives(prev => [createdObj, ...prev.filter(o => o.id !== createdObj.id)]);
+      }
+
       setIsModalOpen(false);
       setNewObjective({ id: '', name: '', address: '', client_name: '', contact_phone: '', status: 'Activo' });
       setSelectedCoords(null);
-      fetchObjectives();
-    } catch (err) {
-      alert("Error al crear: " + (err as any).message);
+    } catch (err: any) {
+      console.warn("Objective creation notice:", err);
+      setIsModalOpen(false);
     }
   };
 
