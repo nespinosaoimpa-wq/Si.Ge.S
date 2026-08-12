@@ -6,8 +6,8 @@ import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   MapPin, Users, Settings, LogOut, Shield,
-  ClipboardList, Home, User, BookOpen,
-  CheckCircle2, Package, Calculator, Download, Building2
+  ClipboardList, Home, User, BookOpen, Activity,
+  CheckCircle2, Package, Calculator, Download, Share2, Building2
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -19,8 +19,10 @@ const adminItems = [
   { name: 'Personal', href: '/gerente/personal', icon: Users },
   { name: 'Objetivos', href: '/gerente/objetivos', icon: ClipboardList },
   { name: 'Libro', href: '/gerente/libro', icon: BookOpen },
-  { name: 'Stock', href: '/gerente/inventario', icon: Package },
+  { name: 'Hombre Vivo', href: '/gerente/hombre-vivo', icon: Activity },
+  { name: 'Recursos Logísticos', href: '/gerente/inventario', icon: Package },
   { name: 'Planillas', href: '/gerente/planillas', icon: Calculator },
+  { name: 'Accesos', href: '/gerente/accesos', icon: Settings },
 ];
 
 const guardiaItems = [
@@ -36,6 +38,30 @@ export function Sidebar() {
   const { theme } = useShift();
   const [isMobile, setIsMobile] = useState(false);
   const [mounted, setMounted] = useState(false);
+
+  const handleShare = async () => {
+    if (typeof window === 'undefined') return;
+    const shareData = {
+      title: 'SIGPAD - Plataforma de Control',
+      text: 'Sistema de Gestión Operativa y Control de Seguridad - SIGPAD',
+      url: window.location.origin
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch (err) {
+        console.error('Error sharing:', err);
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(window.location.origin);
+        alert('📋 ¡Enlace copiado al portapapeles! Puedes enviarlo por WhatsApp u otro medio.');
+      } catch (err) {
+        alert(`Comparte este enlace: ${window.location.origin}`);
+      }
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -102,7 +128,7 @@ export function Sidebar() {
     );
   }
 
-  // ============ DESKTOP: Left Sidebar — always dark with gold accents ============
+  // ============ DESKTOP: Left Sidebar — dark with SIGPAD brand styling ============
   return (
     <div className="fixed left-0 top-0 bottom-0 w-[220px] z-[90] flex flex-col bg-zinc-950 border-r border-white/5">
 
@@ -182,6 +208,13 @@ export function Sidebar() {
 
       {/* Footer */}
       <div className="p-3 border-t border-white/5 space-y-1">
+        <button
+          onClick={handleShare}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-zinc-400 hover:text-primary hover:bg-white/5 transition-all text-sm font-semibold"
+        >
+          <Share2 size={16} />
+          <span>Compartir Enlace</span>
+        </button>
         <button
           onClick={() => window.dispatchEvent(new CustomEvent('trigger-pwa-install'))}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-zinc-400 hover:text-primary hover:bg-white/5 transition-all text-sm font-semibold"
