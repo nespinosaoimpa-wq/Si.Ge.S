@@ -141,9 +141,10 @@ export default function AdminDashboard() {
     const query = searchQuery.toLowerCase();
     if (!query) return enrichedObjectives;
     
-    // Check if query matches any objective metadata
+    // Check if query matches any objective metadata (name, address, client, occupant)
     const matches = enrichedObjectives.filter((o: any) =>
       (o.name || '').toLowerCase().includes(query) ||
+      (o.address || '').toLowerCase().includes(query) ||
       (o.client_name || '').toLowerCase().includes(query) ||
       (o.occupant_name || '').toLowerCase().includes(query)
     );
