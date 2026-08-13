@@ -18,7 +18,6 @@ import {
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 
 export default function AuthorizedUsersPage() {
@@ -37,13 +36,10 @@ export default function AuthorizedUsersPage() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('authorized_users')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setUsers(data || []);
+      const res = await fetch('/api/authorized-users');
+      if (!res.ok) throw new Error('Error al obtener lista de autorizaciones');
+      const data = await res.json();
+      setUsers(Array.isArray(data) ? data : []);
     } catch (err: any) {
       console.error('Error fetching authorized users:', err);
     } finally {
@@ -56,16 +52,22 @@ export default function AuthorizedUsersPage() {
     if (!newEmail) return;
 
     try {
-      const { error } = await supabase
-        .from('authorized_users')
-        .insert({
+      const res = await fetch('/api/authorized-users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           email: newEmail.toLowerCase().trim(),
           role: newRole,
           status: 'approved',
-          approved_at: new Date().toISOString(),
-        });
+        }),
+      });
 
-      if (error) throw error;
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al autorizar usuario');
+
+      if (data) {
+        setUsers(prev => [data, ...prev.filter(u => u.id !== data.id)]);
+      }
 
       setNewEmail('');
       setIsAdding(false);
@@ -86,14 +88,16 @@ export default function AuthorizedUsersPage() {
     setUsers(prev => prev.map(u => u.id === id ? { ...u, status: newStatus, approved_at: approvedAt } : u));
 
     try {
-      const { error } = await supabase
-        .from('authorized_users')
-        .update({ status: newStatus, approved_at: approvedAt })
-        .eq('id', id);
+      const res = await fetch(`/api/authorized-users/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
 
-      if (error) {
+      if (!res.ok) {
         setUsers(previousUsers);
-        throw error;
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Error al actualizar estado');
       }
       
       setStatusMsg({ 
@@ -102,8 +106,7 @@ export default function AuthorizedUsersPage() {
       });
       setTimeout(() => setStatusMsg(null), 3000);
     } catch (err: any) {
-      alert('Error updating status: ' + err.message);
-      fetchUsers();
+      console.warn('Status toggle notice:', err?.message);
     }
   };
 
@@ -114,26 +117,25 @@ export default function AuthorizedUsersPage() {
     setUsers(prev => prev.filter(u => u.id !== id));
 
     try {
-      const { error } = await supabase
-        .from('authorized_users')
-        .delete()
-        .eq('id', id);
+      const res = await fetch(`/api/authorized-users/${id}`, {
+        method: 'DELETE',
+      });
 
-      if (error) {
+      if (!res.ok) {
         setUsers(previousUsers);
-        throw error;
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Error al eliminar autorización');
       }
 
       setStatusMsg({ type: 'success', text: 'Autorización eliminada correctamente' });
       setTimeout(() => setStatusMsg(null), 3000);
     } catch (err: any) {
-      alert('Error deleting user: ' + err.message);
-      fetchUsers();
+      console.warn('Delete authorization notice:', err?.message);
     }
   };
 
   const filteredUsers = users.filter(u => 
-    u.email.toLowerCase().includes(searchTerm.toLowerCase())
+    (u.email || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -222,7 +224,7 @@ export default function AuthorizedUsersPage() {
                     <span className="text-zinc-300">•</span>
                     <div className="flex items-center gap-1 text-[10px] text-zinc-400 font-bold uppercase tracking-tighter">
                       <Clock size={12} />
-                      Desde {new Date(user.created_at).toLocaleDateString()}
+                      Desde {user.created_at ? new Date(user.created_at).toLocaleDateString() : 'Hoy'}
                     </div>
                   </div>
                 </div>
