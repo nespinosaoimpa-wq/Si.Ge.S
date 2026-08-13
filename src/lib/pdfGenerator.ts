@@ -1,4 +1,5 @@
-import { jsPDF } from 'jspdf';
+// jsPDF se importa dinámicamente (lazy) para no incluirlo en el bundle principal.
+// Solo se carga cuando el usuario ejecuta una exportación de PDF (~200KB ahorrados en carga inicial).
 
 export async function generateEvidencePDF({
   imageUrl,
@@ -15,6 +16,8 @@ export async function generateEvidencePDF({
   longitude: number | null;
   timestamp: string;
 }) {
+  // Importar jsPDF solo cuando se necesita (lazy) — ahorra ~200KB en el bundle inicial
+  const { jsPDF } = await import('jspdf');
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',

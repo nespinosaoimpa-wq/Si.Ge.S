@@ -16,7 +16,8 @@ import {
   Filter,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import * as XLSX from 'xlsx'
+// xlsx se importa dinámicamente (lazy) — ahorra ~300KB en el bundle inicial.
+// Solo se carga cuando el usuario hace clic en Exportar.
 
 type PayrollData = {
   shifts: any[]
@@ -66,8 +67,10 @@ export default function PayrollPage() {
     fetchPayroll()
   }, [startDate, endDate])
 
-  const exportNomina = () => {
+  const exportNomina = async () => {
     if (!data) return
+    // Importar xlsx solo cuando se necesita
+    const XLSX = await import('xlsx')
     const ws = XLSX.utils.json_to_sheet(
       data.nomina.map((r) => ({
         'Apellido y Nombre': r.operator_name,
@@ -83,8 +86,10 @@ export default function PayrollPage() {
     XLSX.writeFile(wb, `Nomina_SIGPAD_${startDate}_${endDate}.xlsx`)
   }
 
-  const exportFacturacion = () => {
+  const exportFacturacion = async () => {
     if (!data) return
+    // Importar xlsx solo cuando se necesita
+    const XLSX = await import('xlsx')
     const ws = XLSX.utils.json_to_sheet(
       data.facturacion.map((r) => ({
         'Puesto de Servicio': r.objective_name,

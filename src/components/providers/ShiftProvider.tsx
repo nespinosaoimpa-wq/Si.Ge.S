@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useRef, useCallback, useMemo } from 'react';
 import { ShieldAlert, Fingerprint } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
@@ -15,6 +15,7 @@ interface ShiftContextType {
   theme: 'light' | 'dark';
   toggleTheme: () => void;
   setHighFrequencyMode: (enabled: boolean, roundId?: string) => void;
+  getGpsPosition: () => { lat: number; lng: number; accuracy?: number; speed?: number | null } | null;
 }
 
 const ShiftContext = createContext<ShiftContextType | undefined>(undefined);
@@ -30,6 +31,14 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
   const MAN_ALIVE_INTERVAL = 10 * 60 * 1000;
   
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
+
+  // ── GPS Position Ref (no state) ──────────────────────────────────────────
+  // CRÍTICO PARA RENDIMIENTO: La posición GPS se actualiza cada 3-5 segundos.
+  // Si se guardara en estado del contexto, TODOS los consumidores de useShift()
+  // se re-renderizarían continuamente. En cambio, usamos un ref mutable:
+  // los componentes que necesiten la posición en tiempo real la leen con getGpsPosition().
+  const gpsPositionRef = useRef<{ lat: number; lng: number; accuracy?: number; speed?: number | null } | null>(null);
+  const getGpsPosition = useCallback(() => gpsPositionRef.current, []);
 
   // Persistence for Theme & Shift
   useEffect(() => {
@@ -62,7 +71,7 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
     resetManAlive();
   };
 
-  const updateShiftData = (newData: Partial<any>) => {
+  const updateShiftData = useCallback((newData: Partial<any>) => {
     setShiftData((prev: any) => {
       const updated = { ...prev, ...newData };
       // Also update localStorage so it persists on refresh
@@ -71,7 +80,7 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
       }
       return updated;
     });
-  };
+  }, [shiftId]);
 
   const endShift = () => {
     setIsShiftActive(false);
@@ -143,8 +152,9 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
             shiftId || (shiftData as any)?.id,
             resolvedResourceId,
             async (pos) => {
-               // Notify UI for live updates
-               updateShiftData({ location: { lat: pos.latitude, lng: pos.longitude, accuracy: pos.accuracy, speed: pos.speed } });
+               // Actualizar SOLO el ref GPS — no setState para evitar re-renders globales.
+               // El mapa y otros componentes pueden leer la posición via getGpsPosition().
+               gpsPositionRef.current = { lat: pos.latitude, lng: pos.longitude, accuracy: pos.accuracy, speed: pos.speed };
             },
             (err) => console.warn('[SIGPAD Tracker] Background Error:', err),
             shiftData?.objectiveLocation ? {
@@ -181,19 +191,24 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // Memoizar el valor del contexto: solo cambia cuando cambian los estados reales
+  // (isShiftActive, shiftId, theme), NO cuando llega una posición GPS.
+  const contextValue = useMemo(() => ({
+    isShiftActive,
+    shiftData,
+    shiftId,
+    startShift,
+    endShift,
+    triggerManAlive,
+    updateShiftData,
+    theme,
+    toggleTheme,
+    setHighFrequencyMode,
+    getGpsPosition, // Exponer getter de posición GPS sin re-renders
+  }), [isShiftActive, shiftData, shiftId, theme, updateShiftData, getGpsPosition]);
+
   return (
-    <ShiftContext.Provider value={{ 
-      isShiftActive, 
-      shiftData, 
-      shiftId, 
-      startShift, 
-      endShift, 
-      triggerManAlive,
-      updateShiftData,
-      theme,
-      toggleTheme,
-      setHighFrequencyMode
-    }}>
+    <ShiftContext.Provider value={contextValue}>
       {children}
 
       {showManAliveDialog && (

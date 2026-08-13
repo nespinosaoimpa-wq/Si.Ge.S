@@ -9,7 +9,7 @@ import {
   Download, Calendar, Clock, TrendingUp, Hash, Filter, Trash2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import * as XLSX from 'xlsx';
+// xlsx se importa dinámicamente (lazy) — ahorra ~300KB en el bundle inicial.
 
 interface PayrollPanelProps {
   operatorId: string;
@@ -120,8 +120,10 @@ export function PayrollPanel({
   };
 
   // ── Export Excel ─────────────────────────────────────────────────────────
-  const exportExcel = () => {
+  const exportExcel = async () => {
     if (periodShifts.length === 0) return;
+    // Importar xlsx solo cuando se necesita
+    const XLSX = await import('xlsx');
     const ws = XLSX.utils.json_to_sheet([
       ...periodShifts.map((s) => ({
         Fecha:          new Date(s.checkin_time).toLocaleDateString('es-AR'),

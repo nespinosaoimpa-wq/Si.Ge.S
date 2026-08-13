@@ -674,13 +674,8 @@ export default function AdminDashboard() {
       })
       .subscribe();
 
-    const interval = setInterval(() => {
-      fetchData();
-    }, 60000); // 60 seconds background sync (Realtime WS pushes instant updates)
-
     return () => {
       supabase.removeChannel(channel);
-      clearInterval(interval);
     };
   }, [isMobile, fetchData]);
 

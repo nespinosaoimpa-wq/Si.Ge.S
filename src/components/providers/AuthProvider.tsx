@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useMemo } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 
@@ -161,8 +161,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     window.location.href = '/login';
   };
 
+  // Memoizar el valor del contexto para evitar re-renders innecesarios en todos los
+  // consumidores de useAuth(). Sin esto, cada actualización de loading causa re-renders globales.
+  const contextValue = useMemo(() => ({
+    user, session, loading, role, signOut
+  }), [user, session, loading, role]);
+
   return (
-    <AuthContext.Provider value={{ user, session, loading, role, signOut }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

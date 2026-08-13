@@ -58,7 +58,7 @@ const nextConfig: NextConfig = {
 
   // ── Bundle optimization ──────────────────────────────────────
   experimental: {
-    optimizePackageImports: ['lucide-react', 'framer-motion'],
+    optimizePackageImports: ['lucide-react', 'framer-motion', 'recharts'],
   },
 };
 

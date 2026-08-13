@@ -13,7 +13,10 @@ const PROTECTED_ROUTES = ['/gerente', '/operador'];
 const SUPERADMIN_ROUTES = ['/superadmin'];
 const CLIENT_ROUTES = ['/cliente'];
 const AUTH_ROUTES = ['/login', '/register', '/register-company', '/cliente-login'];
-const PUBLIC_ROUTES = ['/presupuesto', '/legal', '/', '/api', '/roles', '/nosotros'];
+// IMPORTANTE: '/' no puede estar aquí con startsWith porque haría bypass de TODA la app.
+// Las rutas exactas se verifican con === más abajo.
+const PUBLIC_ROUTES = ['/presupuesto', '/legal', '/api', '/roles', '/nosotros', '/modulos'];
+const PUBLIC_EXACT = ['/']; // Rutas que deben coincidir exactamente (no startsWith)
 
 // Security headers para producción enterprise
 const SECURITY_HEADERS = {
@@ -38,6 +41,7 @@ export function middleware(request: NextRequest) {
 
   // ── Dejar pasar rutas estáticas y públicas ──────────────────
   if (
+    PUBLIC_EXACT.some((r) => pathname === r) ||
     PUBLIC_ROUTES.some((r) => pathname.startsWith(r)) ||
     AUTH_ROUTES.some((r) => pathname.startsWith(r)) ||
     pathname.startsWith('/_next') ||

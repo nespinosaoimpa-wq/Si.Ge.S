@@ -160,19 +160,28 @@ export default function GuardBookPage() {
     const channel = supabase
       .channel('libro-gerente-realtime')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'guard_book_entries' }, async (payload) => {
-        // Fetch the full enriched entry
-        const res = await fetch(`/api/guard-book?limit=1`);
-        const data = await res.json();
-        if (data?.[0]) {
-          setEntries(prev => [data[0], ...prev]);
-          setNewEntryFlash(data[0].id);
-          setTimeout(() => setNewEntryFlash(null), 5000);
+        // Optimizado: usar payload del socket directo + fetch solo del registro nuevo por ID
+        // Evita cargar todas las 200 entradas nuevamente por cada novedad que llega.
+        const newEntry = payload.new as any;
+        if (!newEntry?.id) return;
+        try {
+          const res = await fetch(`/api/guard-book?entry_id=${newEntry.id}`);
+          const data = await res.json();
+          const entry = Array.isArray(data) ? data[0] : data;
+          if (entry) {
+            setEntries(prev => [entry, ...prev]);
+            setNewEntryFlash(entry.id);
+            setTimeout(() => setNewEntryFlash(null), 5000);
+          }
+        } catch {
+          // Si falla el fetch enriquecido, agregar la entrada básica del payload
+          setEntries(prev => [newEntry, ...prev]);
         }
       })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [dateFilter]);
+  }, [dateFilter, filterObjective]);
 
   const fetchEntries = async () => {
     try {
