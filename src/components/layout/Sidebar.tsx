@@ -7,7 +7,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   MapPin, Users, Settings, LogOut, Shield,
   ClipboardList, Home, User, BookOpen, Activity,
-  CheckCircle2, Package, Calculator, Download, Share2, Building2
+  CheckCircle2, Package, Calculator, Download, Share2, Building2,
+  Grid, X, ChevronRight
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -20,7 +21,7 @@ const adminItems = [
   { name: 'Objetivos', href: '/gerente/objetivos', icon: ClipboardList },
   { name: 'Libro', href: '/gerente/libro', icon: BookOpen },
   { name: 'Hombre Vivo', href: '/gerente/hombre-vivo', icon: Activity },
-  { name: 'Recursos Logísticos', href: '/gerente/inventario', icon: Package },
+  { name: 'Stock', href: '/gerente/inventario', icon: Package },
   { name: 'Planillas', href: '/gerente/planillas', icon: Calculator },
   { name: 'Accesos', href: '/gerente/accesos', icon: Settings },
 ];
@@ -38,6 +39,7 @@ export function Sidebar() {
   const { theme } = useShift();
   const [isMobile, setIsMobile] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [isMoreOpen, setIsMoreOpen] = useState(false);
 
   const handleShare = async () => {
     if (typeof window === 'undefined') return;
@@ -71,60 +73,176 @@ export function Sidebar() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
+  // Close mobile sheet on route change
+  useEffect(() => {
+    setIsMoreOpen(false);
+  }, [pathname]);
+
   const isGuardia = pathname?.startsWith('/operador');
   const navItems = isGuardia ? guardiaItems : adminItems;
-  const mobileNavItems: any[] = [...navItems];
-
-  if (isMobile && !isGuardia) {
-    mobileNavItems.push({ name: 'Salir', onClick: () => { signOut(); window.location.href = '/login'; }, icon: LogOut });
-  }
 
   if (!mounted) return null;
   if (pathname === '/login' || pathname === '/' || pathname === '/register' || pathname?.startsWith('/operador')) return null;
 
-  // ============ MOBILE: Bottom Tab Bar ============
+  // ============ MOBILE: Premium Ergonomic Bottom Navigation Bar ============
   if (isMobile) {
+    // Top 4 core items for quick access
+    const primaryMobileItems = isGuardia 
+      ? guardiaItems 
+      : [
+          { name: 'Mapa', href: '/gerente', icon: MapPin },
+          { name: 'Personal', href: '/gerente/personal', icon: Users },
+          { name: 'Objetivos', href: '/gerente/objetivos', icon: ClipboardList },
+          { name: 'Libro', href: '/gerente/libro', icon: BookOpen },
+        ];
+
+    const secondaryMobileItems = [
+      { name: 'Recursos Logísticos (Stock)', href: '/gerente/inventario', icon: Package, desc: 'Equipamiento y armas' },
+      { name: 'Planillas & Liquidación', href: '/gerente/planillas', icon: Calculator, desc: 'Cálculos de hs extras y sueldos' },
+      { name: 'Control Hombre Vivo', href: '/gerente/hombre-vivo', icon: Activity, desc: 'Verificación de presencia' },
+      { name: 'Gestión de Accesos', href: '/gerente/accesos', icon: Settings, desc: 'Roles y permisos de usuarios' },
+    ];
+
     return (
-      <nav className="fixed bottom-0 left-0 right-0 h-[84px] z-[100] flex items-center justify-start overflow-x-auto no-scrollbar px-4 safe-bottom border-t bg-white border-zinc-200">
-        {mobileNavItems.map((item: any) => {
-          const isActive = item.href && !item.onClick && (
-            pathname === item.href ||
-            (item.href !== '/gerente' && item.href !== '/operador' && pathname?.startsWith(item.href))
-          );
+      <>
+        {/* Fixed Mobile Bottom Bar (5 equal columns) */}
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 h-[72px] z-[100] grid grid-cols-5 items-center bg-zinc-950/95 backdrop-blur-2xl border-t border-white/10 px-2 safe-bottom shadow-[0_-10px_35px_rgba(0,0,0,0.5)]">
+          {primaryMobileItems.map((item) => {
+            const isActive = pathname === item.href || (item.href !== '/gerente' && pathname?.startsWith(item.href));
 
-          const iconEl = (
-            <div className={cn(
-              'w-11 h-11 rounded-2xl flex items-center justify-center transition-all relative overflow-hidden',
-              isActive ? 'bg-[#0F4C5C] text-white shadow-lg shadow-[#0F4C5C]/20' : item.name === 'Salir' ? 'text-red-400' : 'text-zinc-400'
-            )}>
-              <item.icon size={20} />
-            </div>
-          );
-
-          const content = (
-            <div className="flex flex-col items-center justify-center gap-1.5 min-w-[72px] h-full">
-              {iconEl}
-              <span className={cn('text-[10px] font-semibold transition-colors whitespace-nowrap', isActive ? 'text-[#0F4C5C]' : 'text-zinc-500')}>
-                {item.name}
-              </span>
-            </div>
-          );
-
-          if (item.onClick) {
             return (
-              <button key={item.name} onClick={item.onClick} className="h-full active:scale-95 transition-transform flex-shrink-0">
-                {content}
-              </button>
+              <Link key={item.name} href={item.href} className="flex flex-col items-center justify-center h-full active:scale-95 transition-transform">
+                <div className={cn(
+                  'w-10 h-8 rounded-xl flex items-center justify-center transition-all',
+                  isActive 
+                    ? 'bg-amber-400/15 border border-amber-400/40 text-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.2)]' 
+                    : 'text-zinc-400'
+                )}>
+                  <item.icon size={19} />
+                </div>
+                <span className={cn('text-[10px] font-bold mt-1 tracking-tight truncate max-w-full', isActive ? 'text-amber-400 font-extrabold' : 'text-zinc-400')}>
+                  {item.name}
+                </span>
+              </Link>
             );
-          }
+          })}
 
-          return (
-            <Link key={item.name} href={item.href} className="h-full active:scale-95 transition-transform flex-shrink-0">
-              {content}
-            </Link>
-          );
-        })}
-      </nav>
+          {/* 5th Column: "Más" Button for Manager */}
+          {!isGuardia && (
+            <button 
+              onClick={() => setIsMoreOpen(!isMoreOpen)} 
+              className="flex flex-col items-center justify-center h-full active:scale-95 transition-transform"
+            >
+              <div className={cn(
+                'w-10 h-8 rounded-xl flex items-center justify-center transition-all',
+                isMoreOpen 
+                  ? 'bg-amber-400 text-black shadow-[0_0_20px_rgba(251,191,36,0.4)]' 
+                  : 'text-zinc-400'
+              )}>
+                <Grid size={19} />
+              </div>
+              <span className={cn('text-[10px] font-bold mt-1 tracking-tight truncate', isMoreOpen ? 'text-amber-400 font-extrabold' : 'text-zinc-400')}>
+                Más
+              </span>
+            </button>
+          )}
+        </nav>
+
+        {/* Mobile Slide-Up Full Drawer Sheet for "Más" */}
+        <AnimatePresence>
+          {isMoreOpen && (
+            <>
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsMoreOpen(false)}
+                className="lg:hidden fixed inset-0 bg-black/80 backdrop-blur-md z-[110]"
+              />
+
+              {/* Sheet Container */}
+              <motion.div
+                initial={{ y: '100%' }}
+                animate={{ y: 0 }}
+                exit={{ y: '100%' }}
+                transition={{ type: 'spring', damping: 25, stiffness: 280 }}
+                className="lg:hidden fixed bottom-0 left-0 right-0 max-h-[85vh] z-[120] bg-zinc-950 border-t border-white/10 rounded-t-3xl overflow-hidden flex flex-col shadow-[0_-15px_50px_rgba(0,0,0,0.8)]"
+              >
+                {/* Sheet Handle Header */}
+                <div className="p-4 pb-3 border-b border-white/10 flex items-center justify-between bg-zinc-900/60">
+                  <div className="flex items-center gap-2.5">
+                    <Building2 size={16} className="text-amber-400" />
+                    <div>
+                      <p className="text-xs font-bold text-white leading-none">
+                        {(user as any)?.company_name || user?.user_metadata?.company_name || 'Empresa de Seguridad'}
+                      </p>
+                      <p className="text-[10px] text-zinc-400 mt-0.5">Menú de Herramientas Operativas</p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setIsMoreOpen(false)}
+                    className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-zinc-300 active:scale-95"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+
+                {/* Sheet Body — Grid Options */}
+                <div className="p-4 overflow-y-auto space-y-2 max-h-[60vh]">
+                  <p className="text-[10px] font-black text-amber-400 uppercase tracking-widest px-1 mb-2">Módulos Adicionales</p>
+
+                  <div className="grid grid-cols-1 gap-2.5">
+                    {secondaryMobileItems.map((sec) => {
+                      const isActive = pathname === sec.href || pathname?.startsWith(sec.href);
+                      return (
+                        <Link key={sec.name} href={sec.href} onClick={() => setIsMoreOpen(false)}>
+                          <div className={cn(
+                            "flex items-center gap-3.5 p-3.5 rounded-2xl border transition-all active:scale-[0.98]",
+                            isActive 
+                              ? "bg-amber-400/10 border-amber-400/40 text-amber-400" 
+                              : "bg-white/5 border-white/5 text-white hover:bg-white/10"
+                          )}>
+                            <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-white/10 flex items-center justify-center shrink-0">
+                              <sec.icon size={18} className="text-amber-400" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-bold text-white truncate">{sec.name}</p>
+                              <p className="text-[10px] text-zinc-400 truncate mt-0.5">{sec.desc}</p>
+                            </div>
+                            <ChevronRight size={16} className="text-zinc-500 shrink-0" />
+                          </div>
+                        </Link>
+                      );
+                    })}
+                  </div>
+
+                  {/* Actions Section */}
+                  <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1 pt-4 mb-2">Acciones Rápidas</p>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={handleShare}
+                      className="flex items-center gap-2 p-3 bg-white/5 border border-white/5 rounded-2xl text-xs font-bold text-zinc-300 active:scale-95"
+                    >
+                      <Share2 size={16} className="text-amber-400" />
+                      <span>Compartir App</span>
+                    </button>
+
+                    <button
+                      onClick={() => { signOut(); window.location.href = '/login'; }}
+                      className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-2xl text-xs font-bold text-red-400 active:scale-95"
+                    >
+                      <LogOut size={16} />
+                      <span>Cerrar Sesión</span>
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+      </>
     );
   }
 
