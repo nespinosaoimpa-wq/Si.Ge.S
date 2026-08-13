@@ -219,7 +219,7 @@ export default function RootLandingPage() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: "-100px" }}
         transition={{ duration: 0.8, ease: "easeOut" }}
-        className="relative py-28 px-6 lg:px-12 max-w-7xl mx-auto w-full z-10 border-t border-zinc-900/80 bg-black/85 backdrop-blur-md rounded-[2.5rem] my-8 shadow-2xl"
+        className="relative py-28 px-6 lg:px-12 max-w-7xl mx-auto w-full z-10"
       >
         <div className="max-w-4xl mx-auto text-center w-full z-10 space-y-8 flex flex-col items-center justify-center">
           <SectionTag>Plataforma de Operaciones de Seguridad Privada</SectionTag>
@@ -270,7 +270,7 @@ export default function RootLandingPage() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: "-80px" }}
         transition={{ duration: 0.8 }}
-        className="relative z-10 py-24 px-6 lg:px-12 border-t border-zinc-900 bg-black/90 backdrop-blur-md rounded-[2.5rem] my-8"
+        className="relative z-10 py-24 px-6 lg:px-12 max-w-7xl mx-auto w-full"
       >
         <div className="max-w-7xl mx-auto space-y-16">
           <div className="text-center max-w-2xl mx-auto space-y-4">
@@ -478,7 +478,7 @@ export default function RootLandingPage() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: "-80px" }}
         transition={{ duration: 0.8 }}
-        className="relative z-10 py-24 px-6 lg:px-12 bg-black/90 backdrop-blur-md rounded-[2.5rem] my-8 border-t border-zinc-900"
+        className="relative z-10 py-24 px-6 lg:px-12 max-w-7xl mx-auto w-full"
       >
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
@@ -544,7 +544,7 @@ export default function RootLandingPage() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: "-80px" }}
         transition={{ duration: 0.8 }}
-        className="relative z-10 py-24 px-6 lg:px-12 max-w-7xl mx-auto w-full border-t border-zinc-900 bg-black/90 backdrop-blur-md rounded-[2.5rem] my-8"
+        className="relative z-10 py-24 px-6 lg:px-12 max-w-7xl mx-auto w-full"
       >
         <div className="text-center mb-16">
           <SectionTag>Transformación Digital</SectionTag>
@@ -616,7 +616,7 @@ export default function RootLandingPage() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: "-80px" }}
         transition={{ duration: 0.8 }}
-        className="relative z-10 py-24 px-6 lg:px-12 max-w-7xl mx-auto w-full border-t border-zinc-900 bg-black/90 backdrop-blur-md rounded-[2.5rem] my-8"
+        className="relative z-10 py-24 px-6 lg:px-12 max-w-7xl mx-auto w-full"
       >
         <div className="grid lg:grid-cols-12 gap-16 items-center">
           {/* Information */}
