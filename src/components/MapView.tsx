@@ -479,12 +479,12 @@ export default function MapView({
         ...prev,
         latitude: Number(center[0]),
         longitude: Number(center[1]),
-        zoom: 18,
-        pitch: 45,
-        transitionDuration: 2000
+        zoom: zoom || 13,
+        pitch: 35,
+        transitionDuration: 1500
       }));
     }
-  }, [center?.[0], center?.[1]]);
+  }, [center?.[0], center?.[1], zoom]);
 
   // Auto-fit bounds on initial load to show all objectives of the tenant
   const fittedRef = useRef(false);

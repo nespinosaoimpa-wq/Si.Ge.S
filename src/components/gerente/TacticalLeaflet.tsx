@@ -185,13 +185,13 @@ export default function TacticalLeaflet({
           if (dist > 0.001) {
             mapRef.current.flyTo({
               center: [lng, lat],
-              zoom: 15,
+              zoom: zoom || 13,
               duration: 1500
             });
           }
         }
       }
-    }, [center?.[0], center?.[1]]);
+    }, [center?.[0], center?.[1], zoom]);
 
     const activeIncidents = useMemo(() => 
       incidents.filter(inc => inc.status !== 'resolved' && inc.status !== 'resuelto' && !(inc.content || '').includes('[RESUELTO]')),
