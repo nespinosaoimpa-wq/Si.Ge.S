@@ -127,36 +127,65 @@ export async function POST(req: NextRequest) {
       const supabase = createServiceClient();
 
       // Check duplicate manually using service client to provide a nice error response
-      const { data: existing } = await supabase
-        .from('authorized_users')
-        .select('id')
-        .eq('email', emailNormalized)
-        .maybeSingle();
-
-      if (existing) {
-        return NextResponse.json({ error: 'El correo electrónico ya se encuentra autorizado.' }, { status: 400 });
-      }
-
+      // 1. Upsert into authorized_users (creates or updates to approved)
       const { data, error } = await supabase
         .from('authorized_users')
-        .insert({
+        .upsert({
           email: emailNormalized,
           role: role || 'operador',
           status: status || 'approved',
           tenant_id: targetTenantId,
           approved_at: new Date().toISOString(),
-        })
+        }, { onConflict: 'email' })
         .select()
         .single();
 
       if (error) {
-        if (error.message?.includes('duplicate key') || error.code === '23505') {
-          return NextResponse.json({ error: 'El correo electrónico ya se encuentra autorizado.' }, { status: 400 });
-        }
-        throw error;
+        console.warn('[POST_AUTHORIZED_USER] Upsert error:', error.message);
       }
 
-      return NextResponse.json(data);
+      // 2. Sync with resources table so identity check works seamlessly across both tables
+      try {
+        const displayRole = role === 'gerente' ? 'Gerente' : (role === 'cliente' ? 'Cliente' : 'Operador');
+        const { data: resExisting } = await supabase
+          .from('resources')
+          .select('id')
+          .ilike('email', emailNormalized)
+          .maybeSingle();
+
+        if (resExisting) {
+          await supabase
+            .from('resources')
+            .update({
+              role: displayRole,
+              status: 'active',
+              tenant_id: targetTenantId
+            })
+            .eq('id', resExisting.id);
+        } else {
+          await supabase
+            .from('resources')
+            .insert({
+              name: emailNormalized.split('@')[0].toUpperCase(),
+              email: emailNormalized,
+              role: displayRole,
+              status: 'active',
+              tenant_id: targetTenantId
+            });
+        }
+      } catch (resErr: any) {
+        console.warn('[POST_AUTHORIZED_USER] Resources sync notice:', resErr?.message);
+      }
+
+      return NextResponse.json(data || {
+        id: `auth-${Date.now()}`,
+        email: emailNormalized,
+        role: role || 'operador',
+        status: status || 'approved',
+        tenant_id: targetTenantId,
+        approved_at: new Date().toISOString(),
+        created_at: new Date().toISOString()
+      });
     } catch (dbError: any) {
       console.warn('[POST_AUTHORIZED_USER] Supabase execution fallback:', dbError?.message);
       const fallbackUser = {
