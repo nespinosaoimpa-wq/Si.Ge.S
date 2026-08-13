@@ -85,21 +85,21 @@ export default function RootLandingPage() {
   return (
     <div className="min-h-screen bg-black text-zinc-100 flex flex-col selection:bg-white/20 selection:text-white overflow-x-hidden relative">
       
-      {/* ── 1. FONDO CON LOGO GIGANTE 100% PANTALLA Y MARCA DE AGUA ── */}
+      {/* ── 1. FONDO CON LOGO GIGANTE 100% PANTALLA (EDGE TO EDGE) Y MARCA DE AGUA ── */}
       <div className="fixed inset-0 z-0 flex items-center justify-center pointer-events-none overflow-hidden bg-black">
         <motion.div
           animate={{
-            scale: scrolled ? 1.15 : 1,
+            scale: scrolled ? 1.1 : 1,
             opacity: scrolled ? 0.08 : 0.95,
           }}
           transition={{ duration: 0.7, ease: "easeOut" }}
-          className="relative w-screen h-screen flex flex-col items-center justify-center p-2 sm:p-6"
+          className="relative w-screen h-screen flex items-center justify-center"
         >
-          <div className="absolute inset-0 bg-[#0F4C5C]/25 blur-[120px] rounded-full scale-125" />
+          <div className="absolute inset-0 bg-[#0F4C5C]/30 blur-[150px] rounded-full scale-150" />
           <img 
             src="/logo_sigpad.png" 
-            alt="SIGPAD Logo Gigante" 
-            className="w-full h-full object-contain scale-[1.25] sm:scale-[1.45] lg:scale-[1.65] filter drop-shadow-[0_0_80px_rgba(255,255,255,0.2)] relative z-10"
+            alt="SIGPAD Logo Gigante Pantalla Completa" 
+            className="w-full h-full object-cover filter drop-shadow-[0_0_90px_rgba(255,255,255,0.25)] relative z-10 scale-105"
           />
         </motion.div>
       </div>
