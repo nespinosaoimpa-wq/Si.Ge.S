@@ -1,7 +1,7 @@
 import { createServiceClient } from '@/lib/supabase-server';
 import { isConfigured } from '@/lib/supabase';
 import { NextRequest, NextResponse } from 'next/server';
-import { removeFromMemoryWhitelist } from '../route';
+import { removeFromMemoryWhitelist } from '@/lib/memory-whitelist';
 
 export async function PATCH(
   req: NextRequest,

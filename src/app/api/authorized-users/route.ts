@@ -1,9 +1,7 @@
 import { createServiceClient } from '@/lib/supabase-server';
 import { isConfigured } from '@/lib/supabase';
 import { NextRequest, NextResponse } from 'next/server';
-
-// In-Memory Persistent Whitelist Cache across requests
-const inMemoryAuthorizedUsers = new Map<string, any>();
+import { inMemoryAuthorizedUsers } from '@/lib/memory-whitelist';
 
 export async function GET(req: NextRequest) {
   try {
@@ -160,8 +158,4 @@ export async function POST(req: NextRequest) {
     console.error('Error creating authorized user:', err);
     return NextResponse.json({ error: err.message || 'Internal Server Error' }, { status: 500 });
   }
-}
-
-export function removeFromMemoryWhitelist(email: string) {
-  inMemoryAuthorizedUsers.delete(email.toLowerCase().trim());
 }

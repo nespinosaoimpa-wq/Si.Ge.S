@@ -38,6 +38,7 @@ export default function RegisterPage() {
           role
         })
       });
+      const data = await res.json().catch(() => ({}));
 
       if (res.ok || data?.success || data?.user) {
         const userData = {

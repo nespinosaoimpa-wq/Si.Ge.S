@@ -39,7 +39,7 @@ export function createCachedFetcher<T>(
  */
 export function invalidarCache(tag: string) {
   try {
-    revalidateTag(tag);
+    (revalidateTag as any)(tag);
   } catch (e) {
     // En desarrollo o contextos donde revalidateTag no está disponible, ignorar
     console.warn(`[CACHE] No se pudo invalidar tag: ${tag}`, e);
