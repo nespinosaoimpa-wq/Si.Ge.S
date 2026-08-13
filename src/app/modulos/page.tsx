@@ -182,41 +182,6 @@ const modules = [
     ],
     benefit: 'Profesionaliza la presentación a tus clientes. Un reporte automatizado vale más que mil explicaciones.',
   },
-  {
-    icon: Lock,
-    color: '#EC4899',
-    title: 'Asistente Judicial',
-    badge: 'Legal · Evidencia',
-    short: 'Templates legales argentinos y gestión de evidencia digital.',
-    description: 'Módulo especializado para gestionar incidentes que puedan derivar en procesos legales. Incluye templates de actas, denuncias y notificaciones adaptados a la normativa argentina. El sistema congela evidencia digital (fotos, registros, novedades) para preservar su valor probatorio.',
-    features: [
-      'Templates de actas y denuncias adaptados a normativa AR',
-      'Freeze de evidencia digital con hash de integridad',
-      'Gestión de expedientes por incidente',
-      'Timeline de eventos con timestamps legales',
-      'Exportación de expediente completo en PDF',
-      'Asesoría sobre CCT y normativa SIPNA',
-    ],
-    benefit: 'Cuando ocurre un incidente grave, estar preparado legalmente hace la diferencia entre ganar y perder un juicio.',
-  },
-  {
-    icon: Camera,
-    color: '#EF4444',
-    title: 'Módulo de Cámaras',
-    badge: 'CCTV · Próximamente',
-    short: 'Integración con sistemas CCTV y DVR/NVR.',
-    description: 'Integración con sistemas de videovigilancia existentes en el cliente. Visualiza cámaras CCTV directamente desde el dashboard de SIGPAD, recibe alertas de movimiento y vincula eventos de video con novedades del libro de guardia. Compatible con los principales sistemas DVR/NVR del mercado.',
-    features: [
-      'Integración con DVR/NVR vía RTSP/ONVIF',
-      'Visualización de cámaras en vivo desde el dashboard',
-      'Alertas de movimiento vinculadas a novedades',
-      'Grabación y almacenamiento en nube',
-      'Exportación de clips para evidencia',
-      'Compatible con sistemas IP de las principales marcas',
-    ],
-    benefit: 'Control visual total integrado con el sistema operativo. Próximamente disponible.',
-    comingSoon: true,
-  },
 ];
 
 export default function ModulosPage() {
@@ -247,7 +212,6 @@ export default function ModulosPage() {
             { label: 'Módulos', href: '/#modulos', isRoute: true },
             { label: 'Detalle', href: '/modulos', isRoute: true },
             { label: 'Nosotros', href: '/nosotros', isRoute: true },
-            { label: 'Precios', href: '/#precios', isRoute: true },
             { label: 'Contacto', href: '/#contacto', isRoute: true },
           ].map(link => (
             <Link key={link.href} href={link.href} className="text-[11px] font-black uppercase tracking-wider text-zinc-400 hover:text-white transition-colors">
@@ -299,7 +263,7 @@ export default function ModulosPage() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-[#0F4C5C]/30 border border-[#237893]/20 rounded-full mb-6">
             <div className="w-1.5 h-1.5 rounded-full bg-[#3ABEFF] animate-pulse" />
-            <span className="text-[9px] font-black uppercase tracking-[0.3em] text-[#3ABEFF]">12 Módulos Integrados</span>
+            <span className="text-[9px] font-black uppercase tracking-[0.3em] text-[#3ABEFF]">10 Módulos Integrados</span>
           </div>
           <h1 className="text-4xl lg:text-6xl font-black uppercase text-white font-display leading-none mb-6">
             Todo lo que necesita <br />
