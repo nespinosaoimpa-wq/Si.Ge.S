@@ -33,11 +33,10 @@ export async function GET(req: NextRequest) {
 
     const map = new Map<string, any>();
 
-    // Primary default system managers
+    // Primary system owners
     const defaults = [
       { id: 'auth-001', email: 'nespinosa.oimpa@gmail.com', role: 'gerente', status: 'approved', created_at: '2026-01-01T00:00:00.000Z' },
       { id: 'auth-002', email: 'sigpad.info@gmail.com', role: 'gerente', status: 'approved', created_at: '2026-01-01T00:00:00.000Z' },
-      { id: 'auth-003', email: 'segalf9@gmail.com', role: 'gerente', status: 'approved', created_at: new Date().toISOString() },
     ];
 
     defaults.forEach(d => map.set(d.email.toLowerCase().trim(), d));
@@ -87,8 +86,7 @@ export async function GET(req: NextRequest) {
     console.error('Error fetching authorized users:', err);
     return NextResponse.json([
       { id: 'auth-001', email: 'nespinosa.oimpa@gmail.com', role: 'gerente', status: 'approved', created_at: new Date().toISOString() },
-      { id: 'auth-002', email: 'sigpad.info@gmail.com', role: 'gerente', status: 'approved', created_at: new Date().toISOString() },
-      { id: 'auth-003', email: 'segalf9@gmail.com', role: 'gerente', status: 'approved', created_at: new Date().toISOString() }
+      { id: 'auth-002', email: 'sigpad.info@gmail.com', role: 'gerente', status: 'approved', created_at: new Date().toISOString() }
     ]);
   }
 }

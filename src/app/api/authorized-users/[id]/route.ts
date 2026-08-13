@@ -46,24 +46,21 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    if (!isConfigured) {
-      return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
-    }
-
-    const userCookie = req.cookies.get('SIGPAD_user');
-    if (!userCookie) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
-
     const { id } = await params;
     const supabase = createServiceClient();
     
-    const { error } = await supabase
-      .from('authorized_users')
-      .delete()
-      .eq('id', id);
+    // First, try deleting from authorized_users by ID
+    await supabase.from('authorized_users').delete().eq('id', id);
 
-    if (error) throw error;
+    // If ID contains email or prefix, try deleting by email
+    const emailCandidate = id.replace(/^auth-/, '');
+    if (emailCandidate.includes('@')) {
+      await supabase.from('authorized_users').delete().ilike('email', emailCandidate);
+      await supabase.from('resources').delete().ilike('email', emailCandidate);
+    } else {
+      // Also delete from resources by ID
+      await supabase.from('resources').delete().eq('id', id);
+    }
 
     return NextResponse.json({ success: true });
   } catch (err: any) {
