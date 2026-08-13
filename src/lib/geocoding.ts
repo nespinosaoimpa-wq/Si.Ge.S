@@ -450,36 +450,48 @@ export function searchAddresses(
           });
         }
 
-        // 2. Ejecutar motores en paralelo dentro del rango gratuito Mapbox
-        const [googleResults, v5Results, poiResults, osmResults] = await Promise.all([
-          geocodeGoogle(query).catch(() => [] as GeocodingResult[]),
+        // 2. Ejecutar motores en paralelo (Mapbox v5 + Search Box prioritarios para alta precisión)
+        const [v5Results, poiResults, googleResults, osmResults] = await Promise.all([
           geocodeForward(query).catch(() => [] as GeocodingResult[]),
           searchBoxSuggest(query).catch(() => [] as GeocodingResult[]),
+          geocodeGoogle(query).catch(() => [] as GeocodingResult[]),
           searchNominatim(query).catch(() => [] as GeocodingResult[])
         ]);
 
-        const seenKeys = new Set(results.map(r => `${r.lat.toFixed(5)},${r.lng.toFixed(5)}`));
+        const seenKeys = new Set(results.map(r => `${r.lat.toFixed(6)},${r.lng.toFixed(6)}`));
         const candidates: GeocodingResult[] = [...results];
 
-        const allCandidates = [...googleResults, ...v5Results, ...osmResults, ...poiResults];
+        // Mapbox v5 y POI son de alta precisión (15 decimales) - colocarlos primero
+        const highPrecisionCandidates = [...v5Results, ...poiResults, ...googleResults];
+        const fallbackCandidates = [...osmResults];
 
-        for (const r of allCandidates) {
-          const key = r.lat !== 0 ? `${r.lat.toFixed(5)},${r.lng.toFixed(5)}` : r.mapbox_id || r.displayName;
+        for (const r of highPrecisionCandidates) {
+          const key = `${r.lat.toFixed(6)},${r.lng.toFixed(6)}`;
           if (!seenKeys.has(key)) {
             seenKeys.add(key);
             candidates.push(r);
           }
         }
 
-        // Ordenamiento de Proximidad Inteligente hacia el centro de Santa Fe
+        for (const r of fallbackCandidates) {
+          // Solo agregar fallbacks si no hay coincidencia cercana de alta precisión
+          const key = `${r.lat.toFixed(6)},${r.lng.toFixed(6)}`;
+          if (!seenKeys.has(key)) {
+            seenKeys.add(key);
+            candidates.push(r);
+          }
+        }
+
+        // Ordenamiento por alta precisión y distancia
         candidates.sort((a, b) => {
           if (a.type === 'coordinate' && b.type !== 'coordinate') return -1;
           if (b.type === 'coordinate' && a.type !== 'coordinate') return 1;
 
-          const isGoogleA = googleResults.some(g => g.lat.toFixed(5) === a.lat.toFixed(5) && g.lng.toFixed(5) === a.lng.toFixed(5));
-          const isGoogleB = googleResults.some(g => g.lat.toFixed(5) === b.lat.toFixed(5) && g.lng.toFixed(5) === b.lng.toFixed(5));
-          if (isGoogleA && !isGoogleB) return -1;
-          if (isGoogleB && !isGoogleA) return 1;
+          // Dar prioridad a resultados provenientes de Mapbox (v5/SearchBox) que conservan 15 decimales
+          const isMapboxA = v5Results.some(m => Math.abs(m.lat - a.lat) < 0.00001 && Math.abs(m.lng - a.lng) < 0.00001);
+          const isMapboxB = v5Results.some(m => Math.abs(m.lat - b.lat) < 0.00001 && Math.abs(m.lng - b.lng) < 0.00001);
+          if (isMapboxA && !isMapboxB) return -1;
+          if (isMapboxB && !isMapboxA) return 1;
 
           const distA = a.lat !== 0 ? distanceMeters(a.lat, a.lng, activeTenantConfig.center.lat, activeTenantConfig.center.lng) : 9999999;
           const distB = b.lat !== 0 ? distanceMeters(b.lat, b.lng, activeTenantConfig.center.lat, activeTenantConfig.center.lng) : 9999999;
