@@ -579,7 +579,7 @@ export default function RootLandingPage() {
                 </div>
                 <div>
                   <h4 className="text-xs font-black uppercase tracking-wider text-white">Email Corporativo</h4>
-                  <p className="text-zinc-400 text-xs font-mono font-medium mt-1">contacto@sigpad.com.ar</p>
+                  <p className="text-zinc-400 text-xs font-mono font-medium mt-1">sigpad.info@gmail.com</p>
                 </div>
               </div>
 
@@ -761,7 +761,7 @@ export default function RootLandingPage() {
             <div>
               <p className="text-[9px] uppercase tracking-widest text-zinc-500 font-black mb-4">Contacto</p>
               <ul className="space-y-2 font-mono">
-                <li><a href="mailto:contacto@sigpad.com.ar" className="text-[11px] text-zinc-400 hover:text-white transition-colors">contacto@sigpad.com.ar</a></li>
+                <li><a href="mailto:sigpad.info@gmail.com" className="text-[11px] text-zinc-400 hover:text-white transition-colors">sigpad.info@gmail.com</a></li>
                 <li><span className="text-[11px] text-zinc-400">+54 9 342 631-0996</span></li>
                 <li><span className="text-[11px] text-zinc-400">+54 9 342 516-2372</span></li>
               </ul>
