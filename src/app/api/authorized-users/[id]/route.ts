@@ -1,6 +1,7 @@
 import { createServiceClient } from '@/lib/supabase-server';
 import { isConfigured } from '@/lib/supabase';
 import { NextRequest, NextResponse } from 'next/server';
+import { removeFromMemoryWhitelist } from '../route';
 
 export async function PATCH(
   req: NextRequest,
@@ -55,6 +56,7 @@ export async function DELETE(
     // If ID contains email or prefix, try deleting by email
     const emailCandidate = id.replace(/^auth-/, '');
     if (emailCandidate.includes('@')) {
+      removeFromMemoryWhitelist(emailCandidate);
       await supabase.from('authorized_users').delete().ilike('email', emailCandidate);
       await supabase.from('resources').delete().ilike('email', emailCandidate);
     } else {

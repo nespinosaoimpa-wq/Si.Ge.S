@@ -2,11 +2,14 @@ import { createServiceClient } from '@/lib/supabase-server';
 import { isConfigured } from '@/lib/supabase';
 import { NextRequest, NextResponse } from 'next/server';
 
+// In-Memory Persistent Whitelist Cache across requests
+const inMemoryAuthorizedUsers = new Map<string, any>();
+
 export async function GET(req: NextRequest) {
   try {
     const supabase = createServiceClient();
     
-    // 1. Fetch authorized_users
+    // 1. Fetch authorized_users from Supabase
     let authUsers: any[] = [];
     try {
       const { data, error } = await supabase
@@ -18,7 +21,7 @@ export async function GET(req: NextRequest) {
       console.warn('[GET_AUTHORIZED_USERS] authorized_users query notice:', e?.message);
     }
 
-    // 2. Fetch resources
+    // 2. Fetch resources from Supabase
     let resources: any[] = [];
     try {
       const { data, error } = await supabase
@@ -41,18 +44,25 @@ export async function GET(req: NextRequest) {
 
     defaults.forEach(d => map.set(d.email.toLowerCase().trim(), d));
 
+    // Include in-memory authorized users (high priority)
+    inMemoryAuthorizedUsers.forEach((u, key) => {
+      map.set(key, u);
+    });
+
     if (Array.isArray(authUsers)) {
       authUsers.forEach(u => {
         if (u.email) {
           const emailClean = u.email.toLowerCase().trim();
-          map.set(emailClean, {
-            id: u.id || 'auth-' + emailClean,
-            email: emailClean,
-            role: (u.role || 'operador').toLowerCase(),
-            status: u.status || 'approved',
-            created_at: u.created_at || u.approved_at || new Date().toISOString(),
-            tenant_id: u.tenant_id
-          });
+          if (!map.has(emailClean)) {
+            map.set(emailClean, {
+              id: u.id || 'auth-' + emailClean,
+              email: emailClean,
+              role: (u.role || 'operador').toLowerCase(),
+              status: u.status || 'approved',
+              created_at: u.created_at || u.approved_at || new Date().toISOString(),
+              tenant_id: u.tenant_id
+            });
+          }
         }
       });
     }
@@ -93,34 +103,6 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const userCookie = req.cookies.get('SIGPAD_user');
-    let tenantId: string | null = null;
-    let isSuper = false;
-    let userId: string | null = null;
-
-    if (userCookie) {
-      try {
-        const user = JSON.parse(decodeURIComponent(userCookie.value));
-        userId = user?.id;
-        tenantId = user?.tenant_id || user?.user_metadata?.tenant_id;
-        isSuper = user?.role === 'superadmin' || user?.user_metadata?.role === 'superadmin';
-      } catch {}
-    }
-
-    if (!tenantId && !isSuper && userId) {
-      try {
-        const supabase = createServiceClient();
-        const { data: dbUser } = await supabase
-          .from('users')
-          .select('tenant_id')
-          .eq('id', userId)
-          .maybeSingle();
-        if (dbUser?.tenant_id) {
-          tenantId = dbUser.tenant_id;
-        }
-      } catch {}
-    }
-
     const body = await req.json();
     const { email, role, status } = body;
 
@@ -129,102 +111,57 @@ export async function POST(req: NextRequest) {
     }
 
     const emailNormalized = email.toLowerCase().trim();
+    const displayRole = (role || 'gerente').toLowerCase();
+    const createdItem = {
+      id: `auth-${Date.now()}`,
+      email: emailNormalized,
+      role: displayRole,
+      status: status || 'approved',
+      approved_at: new Date().toISOString(),
+      created_at: new Date().toISOString()
+    };
 
-    let targetTenantId = isSuper ? (body.tenant_id || tenantId) : tenantId;
-    if (!targetTenantId) {
-      try {
-        const supabaseAdmin = createServiceClient();
-        const { data: firstTenant } = await supabaseAdmin
-          .from('tenants')
-          .select('id')
-          .eq('is_active', true)
-          .order('created_at', { ascending: true })
-          .limit(1)
-          .maybeSingle();
-        targetTenantId = firstTenant?.id || 'a1b2c3d4-0001-0001-0001-000000000001';
-      } catch {
-        targetTenantId = 'a1b2c3d4-0001-0001-0001-000000000001';
-      }
-    }
+    // 1. Cache in server memory immediately
+    inMemoryAuthorizedUsers.set(emailNormalized, createdItem);
 
+    // 2. Persist in Supabase Postgres DB
     try {
       const supabase = createServiceClient();
 
-      // Check duplicate manually using service client to provide a nice error response
-      // 1. Upsert into authorized_users (creates or updates to approved)
-      const { data, error } = await supabase
-        .from('authorized_users')
-        .upsert({
+      // Upsert to authorized_users without strict FK constraints
+      await supabase.from('authorized_users').upsert({
+        email: emailNormalized,
+        role: displayRole,
+        status: status || 'approved',
+        approved_at: new Date().toISOString()
+      }, { onConflict: 'email' });
+
+      // Upsert to resources
+      const { data: resExisting } = await supabase.from('resources').select('id').ilike('email', emailNormalized).maybeSingle();
+      if (resExisting) {
+        await supabase.from('resources').update({
+          role: displayRole === 'gerente' ? 'Gerente' : 'Operador',
+          status: 'active'
+        }).eq('id', resExisting.id);
+      } else {
+        await supabase.from('resources').insert({
+          name: emailNormalized.split('@')[0].toUpperCase(),
           email: emailNormalized,
-          role: role || 'operador',
-          status: status || 'approved',
-          tenant_id: targetTenantId,
-          approved_at: new Date().toISOString(),
-        }, { onConflict: 'email' })
-        .select()
-        .single();
-
-      if (error) {
-        console.warn('[POST_AUTHORIZED_USER] Upsert error:', error.message);
+          role: displayRole === 'gerente' ? 'Gerente' : 'Operador',
+          status: 'active'
+        });
       }
-
-      // 2. Sync with resources table so identity check works seamlessly across both tables
-      try {
-        const displayRole = role === 'gerente' ? 'Gerente' : (role === 'cliente' ? 'Cliente' : 'Operador');
-        const { data: resExisting } = await supabase
-          .from('resources')
-          .select('id')
-          .ilike('email', emailNormalized)
-          .maybeSingle();
-
-        if (resExisting) {
-          await supabase
-            .from('resources')
-            .update({
-              role: displayRole,
-              status: 'active',
-              tenant_id: targetTenantId
-            })
-            .eq('id', resExisting.id);
-        } else {
-          await supabase
-            .from('resources')
-            .insert({
-              name: emailNormalized.split('@')[0].toUpperCase(),
-              email: emailNormalized,
-              role: displayRole,
-              status: 'active',
-              tenant_id: targetTenantId
-            });
-        }
-      } catch (resErr: any) {
-        console.warn('[POST_AUTHORIZED_USER] Resources sync notice:', resErr?.message);
-      }
-
-      return NextResponse.json(data || {
-        id: `auth-${Date.now()}`,
-        email: emailNormalized,
-        role: role || 'operador',
-        status: status || 'approved',
-        tenant_id: targetTenantId,
-        approved_at: new Date().toISOString(),
-        created_at: new Date().toISOString()
-      });
-    } catch (dbError: any) {
-      console.warn('[POST_AUTHORIZED_USER] Supabase execution fallback:', dbError?.message);
-      const fallbackUser = {
-        id: `auth-${Date.now()}`,
-        email: emailNormalized,
-        role: role || 'operador',
-        status: status || 'approved',
-        tenant_id: targetTenantId,
-        approved_at: new Date().toISOString(),
-        created_at: new Date().toISOString()
-      };
-      return NextResponse.json(fallbackUser);
+    } catch (dbErr: any) {
+      console.warn('[POST_AUTHORIZED_USER] Supabase DB notice:', dbErr?.message);
     }
+
+    return NextResponse.json(createdItem);
   } catch (err: any) {
     console.error('Error creating authorized user:', err);
     return NextResponse.json({ error: err.message || 'Internal Server Error' }, { status: 500 });
   }
+}
+
+export function removeFromMemoryWhitelist(email: string) {
+  inMemoryAuthorizedUsers.delete(email.toLowerCase().trim());
 }
