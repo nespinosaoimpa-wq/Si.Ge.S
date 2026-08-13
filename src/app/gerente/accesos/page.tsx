@@ -62,6 +62,7 @@ export default function AuthorizedUsersPage() {
         }),
       });
 
+      const data = await res.json().catch(() => ({}));
       const emailClean = newEmail.toLowerCase().trim();
       const newUserObj = {
         id: data?.id || 'auth-' + Date.now(),
