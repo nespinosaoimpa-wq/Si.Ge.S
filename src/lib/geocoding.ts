@@ -450,7 +450,7 @@ export function searchAddresses(
           });
         }
 
-        // 2. Ejecutar motores en paralelo (Mapbox v5 + Search Box prioritarios para alta precisión)
+        // 2. Ejecutar motores en paralelo (Mapbox v5 prioritario para alta precisión)
         const [v5Results, poiResults, googleResults, osmResults] = await Promise.all([
           geocodeForward(query).catch(() => [] as GeocodingResult[]),
           searchBoxSuggest(query).catch(() => [] as GeocodingResult[]),
@@ -458,14 +458,19 @@ export function searchAddresses(
           searchNominatim(query).catch(() => [] as GeocodingResult[])
         ]);
 
-        const seenKeys = new Set(results.map(r => `${r.lat.toFixed(6)},${r.lng.toFixed(6)}`));
-        const candidates: GeocodingResult[] = [...results];
+        const seenKeys = new Set<string>();
+        const candidates: GeocodingResult[] = [];
 
-        // Mapbox v5 y POI son de alta precisión (15 decimales) - colocarlos primero
-        const highPrecisionCandidates = [...v5Results, ...poiResults, ...googleResults];
-        const fallbackCandidates = [...osmResults];
+        // Coordenada directa ingresada por usuario si la hay
+        if (results.length > 0) {
+          results.forEach(r => {
+            seenKeys.add(`${r.lat.toFixed(6)},${r.lng.toFixed(6)}`);
+            candidates.push(r);
+          });
+        }
 
-        for (const r of highPrecisionCandidates) {
+        // 1. Mapbox v5 es la máxima precisión catastral (15 decimales) -> agregar primero
+        for (const r of v5Results) {
           const key = `${r.lat.toFixed(6)},${r.lng.toFixed(6)}`;
           if (!seenKeys.has(key)) {
             seenKeys.add(key);
@@ -473,8 +478,17 @@ export function searchAddresses(
           }
         }
 
-        for (const r of fallbackCandidates) {
-          // Solo agregar fallbacks si no hay coincidencia cercana de alta precisión
+        // 2. POI / SearchBox de Mapbox
+        for (const r of poiResults) {
+          const key = r.mapbox_id || r.displayName;
+          if (!seenKeys.has(key)) {
+            seenKeys.add(key);
+            candidates.push(r);
+          }
+        }
+
+        // 3. Fallbacks secundarios solo si no hay coincidencia directa de Mapbox
+        for (const r of [...googleResults, ...osmResults]) {
           const key = `${r.lat.toFixed(6)},${r.lng.toFixed(6)}`;
           if (!seenKeys.has(key)) {
             seenKeys.add(key);
@@ -482,16 +496,20 @@ export function searchAddresses(
           }
         }
 
-        // Ordenamiento por alta precisión y distancia
+        // Ordenar manteniendo Mapbox v5 arriba y filtrando duplicados
         candidates.sort((a, b) => {
           if (a.type === 'coordinate' && b.type !== 'coordinate') return -1;
           if (b.type === 'coordinate' && a.type !== 'coordinate') return 1;
 
-          // Dar prioridad a resultados provenientes de Mapbox (v5/SearchBox) que conservan 15 decimales
-          const isMapboxA = v5Results.some(m => Math.abs(m.lat - a.lat) < 0.00001 && Math.abs(m.lng - a.lng) < 0.00001);
-          const isMapboxB = v5Results.some(m => Math.abs(m.lat - b.lat) < 0.00001 && Math.abs(m.lng - b.lng) < 0.00001);
-          if (isMapboxA && !isMapboxB) return -1;
-          if (isMapboxB && !isMapboxA) return 1;
+          const indexA = v5Results.findIndex(m => Math.abs(m.lat - a.lat) < 0.00001 && Math.abs(m.lng - a.lng) < 0.00001);
+          const indexB = v5Results.findIndex(m => Math.abs(m.lat - b.lat) < 0.00001 && Math.abs(m.lng - b.lng) < 0.00001);
+
+          if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+          if (indexA !== -1) return -1;
+          if (indexB !== -1) return 1;
+
+          if (a.lat !== 0 && b.lat === 0) return -1;
+          if (b.lat !== 0 && a.lat === 0) return 1;
 
           const distA = a.lat !== 0 ? distanceMeters(a.lat, a.lng, activeTenantConfig.center.lat, activeTenantConfig.center.lng) : 9999999;
           const distB = b.lat !== 0 ? distanceMeters(b.lat, b.lng, activeTenantConfig.center.lat, activeTenantConfig.center.lng) : 9999999;
