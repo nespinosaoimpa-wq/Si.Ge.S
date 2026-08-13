@@ -43,7 +43,7 @@ function SectionTag({ children }: { children: React.ReactNode }) {
   );
 }
 
-// ─── Module Data (Sin Cámaras ni Asistente Judicial) ──────────────────────────
+// ─── Module Data ──────────────────────────────────────────────────────────────
 const modules = [
   { icon: MapPin, title: 'Mapa Táctico en Tiempo Real', desc: 'GPS de guardias, geofencing con alertas automáticas y visualización de rondines sobre el terreno.', color: '#3ABEFF' },
   { icon: Users, title: 'Gestión de Personal y Legajos', desc: 'Legajos digitales completos, documentación, uniformes, credenciales y vencimientos.', color: '#10B981' },
@@ -69,18 +69,23 @@ export default function RootLandingPage() {
     setFormSent(true);
   };
 
+  const scrollToHeroContent = () => {
+    const el = document.getElementById('hero-content');
+    el?.scrollIntoView({ behavior: 'smooth' });
+  };
+
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col selection:bg-white/20 selection:text-white overflow-x-hidden">
+    <div className="min-h-screen bg-black text-zinc-100 flex flex-col selection:bg-white/20 selection:text-white overflow-x-hidden">
       
       {/* ── Ambient Background Glows ─────────────────────────────────────── */}
       <div className="fixed top-0 left-0 w-full h-full pointer-events-none overflow-hidden z-0">
-        <div className="absolute top-[5%] right-[-10%] w-[700px] h-[700px] bg-zinc-900/15 blur-[160px] rounded-full" />
-        <div className="absolute top-[45%] left-[-15%] w-[600px] h-[600px] bg-[#0F4C5C]/10 blur-[170px] rounded-full" />
-        <div className="absolute bottom-[5%] right-[10%] w-[500px] h-[500px] bg-zinc-900/10 blur-[140px] rounded-full" />
+        <div className="absolute top-[10%] right-[-10%] w-[700px] h-[700px] bg-zinc-900/10 blur-[170px] rounded-full" />
+        <div className="absolute top-[45%] left-[-15%] w-[600px] h-[600px] bg-[#0F4C5C]/10 blur-[180px] rounded-full" />
+        <div className="absolute bottom-[5%] right-[10%] w-[500px] h-[500px] bg-zinc-900/10 blur-[150px] rounded-full" />
       </div>
 
       {/* ── Sticky Header Navigation ─────────────────────────────────────── */}
-      <header className="sticky top-0 w-full z-50 bg-zinc-950/85 backdrop-blur-2xl border-b border-zinc-800/80 h-16 flex items-center justify-between px-6 lg:px-12">
+      <header className="sticky top-0 w-full z-50 bg-black/90 backdrop-blur-2xl border-b border-zinc-900 h-16 flex items-center justify-between px-6 lg:px-12">
         <Link href="/" className="flex items-center h-10">
           <SIGPADIcon className="w-36 h-10" />
         </Link>
@@ -127,7 +132,7 @@ export default function RootLandingPage() {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="fixed top-16 inset-x-0 z-40 bg-zinc-950/98 backdrop-blur-xl border-b border-zinc-800 p-6 flex flex-col gap-4"
+            className="fixed top-16 inset-x-0 z-40 bg-black/98 backdrop-blur-xl border-b border-zinc-900 p-6 flex flex-col gap-4"
           >
             {[
               { label: 'El Sistema', href: '#sistema', isRoute: false },
@@ -157,95 +162,123 @@ export default function RootLandingPage() {
         )}
       </AnimatePresence>
 
-      {/* ── 1. PORTADA HERO — FULLSCREEN CON FONDO SIGPAD ───────────────────── */}
-      <section className="relative min-h-[95vh] flex flex-col items-center justify-center px-6 lg:px-12 max-w-7xl mx-auto w-full z-10 pt-4 pb-16">
+      {/* ── 1. PORTADA INICIAL — LOGO SIGPAD COMPLETO + FONDO NEGRO ───────── */}
+      <section className="relative h-[calc(100vh-4rem)] flex flex-col items-center justify-center px-6 lg:px-12 w-full z-10 bg-black overflow-hidden">
         
-        {/* Marca de agua y fondo de SIGPAD prominente */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-0 overflow-hidden">
-          <img 
-            src="/logo_sigpad.png" 
-            alt="Fondo SIGPAD" 
-            className="w-[90%] max-w-5xl opacity-[0.06] filter grayscale contrast-125 scale-110 pointer-events-none select-none"
-          />
-        </div>
-
-        <div className="max-w-4xl mx-auto text-center w-full z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 35 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: 'easeOut' }}
-            className="space-y-8 flex flex-col items-center justify-center"
-          >
-            <SectionTag>Plataforma de Operaciones de Seguridad Privada</SectionTag>
-
-            <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-white leading-[1.08] font-display max-w-4xl">
-              Sistema Inteligente de Gestión y{' '}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-zinc-200 to-zinc-400">
-                Seguridad Dinámica
-              </span>
-            </h1>
-
-            <p className="text-zinc-400 text-sm lg:text-lg max-w-2xl font-medium leading-relaxed mx-auto">
-              Control GPS en tiempo real, fichaje digital geolocalizado, rondines auditables y portal transparente para clientes corporativos.
-            </p>
-
-            <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2">
-              <a href="#contacto" className="group flex items-center justify-center gap-2 h-14 px-8 rounded-2xl bg-white hover:bg-zinc-200 text-zinc-950 font-black uppercase text-xs tracking-widest shadow-xl shadow-white/5 hover:scale-105 transition-all">
-                Solicitar Demostración
-                <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-              </a>
-              <Link href="/roles" className="flex items-center justify-center gap-2 h-14 px-8 rounded-2xl border border-zinc-800 hover:bg-zinc-900 text-xs tracking-widest font-black uppercase text-zinc-300 transition-all">
-                <PlayCircle size={16} />
-                Ingresar a la Plataforma
-              </Link>
-            </div>
-
-            {/* Badges de características */}
-            <div className="flex flex-wrap justify-center gap-x-8 gap-y-3 pt-8 border-t border-zinc-800/80 w-full max-w-2xl mx-auto">
-              {[
-                { label: 'Monitoreo 24/7', icon: Clock },
-                { label: 'Control GPS Inviolable', icon: MapPin },
-                { label: 'Transparencia Comercial', icon: Shield },
-              ].map(item => (
-                <div key={item.label} className="flex items-center gap-2">
-                  <CheckCircle2 size={16} className="text-[#0F4C5C] shrink-0" />
-                  <span className="text-zinc-300 text-xs uppercase tracking-wider font-black">{item.label}</span>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        </div>
-
-        {/* Indicador de scroll */}
+        {/* Contenedor central del Logo completo */}
         <motion.div
-          animate={{ y: [0, 8, 0] }}
-          transition={{ repeat: Infinity, duration: 2 }}
-          className="absolute bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 text-zinc-500 cursor-pointer"
-          onClick={() => {
-            const el = document.getElementById('sistema');
-            el?.scrollIntoView({ behavior: 'smooth' });
-          }}
+          initial={{ opacity: 0, scale: 0.88 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
+          className="flex flex-col items-center justify-center text-center space-y-6 z-10"
         >
-          <span className="text-[9px] uppercase tracking-widest font-black text-zinc-400">Desplazarse para explorar</span>
-          <ChevronDown size={18} />
+          {/* Logo SIGPAD Gigante y nítido */}
+          <div className="relative group cursor-pointer" onClick={scrollToHeroContent}>
+            <div className="absolute inset-0 bg-[#0F4C5C]/20 blur-3xl rounded-full scale-125 group-hover:bg-[#0F4C5C]/35 transition-all duration-700" />
+            <img 
+              src="/logo_sigpad.png" 
+              alt="SIGPAD Logo Completo" 
+              className="w-72 sm:w-[440px] lg:w-[540px] h-auto object-contain relative z-10 filter drop-shadow-[0_10px_35px_rgba(255,255,255,0.12)] transition-transform duration-500 hover:scale-105"
+            />
+          </div>
+
+          <div className="space-y-2 max-w-xl mx-auto pt-2">
+            <h2 className="text-xs sm:text-sm font-black uppercase tracking-[0.35em] text-zinc-300">
+              SIGPAD OS
+            </h2>
+            <p className="text-[10px] sm:text-xs font-bold uppercase tracking-[0.25em] text-zinc-500">
+              Sistema Inteligente de Gestión y Seguridad Dinámica
+            </p>
+          </div>
+        </motion.div>
+
+        {/* Indicador animado de Scroll */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.8, duration: 0.8 }}
+          className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 cursor-pointer z-20 group"
+          onClick={scrollToHeroContent}
+        >
+          <span className="text-[9px] uppercase tracking-[0.25em] font-black text-zinc-400 group-hover:text-white transition-colors">
+            Hacer scroll para ingresar
+          </span>
+          <motion.div
+            animate={{ y: [0, 8, 0] }}
+            transition={{ repeat: Infinity, duration: 1.8 }}
+            className="w-8 h-8 rounded-full border border-zinc-800 bg-zinc-950 flex items-center justify-center text-zinc-400 group-hover:border-zinc-600 group-hover:text-white transition-all shadow-lg"
+          >
+            <ChevronDown size={18} />
+          </motion.div>
         </motion.div>
       </section>
 
-      {/* ── 2. EL SISTEMA POR DENTRO (Scroll Reveal) ─────────────────────── */}
+      {/* ── 2. SECCIÓN PRINCIPAL DE INFORMACIÓN (REVELADO POR SCROLL) ──────── */}
+      <motion.section 
+        id="hero-content"
+        initial={{ opacity: 0, y: 60 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-100px" }}
+        transition={{ duration: 0.8, ease: "easeOut" }}
+        className="relative py-28 px-6 lg:px-12 max-w-7xl mx-auto w-full z-10 border-t border-zinc-900 bg-zinc-950/80"
+      >
+        <div className="max-w-4xl mx-auto text-center w-full z-10 space-y-8 flex flex-col items-center justify-center">
+          <SectionTag>Plataforma de Operaciones de Seguridad Privada</SectionTag>
+
+          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-white leading-[1.08] font-display max-w-4xl">
+            La plataforma que{' '}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-zinc-200 to-zinc-400">
+              transforma
+            </span>{' '}
+            la gestión de seguridad privada
+          </h1>
+
+          <p className="text-zinc-400 text-base lg:text-xl max-w-2xl font-medium leading-relaxed mx-auto">
+            Control GPS en tiempo real, fichaje digital geolocalizado, rondines auditables y portal transparente para clientes corporativos.
+          </p>
+
+          <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
+            <a href="#contacto" className="group flex items-center justify-center gap-2 h-14 px-8 rounded-2xl bg-white hover:bg-zinc-200 text-zinc-950 font-black uppercase text-xs tracking-widest shadow-xl shadow-white/5 hover:scale-105 transition-all">
+              Solicitar Demostración
+              <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+            </a>
+            <Link href="/roles" className="flex items-center justify-center gap-2 h-14 px-8 rounded-2xl border border-zinc-800 hover:bg-zinc-900 text-xs tracking-widest font-black uppercase text-zinc-300 transition-all">
+              <PlayCircle size={16} />
+              Ingresar a la Plataforma
+            </Link>
+          </div>
+
+          {/* Badges tácticos */}
+          <div className="flex flex-wrap justify-center gap-x-8 gap-y-4 pt-10 border-t border-zinc-800/80 w-full max-w-2xl mx-auto">
+            {[
+              { label: 'Monitoreo 24/7', icon: Clock },
+              { label: 'Control GPS Inviolable', icon: MapPin },
+              { label: 'Transparencia Comercial', icon: Shield },
+            ].map(item => (
+              <div key={item.label} className="flex items-center gap-2">
+                <CheckCircle2 size={16} className="text-[#0F4C5C] shrink-0" />
+                <span className="text-zinc-300 text-xs uppercase tracking-wider font-black">{item.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </motion.section>
+
+      {/* ── 3. EL SISTEMA POR DENTRO (Scroll Reveal) ─────────────────────── */}
       <motion.section 
         id="sistema" 
-        initial={{ opacity: 0, y: 50 }}
+        initial={{ opacity: 0, y: 60 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: "-80px" }}
-        transition={{ duration: 0.7 }}
-        className="relative z-10 py-24 px-6 lg:px-12 border-t border-zinc-900 bg-zinc-950/60"
+        transition={{ duration: 0.8 }}
+        className="relative z-10 py-24 px-6 lg:px-12 border-t border-zinc-900 bg-black"
       >
         <div className="max-w-7xl mx-auto space-y-16">
           <div className="text-center max-w-2xl mx-auto space-y-4">
             <SectionTag>Arquitectura Modular</SectionTag>
             <h2 className="text-3xl lg:text-5xl font-black text-white uppercase font-display leading-tight">
               Interfaces Diseñadas para <br />
-              <span className="text-zinc-300">Cada Rol Operativo</span>
+              <span className="text-zinc-400">Cada Rol Operativo</span>
             </h2>
             <p className="text-zinc-400 text-sm font-medium">
               Explora las tres pantallas principales que conectan la central de monitoreo, los vigiladores en campo y los clientes corporativos.
@@ -439,14 +472,14 @@ export default function RootLandingPage() {
         </div>
       </motion.section>
 
-      {/* ── 3. MÓDULOS DEL SISTEMA (Scroll Reveal) ───────────────────────── */}
+      {/* ── 4. MÓDULOS DEL SISTEMA (Scroll Reveal) ───────────────────────── */}
       <motion.section 
         id="modulos" 
-        initial={{ opacity: 0, y: 50 }}
+        initial={{ opacity: 0, y: 60 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: "-80px" }}
-        transition={{ duration: 0.7 }}
-        className="relative z-10 py-24 px-6 lg:px-12 bg-zinc-900/30 border-t border-zinc-800"
+        transition={{ duration: 0.8 }}
+        className="relative z-10 py-24 px-6 lg:px-12 bg-zinc-950/60 border-t border-zinc-900"
       >
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
@@ -469,7 +502,7 @@ export default function RootLandingPage() {
                 className={`group text-left p-5 rounded-[1.5rem] border transition-all duration-300 ${
                   activeModule === i
                     ? 'bg-zinc-800 border-zinc-600 shadow-lg'
-                    : 'bg-zinc-950/60 border-zinc-800/80 hover:border-zinc-700 hover:bg-zinc-900/60'
+                    : 'bg-black border-zinc-900 hover:border-zinc-800 hover:bg-zinc-900/50'
                 }`}
               >
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3 transition-transform group-hover:scale-110" style={{ background: `${mod.color}15`, border: `1px solid ${mod.color}25` }}>
@@ -487,7 +520,7 @@ export default function RootLandingPage() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="mt-8 p-8 rounded-[2rem] bg-zinc-950 border border-zinc-800 flex items-start gap-6"
+              className="mt-8 p-8 rounded-[2rem] bg-black border border-zinc-900 flex items-start gap-6"
             >
               <div className="w-16 h-16 rounded-2xl flex items-center justify-center shrink-0"
                 style={{ background: `${modules[activeModule].color}15`, border: `1px solid ${modules[activeModule].color}25` }}>
@@ -505,14 +538,14 @@ export default function RootLandingPage() {
         </div>
       </motion.section>
 
-      {/* ── 4. POR QUÉ SIGPAD — COMPARACIÓN OPERATIVA ───────────────────── */}
+      {/* ── 5. POR QUÉ SIGPAD — COMPARACIÓN OPERATIVA ───────────────────── */}
       <motion.section 
         id="porque" 
-        initial={{ opacity: 0, y: 50 }}
+        initial={{ opacity: 0, y: 60 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: "-80px" }}
-        transition={{ duration: 0.7 }}
-        className="relative z-10 py-24 px-6 lg:px-12 max-w-7xl mx-auto w-full border-t border-zinc-900"
+        transition={{ duration: 0.8 }}
+        className="relative z-10 py-24 px-6 lg:px-12 max-w-7xl mx-auto w-full border-t border-zinc-900 bg-black"
       >
         <div className="text-center mb-16">
           <SectionTag>Transformación Digital</SectionTag>
@@ -577,14 +610,14 @@ export default function RootLandingPage() {
         </div>
       </motion.section>
 
-      {/* ── 5. CONTACTO Y DEMO ───────────────────────────────────────────── */}
+      {/* ── 6. CONTACTO Y DEMO ───────────────────────────────────────────── */}
       <motion.section 
         id="contacto" 
-        initial={{ opacity: 0, y: 50 }}
+        initial={{ opacity: 0, y: 60 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: "-80px" }}
-        transition={{ duration: 0.7 }}
-        className="relative z-10 py-24 px-6 lg:px-12 max-w-7xl mx-auto w-full border-t border-zinc-900"
+        transition={{ duration: 0.8 }}
+        className="relative z-10 py-24 px-6 lg:px-12 max-w-7xl mx-auto w-full border-t border-zinc-900 bg-zinc-950/60"
       >
         <div className="grid lg:grid-cols-12 gap-16 items-center">
           {/* Information */}
@@ -624,7 +657,7 @@ export default function RootLandingPage() {
           </div>
 
           {/* Contact Form */}
-          <div className="lg:col-span-6 bg-zinc-900/60 border border-zinc-800 rounded-[2.5rem] p-8 shadow-2xl">
+          <div className="lg:col-span-6 bg-zinc-900/80 border border-zinc-800 rounded-[2.5rem] p-8 shadow-2xl">
             {formSent ? (
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
@@ -649,7 +682,7 @@ export default function RootLandingPage() {
                       required
                       value={formData.nombre}
                       onChange={e => setFormData(p => ({ ...p, nombre: e.target.value }))}
-                      className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600 transition-colors"
+                      className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600 transition-colors"
                       placeholder="Tu nombre"
                     />
                   </div>
@@ -660,7 +693,7 @@ export default function RootLandingPage() {
                       required
                       value={formData.empresa}
                       onChange={e => setFormData(p => ({ ...p, empresa: e.target.value }))}
-                      className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600 transition-colors"
+                      className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600 transition-colors"
                       placeholder="Nombre de la empresa"
                     />
                   </div>
@@ -673,7 +706,7 @@ export default function RootLandingPage() {
                     required
                     value={formData.email}
                     onChange={e => setFormData(p => ({ ...p, email: e.target.value }))}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600 transition-colors"
+                    className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600 transition-colors"
                     placeholder="tu@empresa.com"
                   />
                 </div>
@@ -684,7 +717,7 @@ export default function RootLandingPage() {
                     type="tel"
                     value={formData.telefono}
                     onChange={e => setFormData(p => ({ ...p, telefono: e.target.value }))}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600 transition-colors"
+                    className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600 transition-colors"
                     placeholder="+54 342..."
                   />
                 </div>
@@ -695,7 +728,7 @@ export default function RootLandingPage() {
                     rows={3}
                     value={formData.mensaje}
                     onChange={e => setFormData(p => ({ ...p, mensaje: e.target.value }))}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600 transition-colors resize-none"
+                    className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600 transition-colors resize-none"
                     placeholder="¿Cuáles son los requerimientos de su operación?"
                   />
                 </div>
@@ -714,7 +747,7 @@ export default function RootLandingPage() {
       </motion.section>
 
       {/* ── FOOTER ────────────────────────────────────────────────────────── */}
-      <footer className="relative z-10 py-12 px-6 lg:px-12 border-t border-zinc-900 bg-zinc-950">
+      <footer className="relative z-10 py-12 px-6 lg:px-12 border-t border-zinc-900 bg-black">
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-4 gap-8 mb-12">
             <div className="space-y-4">
