@@ -44,7 +44,7 @@ export function MainLayoutWrapper({ children }: MainLayoutWrapperProps) {
     <>
       <Sidebar />
       <AppHeader />
-      <main className="min-h-screen pt-16 lg:pl-[240px] pb-24 lg:pb-0 bg-zinc-50">
+      <main className="min-h-screen pt-16 lg:pl-[240px] pb-28 lg:pb-0 bg-zinc-50">
         <div className="w-full h-full">
           {children}
         </div>

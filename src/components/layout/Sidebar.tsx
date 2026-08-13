@@ -105,22 +105,22 @@ export function Sidebar() {
 
     return (
       <>
-        {/* Fixed Mobile Bottom Bar (5 equal columns) — Enlarged touch targets & crisp typography */}
-        <nav className="lg:hidden fixed bottom-0 left-0 right-0 h-[82px] z-[100] grid grid-cols-5 items-center bg-zinc-950/98 backdrop-blur-2xl border-t border-white/10 px-2 safe-bottom shadow-[0_-12px_40px_rgba(0,0,0,0.7)]">
+        {/* Fixed Mobile Bottom Bar (5 equal columns) — High Contrast & Maximum Legibility */}
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 h-[92px] z-[100] grid grid-cols-5 items-center bg-zinc-950/98 backdrop-blur-2xl border-t border-white/15 px-1 safe-bottom shadow-[0_-15px_50px_rgba(0,0,0,0.8)]">
           {primaryMobileItems.map((item) => {
             const isActive = pathname === item.href || (item.href !== '/gerente' && pathname?.startsWith(item.href));
 
             return (
-              <Link key={item.name} href={item.href} className="flex flex-col items-center justify-center h-full active:scale-95 transition-transform py-1">
+              <Link key={item.name} href={item.href} className="flex flex-col items-center justify-center h-full active:scale-95 transition-transform py-1.5">
                 <div className={cn(
-                  'w-12 h-10 rounded-2xl flex items-center justify-center transition-all',
+                  'w-14 h-11 rounded-2xl flex items-center justify-center transition-all',
                   isActive 
-                    ? 'bg-amber-400/20 border border-amber-400/50 text-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.3)] scale-105' 
+                    ? 'bg-amber-400/25 border-2 border-amber-400 text-amber-400 shadow-[0_0_25px_rgba(251,191,36,0.5)] scale-110' 
                     : 'text-zinc-400 hover:text-white'
                 )}>
-                  <item.icon size={22} />
+                  <item.icon size={26} />
                 </div>
-                <span className={cn('text-[11px] font-black uppercase mt-1 tracking-tight truncate max-w-full', isActive ? 'text-amber-400 font-extrabold' : 'text-zinc-400')}>
+                <span className={cn('text-[13px] font-black uppercase mt-1.5 tracking-tight truncate max-w-full leading-none', isActive ? 'text-amber-400 font-extrabold' : 'text-zinc-300')}>
                   {item.name}
                 </span>
               </Link>
@@ -131,17 +131,17 @@ export function Sidebar() {
           {!isGuardia && (
             <button 
               onClick={() => setIsMoreOpen(!isMoreOpen)} 
-              className="flex flex-col items-center justify-center h-full active:scale-95 transition-transform py-1"
+              className="flex flex-col items-center justify-center h-full active:scale-95 transition-transform py-1.5"
             >
               <div className={cn(
-                'w-12 h-10 rounded-2xl flex items-center justify-center transition-all',
+                'w-14 h-11 rounded-2xl flex items-center justify-center transition-all',
                 isMoreOpen 
-                  ? 'bg-amber-400 text-black shadow-[0_0_25px_rgba(251,191,36,0.5)] scale-105' 
+                  ? 'bg-amber-400 text-black shadow-[0_0_30px_rgba(251,191,36,0.6)] scale-110' 
                   : 'text-zinc-400 hover:text-white'
               )}>
-                <Grid size={22} />
+                <Grid size={26} />
               </div>
-              <span className={cn('text-[11px] font-black uppercase mt-1 tracking-tight truncate', isMoreOpen ? 'text-amber-400 font-extrabold' : 'text-zinc-400')}>
+              <span className={cn('text-[13px] font-black uppercase mt-1.5 tracking-tight truncate leading-none', isMoreOpen ? 'text-amber-400 font-extrabold' : 'text-zinc-300')}>
                 Más
               </span>
             </button>
@@ -158,7 +158,7 @@ export function Sidebar() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 onClick={() => setIsMoreOpen(false)}
-                className="lg:hidden fixed inset-0 bg-black/85 backdrop-blur-lg z-[110]"
+                className="lg:hidden fixed inset-0 bg-black/90 backdrop-blur-xl z-[110]"
               />
 
               {/* Sheet Container */}
@@ -167,52 +167,52 @@ export function Sidebar() {
                 animate={{ y: 0 }}
                 exit={{ y: '100%' }}
                 transition={{ type: 'spring', damping: 25, stiffness: 280 }}
-                className="lg:hidden fixed bottom-0 left-0 right-0 max-h-[88vh] z-[120] bg-zinc-950 border-t border-white/10 rounded-t-[2.5rem] overflow-hidden flex flex-col shadow-[0_-15px_50px_rgba(0,0,0,0.9)]"
+                className="lg:hidden fixed bottom-0 left-0 right-0 max-h-[88vh] z-[120] bg-zinc-950 border-t-2 border-white/20 rounded-t-[2.5rem] overflow-hidden flex flex-col shadow-[0_-20px_60px_rgba(0,0,0,0.95)]"
               >
                 {/* Sheet Handle Header */}
-                <div className="p-5 pb-4 border-b border-white/10 flex items-center justify-between bg-zinc-900/80">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-amber-400/10 border border-amber-400/30 flex items-center justify-center text-amber-400">
-                      <Building2 size={20} />
+                <div className="p-6 pb-5 border-b border-white/10 flex items-center justify-between bg-zinc-900/90">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-12 h-12 rounded-2xl bg-amber-400/20 border-2 border-amber-400/40 flex items-center justify-center text-amber-400 shrink-0">
+                      <Building2 size={24} />
                     </div>
                     <div>
-                      <p className="text-sm font-black text-white leading-tight uppercase tracking-tight">
+                      <p className="text-base font-black text-white leading-tight uppercase tracking-tight">
                         {(user as any)?.company_name || user?.user_metadata?.company_name || 'Empresa de Seguridad'}
                       </p>
-                      <p className="text-xs text-amber-400/80 font-bold mt-0.5">Menú de Herramientas Operativas</p>
+                      <p className="text-xs text-amber-400 font-bold mt-0.5 uppercase tracking-wide">Menú de Herramientas Operativas</p>
                     </div>
                   </div>
                   <button 
                     onClick={() => setIsMoreOpen(false)}
-                    className="w-10 h-10 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center text-white active:scale-95"
+                    className="w-12 h-12 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center text-white active:scale-95"
                   >
-                    <X size={20} />
+                    <X size={24} />
                   </button>
                 </div>
 
                 {/* Sheet Body — Grid Options */}
-                <div className="p-5 overflow-y-auto space-y-3 max-h-[65vh]">
-                  <p className="text-xs font-black text-amber-400 uppercase tracking-widest px-1 mb-2">Módulos Adicionales</p>
+                <div className="p-6 overflow-y-auto space-y-4 max-h-[68vh]">
+                  <p className="text-sm font-black text-amber-400 uppercase tracking-widest px-1 mb-2">Módulos Adicionales</p>
 
-                  <div className="grid grid-cols-1 gap-3">
+                  <div className="grid grid-cols-1 gap-3.5">
                     {secondaryMobileItems.map((sec) => {
                       const isActive = pathname === sec.href || pathname?.startsWith(sec.href);
                       return (
                         <Link key={sec.name} href={sec.href} onClick={() => setIsMoreOpen(false)}>
                           <div className={cn(
-                            "flex items-center gap-4 p-4 rounded-2xl border transition-all active:scale-[0.98]",
+                            "flex items-center gap-4.5 p-4.5 rounded-2xl border-2 transition-all active:scale-[0.98]",
                             isActive 
-                              ? "bg-amber-400/15 border-amber-400/50 text-amber-400 shadow-lg shadow-amber-400/10" 
-                              : "bg-white/5 border-white/5 text-white hover:bg-white/10"
+                              ? "bg-amber-400/20 border-amber-400/60 text-amber-400 shadow-xl shadow-amber-400/15" 
+                              : "bg-white/5 border-white/10 text-white hover:bg-white/10"
                           )}>
-                            <div className="w-12 h-12 rounded-2xl bg-zinc-900 border border-white/10 flex items-center justify-center shrink-0">
-                              <sec.icon size={22} className="text-amber-400" />
+                            <div className="w-14 h-14 rounded-2xl bg-zinc-900 border border-white/15 flex items-center justify-center shrink-0">
+                              <sec.icon size={26} className="text-amber-400" />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-bold text-white truncate">{sec.name}</p>
-                              <p className="text-xs text-zinc-400 truncate mt-0.5 font-medium">{sec.desc}</p>
+                              <p className="text-base font-black text-white truncate uppercase tracking-tight">{sec.name}</p>
+                              <p className="text-xs text-zinc-300 truncate mt-1 font-semibold">{sec.desc}</p>
                             </div>
-                            <ChevronRight size={18} className="text-zinc-500 shrink-0" />
+                            <ChevronRight size={22} className="text-zinc-400 shrink-0" />
                           </div>
                         </Link>
                       );
@@ -220,22 +220,22 @@ export function Sidebar() {
                   </div>
 
                   {/* Actions Section */}
-                  <p className="text-xs font-black text-zinc-400 uppercase tracking-widest px-1 pt-4 mb-2">Acciones Rápidas</p>
+                  <p className="text-sm font-black text-zinc-400 uppercase tracking-widest px-1 pt-4 mb-2">Acciones Rápidas</p>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-3.5">
                     <button
                       onClick={handleShare}
-                      className="flex items-center justify-center gap-2.5 h-14 bg-white/5 border border-white/10 rounded-2xl text-xs font-black uppercase text-zinc-200 active:scale-95"
+                      className="flex items-center justify-center gap-3 h-16 bg-white/10 border border-white/15 rounded-2xl text-sm font-black uppercase text-white active:scale-95 shadow-lg"
                     >
-                      <Share2 size={18} className="text-amber-400" />
+                      <Share2 size={22} className="text-amber-400" />
                       <span>Compartir App</span>
                     </button>
 
                     <button
                       onClick={() => { signOut(); window.location.href = '/login'; }}
-                      className="flex items-center justify-center gap-2.5 h-14 bg-red-500/15 border border-red-500/30 rounded-2xl text-xs font-black uppercase text-red-400 active:scale-95"
+                      className="flex items-center justify-center gap-3 h-16 bg-red-500/20 border border-red-500/40 rounded-2xl text-sm font-black uppercase text-red-400 active:scale-95 shadow-lg"
                     >
-                      <LogOut size={18} />
+                      <LogOut size={22} />
                       <span>Cerrar Sesión</span>
                     </button>
                   </div>
