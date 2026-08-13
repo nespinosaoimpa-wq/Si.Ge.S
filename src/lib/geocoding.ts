@@ -1,7 +1,8 @@
 /**
- * SIGPAD Geocoding Engine — Precision Grade
- * Hybrid approach: Geocoding v5 (primary, addresses) + Search Box v1 (POIs).
- * Optimized for Santa Fe, Argentina with autocomplete and smart context injection.
+ * SIGPAD Geocoding Engine — Precision Catastral Grade (Santa Fe & Argentina)
+ * Hybrid approach: Mapbox Geocoding v5 (primary, addresses with bbox bounding box)
+ * + Search Box v1 (POIs) + Nominatim OpenStreetMap (cadastral fallback)
+ * Optimized for Santa Fe, Argentina with autocomplete and smart cadastral context.
  */
 
 export interface GeocodingResult {
@@ -9,7 +10,7 @@ export interface GeocodingResult {
   lng: number;
   displayName: string;       // Full formatted address
   street: string;            // Street name
-  houseNumber: string;       // House number
+  houseNumber: string;       // House number / altura catastral
   city: string;              // City / locality
   state: string;             // Province
   country: string;
@@ -32,18 +33,22 @@ const GOOGLE_MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
 const MAPBOX_GEO_BASE = 'https://api.mapbox.com/geocoding/v5/mapbox.places';
 const MAPBOX_SEARCH_BASE = 'https://api.mapbox.com/search/searchbox/v1';
 
+// Bounding Box para la provincia de Santa Fe (lngMin, latMin, lngMax, latMax)
+export const SANTA_FE_PROVINCE_BBOX = '-62.9000,-34.4000,-59.4000,-28.0000';
+
 // Tenant Geocoding Configurations for Global SaaS
 export interface TenantGeocodingConfig {
   center: { lat: number; lng: number };
   countryCode: string;       // ISO 2-letter country code (e.g., 'ar', 'mx', 'cl', 'us')
   contextSuffix: string;     // Fallback text appended to search queries for local biasing
-  bbox?: string;             // Bounding box constraint
+  bbox?: string;             // Bounding box constraint for high precision
 }
 
 let activeTenantConfig: TenantGeocodingConfig = {
   center: { lat: -31.6107, lng: -60.6973 },
   countryCode: 'ar',
-  contextSuffix: 'Santa Fe de la Vera Cruz, Santa Fe, Argentina'
+  contextSuffix: 'Santa Fe, Provincia de Santa Fe, Argentina',
+  bbox: SANTA_FE_PROVINCE_BBOX
 };
 
 export function setTenantGeocodingConfig(config: Partial<TenantGeocodingConfig>) {
@@ -53,7 +58,7 @@ export function setTenantGeocodingConfig(config: Partial<TenantGeocodingConfig>)
   };
 }
 
-// Session token for Search Box API
+// Session token for Search Box API (Optimizes quota within Mapbox Free Tier)
 let currentSessionToken: string | null = null;
 
 function getSessionToken(): string {
@@ -73,17 +78,18 @@ let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 let abortController: AbortController | null = null;
 
 /**
- * Normalize common Argentine address abbreviations and Santa Fe specific streets
+ * Normaliza abreviaturas de calles de Argentina y arterias clave de Santa Fe
+ * para garantizar coincidencia catastral exacta en Mapbox/OSM.
  */
 function normalizeAddress(query: string): string {
   let n = query.trim();
   
-  // 1. General prefixes
+  // 1. Prefijos y abreviaturas generales
   n = n.replace(/\bav\.?\b/gi, 'Avenida');
   n = n.replace(/\bpje\.?\b/gi, 'Pasaje');
   n = n.replace(/\bbv\.?\b/gi, 'Boulevard');
   n = n.replace(/\bbvd\.?\b/gi, 'Boulevard');
-  n = n.replace(/\bbulevar\b/gi, 'Boulevard');  // Argentine Spanish variant
+  n = n.replace(/\bbulevar\b/gi, 'Boulevard');
   n = n.replace(/\bnro\.?\b/gi, '');
   n = n.replace(/\bn°\b/gi, '');
   n = n.replace(/\b#\b/g, '');
@@ -92,33 +98,42 @@ function normalizeAddress(query: string): string {
   n = n.replace(/\bdr\.?\b/gi, 'Doctor');
   n = n.replace(/\bsgto\.?\b/gi, 'Sargento');
   n = n.replace(/\bcte\.?\b/gi, 'Comandante');
+  n = n.replace(/\bpto\.?\b/gi, 'Puerto');
   
-  // 2. Santa Fe specific street mapping (converts shortcuts into formal DB names for Mapbox/OSM resolution)
-  n = n.replace(/\bj\.?\s*j\.?\s*paso\b/gi, 'Juan José Paso');
-  n = n.replace(/\bgral\.?\s+paz\b/gi, 'General Paz');
+  // 2. Mapeo específico de calles y avenidas de Santa Fe (Capital, Santo Tomé, Sauce Viejo, Rosario)
+  n = n.replace(/\bbv\.?\s*g[aá]lvez\b/gi, 'Boulevard Gálvez');
+  n = n.replace(/\bbulevar\s*g[aá]lvez\b/gi, 'Boulevard Gálvez');
+  n = n.replace(/\bbv\.?\s*pellegrini\b/gi, 'Boulevard Pellegrini');
+  n = n.replace(/\bbulevar\s*pellegrini\b/gi, 'Boulevard Pellegrini');
+  n = n.replace(/\bav\.?\s*freyre\b/gi, 'Avenida Gobernador Freyre');
+  n = n.replace(/\bfreyre\b/gi, 'Avenida Gobernador Freyre');
+  n = n.replace(/\bav\.?\s*arist[oó]bulo\s*del\s*valle\b/gi, 'Avenida Aristóbulo del Valle');
+  n = n.replace(/\barist[oó]bulo\s*del\s*valle\b/gi, 'Avenida Aristóbulo del Valle');
   n = n.replace(/\bfacundo\s+zuvir[ií]a\b/gi, 'Avenida Facundo Zuviría');
   n = n.replace(/\bl[oó]pez\s+y\s+planes\b/gi, 'Avenida López y Planes');
   n = n.replace(/\bestanislao\s+l[oó]pez\b/gi, 'Avenida Estanislao López');
   n = n.replace(/\b27\s+de\s+febrero\b/gi, 'Avenida 27 de Febrero');
-  n = n.replace(/\balem\b/gi, 'Avenida Alem');
-  n = n.replace(/\bg[aá]lvez\b/gi, 'Gálvez');  // Ensure correct accent for Mapbox/OSM
-  n = n.replace(/\bpellegrini\b/gi, 'Pellegrini');
+  n = n.replace(/\balem\b/gi, 'Avenida Leandro N. Alem');
+  n = n.replace(/\bgral\.?\s+paz\b/gi, 'Avenida General Paz');
+  n = n.replace(/\bblas\s+parera\b/gi, 'Avenida Blas Parera');
+  n = n.replace(/\bgorriti\b/gi, 'Avenida Gorriti');
+  n = n.replace(/\bpe[nñ]aloza\b/gi, 'Avenida Gobernador Peñaloza');
+  n = n.replace(/\bj\.?\s*j\.?\s*paso\b/gi, 'Juan José Paso');
   n = n.replace(/\b1\s*(?:ro|ero)?\s*de\s+mayo\b/gi, 'Primero de Mayo');
   n = n.replace(/\b9\s+de\s+julio\b/gi, '9 de Julio');
   n = n.replace(/\b25\s+de\s+mayo\b/gi, '25 de Mayo');
+  n = n.replace(/\b7\s+de\s+marzo\b/gi, 'Avenida 7 de Marzo');
+  n = n.replace(/\bruta\s+1\b/gi, 'Ruta Provincial 1');
+  n = n.replace(/\bruta\s+168\b/gi, 'Ruta Nacional 168');
   
   return n.trim();
 }
 
 /**
- * Parse coordinates from string (Support for D.D, D.M.S, etc.)
- * Returns { lat, lng } or null
+ * Extrae coordenadas si la consulta viene en formato numérico (grados decimales o GPS)
  */
 export function parseCoordinates(query: string): { lat: number, lng: number } | null {
   const q = query.trim();
-  
-  // 1. Regex for Decimal Degrees: "-31.6107, -60.6973" or "-31.6107 -60.6973"
-  const ddRegex = /^[-+]?([1-8]?\d(\.\d+)?|90(\.0+)?),\s*[-+]?(180(\.0+)?|((1[0-7]\d)|([1-9]?\d))(\.\d+)?)$/;
   const ddMatch = q.match(/([-+]?\d+\.\d+)\s*[,|\s]\s*([-+]?\d+\.\d+)/);
   
   if (ddMatch) {
@@ -128,35 +143,27 @@ export function parseCoordinates(query: string): { lat: number, lng: number } | 
       return { lat, lng };
     }
   }
-
-  // 2. Regex for D.M.S could be added here if needed (e.g. 31°36'38"S 60°41'50"O)
-  
   return null;
 }
 
 /**
- * Inject geographic context if not already present.
- * "French 8170" → "French 8170 Santa Fe Argentina"
+ * Inyecta contexto geográfico de Santa Fe si no está explícito en la búsqueda.
  */
 function injectContext(query: string): string {
   const lower = query.toLowerCase();
-  
-  // If the tenant is based in Argentina and the query has 'santa fe', apply local Santa Fe optimizations
   let adjustedQuery = query;
+  
   if (activeTenantConfig.countryCode === 'ar' && /santa fe/i.test(lower)) {
-    const hasOtherCity = /rosario|rafaela|reconquista|santo tom[eé]|sauce viejo|esperanza|franck|coronda|venado tuerto|sunchales|villa constitucion|san lorenzo|ca[nñ]ada de gomez|casilda|santa rosa de calchines|calchines|helvecia|cayasta/i.test(lower);
+    const hasOtherCity = /rosario|rafaela|reconquista|santo tom[eé]|sauce viejo|esperanza|franck|coronda|venado tuerto|sunchales|villa constitucion|san lorenzo|ca[nñ]ada de gomez|casilda|santa rosa/i.test(lower);
     if (!hasOtherCity) {
       adjustedQuery = query.replace(/santa fe/gi, 'Santa Fe de la Vera Cruz, Santa Fe');
     }
   }
 
   const lowerAdjusted = adjustedQuery.toLowerCase();
-  
-  // Basic search biasing check: check if the query contains any country suffix
   const hasExternalContext = /buenos aires|caba|capital federal|cordoba|crdoba|mendoza|tucuman|tucumán|salta|rosario|parana|paraná|santiago|bogota|lima|madrid|mexico|méxico|colombia|chile|españa|uruguay|miami/i.test(lowerAdjusted);
   
   if (!hasExternalContext && !lowerAdjusted.includes(activeTenantConfig.countryCode)) {
-    // Append tenant specific context (city, province, country)
     return `${adjustedQuery}, ${activeTenantConfig.contextSuffix}`;
   }
   
@@ -164,9 +171,8 @@ function injectContext(query: string): string {
 }
 
 /**
- * Forward Geocoding v5 — the most precise engine for addresses.
- * Runs two parallel queries: one with SIGPAD context, one raw.
- * Proximity biasing ensures local results rank first.
+ * Geocoding Directo Mapbox v5 con restricción de Bounding Box (BBOX).
+ * Garantiza máxima precisión catastral en alturas de calles para Santa Fe y Argentina.
  */
 export async function geocodeForward(query: string): Promise<GeocodingResult[]> {
   if (!query || query.trim().length < 2) return [];
@@ -184,9 +190,14 @@ export async function geocodeForward(query: string): Promise<GeocodingResult[]> 
         language: 'es',
         proximity: `${activeTenantConfig.center.lng},${activeTenantConfig.center.lat}`,
         types: hasNumber ? 'address' : 'address,poi,place,locality',
-        limit: '5',
+        limit: '6',
         fuzzyMatch: 'true',
       });
+
+      // Aplicar delimitador espacial BBOX para forzar precisión local
+      if (activeTenantConfig.bbox) {
+        params.append('bbox', activeTenantConfig.bbox);
+      }
 
       const res = await fetch(`${MAPBOX_GEO_BASE}/${encodeURIComponent(searchText)}.json?${params}`);
       if (!res.ok) return [];
@@ -201,8 +212,8 @@ export async function geocodeForward(query: string): Promise<GeocodingResult[]> 
           displayName: f.place_name,
           street: f.text || '',
           houseNumber: f.address || '',
-          city: context.find((c: any) => c.id.startsWith('place'))?.text || '',
-          state: context.find((c: any) => c.id.startsWith('region'))?.text || '',
+          city: context.find((c: any) => c.id.startsWith('place'))?.text || 'Santa Fe',
+          state: context.find((c: any) => c.id.startsWith('region'))?.text || 'Santa Fe',
           country: context.find((c: any) => c.id.startsWith('country'))?.text || 'Argentina',
           type: f.place_type?.[0] || '',
           importance: f.relevance || 0,
@@ -213,13 +224,11 @@ export async function geocodeForward(query: string): Promise<GeocodingResult[]> 
     }
   };
 
-  // Run two queries in parallel: with context and without
   const [withContext, withoutContext] = await Promise.all([
     makeRequest(injectContext(normalized)),
     makeRequest(normalized)
   ]);
 
-  // Merge and deduplicate, prioritizing contextual results
   const seen = new Set<string>();
   const merged: GeocodingResult[] = [];
 
@@ -231,14 +240,11 @@ export async function geocodeForward(query: string): Promise<GeocodingResult[]> 
     }
   }
 
-  return merged.slice(0, 7);
+  return merged.slice(0, 8);
 }
 
-// ─── SECONDARY ENGINE: Search Box v1 (POIs) ──────────────────────────
+// ─── SEARCH BOX API v1 (Sugerencias POI y Comercio) ───────────────────
 
-/**
- * Search Box API v1 Suggest — best for POIs (businesses, landmarks).
- */
 export async function searchBoxSuggest(query: string): Promise<GeocodingResult[]> {
   if (!query || query.trim().length < 3) return [];
   if (!MAPBOX_TOKEN) return [];
@@ -254,9 +260,13 @@ export async function searchBoxSuggest(query: string): Promise<GeocodingResult[]
       country: activeTenantConfig.countryCode,
       language: 'es',
       proximity: `${activeTenantConfig.center.lng},${activeTenantConfig.center.lat}`,
-      types: 'poi,place',
+      types: 'poi,place,address',
       limit: '5'
     });
+
+    if (activeTenantConfig.bbox) {
+      params.append('bbox', activeTenantConfig.bbox);
+    }
 
     const res = await fetch(`${MAPBOX_SEARCH_BASE}/suggest?${params}`, { signal: abortController.signal });
     if (!res.ok) throw new Error(`Search Box failed: ${res.status}`);
@@ -269,11 +279,11 @@ export async function searchBoxSuggest(query: string): Promise<GeocodingResult[]
       displayName: s.name + (s.address ? `, ${s.address}` : '') + (s.place_formatted ? ` — ${s.place_formatted}` : ''),
       street: s.name || '',
       houseNumber: s.address || '',
-      city: s.place_formatted?.split(',')[0]?.trim() || '',
+      city: s.place_formatted?.split(',')[0]?.trim() || 'Santa Fe',
       state: 'Santa Fe',
       country: 'Argentina',
       type: s.feature_type || 'poi',
-      importance: 0.8,
+      importance: 0.85,
       mapbox_id: s.mapbox_id
     }));
   } catch (err: any) {
@@ -283,9 +293,6 @@ export async function searchBoxSuggest(query: string): Promise<GeocodingResult[]
   }
 }
 
-/**
- * Search Box Retrieve — gets precise coords from a suggest result.
- */
 export async function searchBoxRetrieve(mapboxId: string): Promise<GeocodingResult | null> {
   if (!MAPBOX_TOKEN || !mapboxId) return null;
 
@@ -310,8 +317,8 @@ export async function searchBoxRetrieve(mapboxId: string): Promise<GeocodingResu
       displayName: feature.properties.full_address || feature.properties.name,
       street: feature.properties.street_name || feature.properties.name,
       houseNumber: feature.properties.address_number || '',
-      city: feature.properties.context?.place?.name || '',
-      state: feature.properties.context?.region?.name || '',
+      city: feature.properties.context?.place?.name || 'Santa Fe',
+      state: feature.properties.context?.region?.name || 'Santa Fe',
       country: 'Argentina',
       type: feature.properties.feature_type || '',
       importance: 1
@@ -322,7 +329,7 @@ export async function searchBoxRetrieve(mapboxId: string): Promise<GeocodingResu
   }
 }
 
-// ─── OPTIONAL HYBRID ENGINE: Nominatim OpenStreetMap (High Precision) ─
+// ─── NOMINATIM OPENSTREETMAP (Respaldo Catastral Gratuito) ───────────
 
 export async function searchNominatim(query: string): Promise<GeocodingResult[]> {
   if (!query || query.trim().length < 3) return [];
@@ -330,7 +337,12 @@ export async function searchNominatim(query: string): Promise<GeocodingResult[]>
     const normalized = normalizeAddress(query);
     const contextualized = injectContext(normalized);
     
-    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(contextualized)}&countrycodes=${activeTenantConfig.countryCode}&limit=5&addressdetails=1`, {
+    let url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(contextualized)}&countrycodes=${activeTenantConfig.countryCode}&limit=5&addressdetails=1`;
+    if (activeTenantConfig.bbox) {
+      url += `&viewbox=${activeTenantConfig.bbox}&bounded=1`;
+    }
+
+    const res = await fetch(url, {
       headers: {
         'Accept-Language': 'es',
         'User-Agent': 'SIGPAD-Manager-App/1.0'
@@ -347,8 +359,8 @@ export async function searchNominatim(query: string): Promise<GeocodingResult[]>
         displayName: item.display_name,
         street: addr.road || addr.pedestrian || '',
         houseNumber: addr.house_number || '',
-        city: addr.city || addr.town || addr.village || '',
-        state: addr.state || '',
+        city: addr.city || addr.town || addr.village || 'Santa Fe',
+        state: addr.state || 'Santa Fe',
         country: addr.country || 'Argentina',
         type: item.type || 'address',
         importance: parseFloat(item.importance || '0.5'),
@@ -360,10 +372,8 @@ export async function searchNominatim(query: string): Promise<GeocodingResult[]>
   }
 }
 
-/**
- * Google Maps Geocoding API — the absolute gold standard for address heights in Argentina.
- * Activates automatically if NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is configured in env.
- */
+// ─── GOOGLE MAPS GEOCODING (Opcional si existe API Key) ─────────────
+
 export async function geocodeGoogle(query: string): Promise<GeocodingResult[]> {
   if (!query || !GOOGLE_MAPS_KEY) return [];
   try {
@@ -395,7 +405,7 @@ export async function geocodeGoogle(query: string): Promise<GeocodingResult[]> {
         state,
         country,
         type: item.types?.[0] || 'address',
-        importance: 1.0, // Maximum priority
+        importance: 1.0,
       };
     });
   } catch (err) {
@@ -404,12 +414,8 @@ export async function geocodeGoogle(query: string): Promise<GeocodingResult[]> {
   }
 }
 
-// ─── UNIFIED SEARCH: Hybrid Engine ────────────────────────────────────
- 
-/**
- * Main search function — runs Google Maps (if key present), Mapbox v5, Search Box v1, and Nominatim in parallel.
- * Combines and deduplicates results, prioritizing coordinate match and exact heights.
- */
+// ─── MOTOR DE BÚSQUEDA HÍBRIDO UNIFICADO ──────────────────────────────
+
 export function searchAddresses(
   query: string, 
   debounceMs = 250
@@ -426,7 +432,7 @@ export function searchAddresses(
       try {
         const results: GeocodingResult[] = [];
 
-        // 1. Check if query is a coordinate
+        // 1. Verificar si la búsqueda es una coordenada GPS
         const coords = parseCoordinates(query);
         if (coords) {
           const rev = await reverseGeocode(coords.lat, coords.lng);
@@ -436,15 +442,15 @@ export function searchAddresses(
             displayName: rev?.displayName || `${coords.lat}, ${coords.lng}`,
             street: rev?.street || '',
             houseNumber: rev?.houseNumber || '',
-            city: rev?.city || 'Ubicación por coordenadas',
-            state: rev?.state || '',
+            city: rev?.city || 'Santa Fe',
+            state: rev?.state || 'Santa Fe',
             country: 'Argentina',
             type: 'coordinate',
             importance: 1,
           });
         }
 
-        // 2. Run engines in parallel (Google Geocoding + Mapbox + Nominatim OSM)
+        // 2. Ejecutar motores en paralelo dentro del rango gratuito Mapbox
         const [googleResults, v5Results, poiResults, osmResults] = await Promise.all([
           geocodeGoogle(query).catch(() => [] as GeocodingResult[]),
           geocodeForward(query).catch(() => [] as GeocodingResult[]),
@@ -452,11 +458,9 @@ export function searchAddresses(
           searchNominatim(query).catch(() => [] as GeocodingResult[])
         ]);
 
-        // Merge: keep track of unique coordinates
         const seenKeys = new Set(results.map(r => `${r.lat.toFixed(5)},${r.lng.toFixed(5)}`));
         const candidates: GeocodingResult[] = [...results];
 
-        // Combine all results, prioritizing Google Maps results first, then Mapbox, then Nominatim
         const allCandidates = [...googleResults, ...v5Results, ...osmResults, ...poiResults];
 
         for (const r of allCandidates) {
@@ -467,20 +471,16 @@ export function searchAddresses(
           }
         }
 
-        // Live Proximity Sorting (Uber/Google Maps style):
-        // Prioritize coordinate inputs, then Google results, then sort others by proximity to SANTA_FE_CENTER
+        // Ordenamiento de Proximidad Inteligente hacia el centro de Santa Fe
         candidates.sort((a, b) => {
-          // Priority 1: Coordinate match (type 'coordinate') always first
           if (a.type === 'coordinate' && b.type !== 'coordinate') return -1;
           if (b.type === 'coordinate' && a.type !== 'coordinate') return 1;
 
-          // Priority 2: Google results (always has high importance and max relevance)
           const isGoogleA = googleResults.some(g => g.lat.toFixed(5) === a.lat.toFixed(5) && g.lng.toFixed(5) === a.lng.toFixed(5));
           const isGoogleB = googleResults.some(g => g.lat.toFixed(5) === b.lat.toFixed(5) && g.lng.toFixed(5) === b.lng.toFixed(5));
           if (isGoogleA && !isGoogleB) return -1;
           if (isGoogleB && !isGoogleA) return 1;
 
-          // Priority 3: Sort by distance to center of operations
           const distA = a.lat !== 0 ? distanceMeters(a.lat, a.lng, activeTenantConfig.center.lat, activeTenantConfig.center.lng) : 9999999;
           const distB = b.lat !== 0 ? distanceMeters(b.lat, b.lng, activeTenantConfig.center.lat, activeTenantConfig.center.lng) : 9999999;
 
@@ -497,9 +497,6 @@ export function searchAddresses(
 
 // ─── REVERSE GEOCODING ────────────────────────────────────────────────
 
-/**
- * Reverse Geocoding: coordinates → address
- */
 export async function reverseGeocode(lat: number, lng: number): Promise<ReverseGeocodingResult | null> {
   if (!MAPBOX_TOKEN) return null;
 
@@ -524,8 +521,8 @@ export async function reverseGeocode(lat: number, lng: number): Promise<ReverseG
       displayName: feature.place_name,
       street: feature.text || '',
       houseNumber: feature.address || '',
-      city: context.find((c: any) => c.id.startsWith('place'))?.text || '',
-      state: context.find((c: any) => c.id.startsWith('region'))?.text || '',
+      city: context.find((c: any) => c.id.startsWith('place'))?.text || 'Santa Fe',
+      state: context.find((c: any) => c.id.startsWith('region'))?.text || 'Santa Fe',
       postcode: context.find((c: any) => c.id.startsWith('postcode'))?.text || '',
     };
   } catch (err) {
@@ -536,9 +533,6 @@ export async function reverseGeocode(lat: number, lng: number): Promise<ReverseG
 
 // ─── UTILITIES ────────────────────────────────────────────────────────
 
-/**
- * Calculate distance between two coordinates in meters (Haversine)
- */
 export function distanceMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371e3;
   const rad = Math.PI / 180;
@@ -548,4 +542,3 @@ export function distanceMeters(lat1: number, lng1: number, lat2: number, lng2: n
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 }
-
