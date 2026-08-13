@@ -28,45 +28,23 @@ import {
   ChevronDown,
   PlayCircle,
   Send,
-  Award
+  Award,
+  Lock,
+  Compass
 } from 'lucide-react';
 import { SIGPADIcon } from '@/components/ui/SIGPADLogo';
 
-// ─── Section Tag Component ───────────────────────────────────────────────────
-function SectionTag({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-zinc-900/90 border border-zinc-800 rounded-full mb-4 shadow-lg backdrop-blur-md">
-      <div className="w-1.5 h-1.5 rounded-full bg-[#0F4C5C] animate-pulse" />
-      <span className="text-[10px] font-black uppercase tracking-[0.25em] text-zinc-300">{children}</span>
-    </div>
-  );
-}
-
-// ─── Module Data ──────────────────────────────────────────────────────────────
-const modules = [
-  { icon: MapPin, title: 'Mapa Táctico en Tiempo Real', desc: 'GPS de guardias, geofencing con alertas automáticas y visualización de rondines sobre el terreno.', color: '#3ABEFF' },
-  { icon: Users, title: 'Gestión de Personal y Legajos', desc: 'Legajos digitales completos, documentación, uniformes, credenciales y vencimientos.', color: '#10B981' },
-  { icon: Clock, title: 'Fichaje Geolocalizado', desc: 'Check-in/out con validación GPS de 300m. Registro transparente sin fraude de asistencia.', color: '#F59E0B' },
-  { icon: BookOpen, title: 'Libro de Guardia Digital', desc: 'Novedades con fotos, urgencia, firma digital y marcas temporales inmutables.', color: '#8B5CF6' },
-  { icon: Activity, title: 'Control de Rondines', desc: 'Tracking GPS de patrullas, checkpoints QR y análisis de cobertura perimetral.', color: '#EC4899' },
-  { icon: Globe, title: 'Portal de Clientes VIP', desc: 'Acceso privado para clientes corporativos a reportes, transparencia y seguimiento del servicio.', color: '#3ABEFF' },
-  { icon: AlertTriangle, title: 'Sistema de Emergencias', desc: 'Botón de pánico con alertas sonoras inmediatas en la central y protocolos de respuesta.', color: '#EF4444' },
-  { icon: Layers, title: 'Inventario y Equipamiento', desc: 'Control de elementos, handoff entre turnos con firma digital y cadena de custodia.', color: '#10B981' },
-  { icon: FileText, title: 'Cómputo de Haberes y Planillas', desc: 'Cálculo automático de horas normales, extras, adicionales y exportación de nómina.', color: '#F59E0B' },
-  { icon: FileText, title: 'Reportes PDF Automatizados', desc: 'Generación automática de informes con firmas digitales e historial de cumplimiento.', color: '#8B5CF6' },
-];
-
 export default function RootLandingPage() {
   const [scrolled, setScrolled] = useState(false);
-  const [activeModule, setActiveModule] = useState(0);
   const [activePerspective, setActivePerspective] = useState<'manager' | 'guard' | 'client'>('manager');
-  const [formData, setFormData] = useState({ nombre: '', empresa: '', email: '', telefono: '', mensaje: '' });
+  const [contactTab, setContactTab] = useState<'demo' | 'consulta'>('demo');
+  const [formData, setFormData] = useState({ nombre: '', empresa: '', email: '', telefono: '', localidad: '', mensaje: '' });
   const [formSent, setFormSent] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
-      setScrolled(window.scrollY > 80);
+      setScrolled(window.scrollY > 60);
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
@@ -78,75 +56,68 @@ export default function RootLandingPage() {
   };
 
   const scrollToContent = () => {
-    const el = document.getElementById('hero-content');
+    const el = document.getElementById('sobre-nosotros');
     el?.scrollIntoView({ behavior: 'smooth' });
   };
 
   return (
-    <div className="min-h-screen bg-black text-zinc-100 flex flex-col selection:bg-white/20 selection:text-white overflow-x-hidden relative">
+    <div className="min-h-screen bg-black text-zinc-100 flex flex-col selection:bg-white/20 selection:text-white overflow-x-hidden relative font-sans">
       
-      {/* ── 1. FONDO CON LOGO GIGANTE 100% PANTALLA (EDGE TO EDGE) Y MARCA DE AGUA ── */}
+      {/* ── 1. MARCA DE AGUA DEL LOGO SIGPAD FIJA AL FONDO (100% PANTALLA) ──── */}
       <div className="fixed inset-0 z-0 flex items-center justify-center pointer-events-none overflow-hidden bg-black">
         <motion.div
           animate={{
-            scale: scrolled ? 1.1 : 1,
-            opacity: scrolled ? 0.08 : 0.95,
+            scale: scrolled ? 1.15 : 1,
+            opacity: scrolled ? 0.06 : 0.95,
           }}
           transition={{ duration: 0.7, ease: "easeOut" }}
           className="relative w-screen h-screen flex items-center justify-center"
         >
-          <div className="absolute inset-0 bg-[#0F4C5C]/30 blur-[150px] rounded-full scale-150" />
+          <div className="absolute inset-0 bg-[#0F4C5C]/25 blur-[160px] rounded-full scale-150" />
           <img 
             src="/logo_sigpad.png" 
-            alt="SIGPAD Logo Gigante Pantalla Completa" 
-            className="w-full h-full object-cover filter drop-shadow-[0_0_90px_rgba(255,255,255,0.25)] relative z-10 scale-105"
+            alt="SIGPAD Logo Background" 
+            className="w-full h-full object-cover filter drop-shadow-[0_0_90px_rgba(255,255,255,0.22)] relative z-10 scale-105"
           />
         </motion.div>
       </div>
 
-      {/* ── Ambient Glow Overlays ────────────────────────────────────────── */}
+      {/* Ambient Radial Glow */}
       <div className="fixed top-0 left-0 w-full h-full pointer-events-none overflow-hidden z-0">
-        <div className="absolute top-[10%] right-[-10%] w-[700px] h-[700px] bg-zinc-900/10 blur-[170px] rounded-full" />
-        <div className="absolute top-[45%] left-[-15%] w-[600px] h-[600px] bg-[#0F4C5C]/10 blur-[180px] rounded-full" />
+        <div className="absolute top-[20%] right-[-10%] w-[700px] h-[700px] bg-[#0F4C5C]/15 blur-[180px] rounded-full" />
+        <div className="absolute top-[60%] left-[-10%] w-[600px] h-[600px] bg-zinc-900/40 blur-[180px] rounded-full" />
       </div>
 
-      {/* ── Sticky Header Navigation ─────────────────────────────────────── */}
-      <header className="sticky top-0 w-full z-50 bg-black/90 backdrop-blur-2xl border-b border-zinc-900/90 h-16 flex items-center justify-between px-6 lg:px-12">
+      {/* ── STICKY HEADER NAVIGATION ─────────────────────────────────────── */}
+      <header className="sticky top-0 w-full z-50 bg-black/90 backdrop-blur-2xl border-b border-zinc-900/90 h-20 flex items-center justify-between px-6 lg:px-16">
         <Link href="/" className="flex items-center h-10">
-          <SIGPADIcon className="w-36 h-10" />
+          <SIGPADIcon className="w-40 h-10" />
         </Link>
 
         {/* Desktop Nav */}
-        <nav className="hidden md:flex items-center gap-8">
+        <nav className="hidden md:flex items-center gap-9">
           {[
-            { label: 'El Sistema', href: '#sistema', isRoute: false },
-            { label: 'Módulos', href: '#modulos', isRoute: false },
-            { label: 'Detalle Módulos', href: '/modulos', isRoute: true },
-            { label: 'Nosotros', href: '/nosotros', isRoute: true },
-            { label: 'Soluciones', href: '#porque', isRoute: false },
-            { label: 'Contacto', href: '#contacto', isRoute: false },
+            { label: 'NOSOTROS', href: '#sobre-nosotros' },
+            { label: 'SERVICIOS', href: '#servicios' },
+            { label: 'SISTEMA', href: '#sistema' },
+            { label: 'DETALLE', href: '/modulos' },
+            { label: 'CLIENTES', href: '#porque' },
           ].map(link => (
-            link.isRoute ? (
-              <Link key={link.href} href={link.href} className="text-[11px] font-black uppercase tracking-wider text-zinc-400 hover:text-white transition-colors">
-                {link.label}
-              </Link>
-            ) : (
-              <a key={link.href} href={link.href} className="text-[11px] font-black uppercase tracking-wider text-zinc-400 hover:text-white transition-colors">
-                {link.label}
-              </a>
-            )
+            <a key={link.href} href={link.href} className="text-[11px] font-black tracking-[0.2em] text-zinc-400 hover:text-white transition-colors uppercase">
+              {link.label}
+            </a>
           ))}
         </nav>
 
-        <div className="flex items-center gap-3">
-          <Link href="/roles" className="hidden sm:flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-white hover:text-zinc-300 transition-colors px-4 py-2 border border-zinc-800 rounded-xl bg-zinc-950 hover:bg-zinc-900">
-            Ingreso a Plataforma
+        <div className="flex items-center gap-4">
+          <Link href="/roles" className="hidden sm:flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-zinc-300 hover:text-white transition-colors px-5 py-2.5 border border-zinc-800 rounded-xl bg-zinc-950 hover:bg-zinc-900">
+            Ingreso Personal
           </Link>
-          <a href="#contacto" className="flex items-center gap-1.5 h-10 px-5 rounded-xl bg-white hover:bg-zinc-200 text-zinc-950 font-black uppercase text-[9px] tracking-widest transition-all shadow-lg hover:scale-105">
-            Solicitar Demo
+          <a href="#contacto" className="flex items-center justify-center h-11 px-6 rounded-xl bg-[#0F4C5C] hover:bg-[#146074] text-white font-black uppercase text-[10px] tracking-[0.2em] transition-all shadow-lg hover:scale-105">
+            CONTACTO
           </a>
           <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2 text-zinc-400 hover:text-white">
-            {mobileMenuOpen ? <X size={20} /> : <Layers size={20} />}
+            {mobileMenuOpen ? <X size={22} /> : <Layers size={22} />}
           </button>
         </div>
       </header>
@@ -158,27 +129,19 @@ export default function RootLandingPage() {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="fixed top-16 inset-x-0 z-40 bg-black/98 backdrop-blur-xl border-b border-zinc-900 p-6 flex flex-col gap-4"
+            className="fixed top-20 inset-x-0 z-40 bg-black/98 backdrop-blur-xl border-b border-zinc-900 p-6 flex flex-col gap-4"
           >
             {[
-              { label: 'El Sistema', href: '#sistema', isRoute: false },
-              { label: 'Módulos', href: '#modulos', isRoute: false },
-              { label: 'Detalle Módulos', href: '/modulos', isRoute: true },
-              { label: 'Nosotros', href: '/nosotros', isRoute: true },
-              { label: 'Soluciones', href: '#porque', isRoute: false },
-              { label: 'Contacto', href: '#contacto', isRoute: false },
+              { label: 'NOSOTROS', href: '#sobre-nosotros' },
+              { label: 'SERVICIOS', href: '#servicios' },
+              { label: 'SISTEMA', href: '#sistema' },
+              { label: 'DETALLE', href: '/modulos' },
+              { label: 'CONTACTO', href: '#contacto' },
             ].map(link => (
-              link.isRoute ? (
-                <Link key={link.href} href={link.href} onClick={() => setMobileMenuOpen(false)}
-                  className="text-sm font-black uppercase tracking-wider text-zinc-300 hover:text-white py-2 border-b border-zinc-900 block">
-                  {link.label}
-                </Link>
-              ) : (
-                <a key={link.href} href={link.href} onClick={() => setMobileMenuOpen(false)}
-                  className="text-sm font-black uppercase tracking-wider text-zinc-300 hover:text-white py-2 border-b border-zinc-900 block">
-                  {link.label}
-                </a>
-              )
+              <a key={link.href} href={link.href} onClick={() => setMobileMenuOpen(false)}
+                className="text-sm font-black uppercase tracking-wider text-zinc-300 hover:text-white py-2 border-b border-zinc-900 block">
+                {link.label}
+              </a>
             ))}
             <Link href="/roles" onClick={() => setMobileMenuOpen(false)}
               className="text-sm font-black uppercase tracking-wider text-white py-3 block text-center border border-zinc-800 rounded-xl bg-zinc-900">
@@ -188,8 +151,8 @@ export default function RootLandingPage() {
         )}
       </AnimatePresence>
 
-      {/* ── 2. PORTADA HERO COMPLETA (LOGO GIGANTE + SCROLL PROMPT) ───────── */}
-      <section className="relative h-[calc(100vh-4rem)] flex flex-col items-center justify-between px-6 lg:px-12 w-full z-10 pointer-events-none">
+      {/* ── 2. PORTADA CUBIERTA INICIAL (LOGO 100% PANTALLA) ───────────────── */}
+      <section className="relative h-[calc(100vh-5rem)] flex flex-col items-center justify-between px-6 lg:px-12 w-full z-10 pointer-events-none">
         <div className="flex-1" />
 
         {/* Indicador animado de Scroll */}
@@ -212,92 +175,207 @@ export default function RootLandingPage() {
         </motion.div>
       </section>
 
-      {/* ── 3. SECCIÓN PRINCIPAL DE INFORMACIÓN (SCROLL OVER WATERMARK) ────── */}
+      {/* ── 3. SOBRE NOSOTROS (ESTILO NATIVO SEGURIDAD + CAPTURAS REALES) ──── */}
       <motion.section 
-        id="hero-content"
-        initial={{ opacity: 0, y: 60 }}
+        id="sobre-nosotros"
+        initial={{ opacity: 0, y: 50 }}
         whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: "-100px" }}
-        transition={{ duration: 0.8, ease: "easeOut" }}
-        className="relative py-28 px-6 lg:px-12 max-w-7xl mx-auto w-full z-10"
+        viewport={{ once: true, margin: "-80px" }}
+        transition={{ duration: 0.8 }}
+        className="relative z-10 py-24 px-6 lg:px-16 max-w-7xl mx-auto w-full"
       >
-        <div className="max-w-4xl mx-auto text-center w-full z-10 space-y-8 flex flex-col items-center justify-center">
-          <SectionTag>Plataforma de Operaciones de Seguridad Privada</SectionTag>
+        <div className="grid lg:grid-cols-12 gap-12 items-center">
+          
+          {/* Left Column: Text & Habilitación */}
+          <div className="lg:col-span-6 space-y-6">
+            <div className="flex items-center gap-2 text-[#0F4C5C]">
+              <span className="h-[2px] w-6 bg-[#0F4C5C]" />
+              <span className="text-xs font-black uppercase tracking-[0.25em] text-zinc-400">SOBRE SIGPAD</span>
+            </div>
 
-          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-white leading-[1.08] font-display max-w-4xl">
-            La plataforma que{' '}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-zinc-200 to-zinc-400">
-              transforma
-            </span>{' '}
-            la gestión de seguridad privada
-          </h1>
+            <h2 className="text-3xl sm:text-5xl font-black uppercase text-white font-display leading-[1.15]">
+              Plataforma Táctica <br />
+              <span className="text-white">de Seguridad Privada</span>
+            </h2>
 
-          <p className="text-zinc-400 text-base lg:text-xl max-w-2xl font-medium leading-relaxed mx-auto">
-            Control GPS en tiempo real, fichaje digital geolocalizado, rondines auditables y portal transparente para clientes corporativos.
-          </p>
+            <p className="text-zinc-400 text-sm sm:text-base font-medium leading-relaxed">
+              Somos la solución digital integral diseñada específicamente para empresas de seguridad física y custodia de la provincia de Santa Fe y Argentina.
+            </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
-            <a href="#contacto" className="group flex items-center justify-center gap-2 h-14 px-8 rounded-2xl bg-white hover:bg-zinc-200 text-zinc-950 font-black uppercase text-xs tracking-widest shadow-xl shadow-white/5 hover:scale-105 transition-all">
-              Solicitar Demostración
-              <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-            </a>
-            <Link href="/roles" className="flex items-center justify-center gap-2 h-14 px-8 rounded-2xl border border-zinc-800 hover:bg-zinc-900 text-xs tracking-widest font-black uppercase text-zinc-300 transition-all">
-              <PlayCircle size={16} />
-              Ingresar a la Plataforma
-            </Link>
+            <p className="text-zinc-400 text-sm font-medium leading-relaxed italic border-l-2 border-[#0F4C5C] pl-4 py-1 text-zinc-300">
+              "Transparencia operativa, control GPS en vivo y trazabilidad inalterable en una sola plataforma."
+            </p>
+
+            <p className="text-zinc-400 text-sm font-medium leading-relaxed">
+              Eliminamos las planillas de papel y los libros físicos manuales. Brindamos visibilidad en tiempo real a gerentes, vigiladores en campo y clientes corporativos.
+            </p>
+
+            {/* Habilitación / Certificación Card (Estilo Nativo) */}
+            <div className="p-5 rounded-2xl bg-zinc-950/90 border border-[#0F4C5C]/50 space-y-2 shadow-xl backdrop-blur-md">
+              <div className="flex items-center gap-2.5">
+                <CheckCircle2 size={18} className="text-[#0F4C5C] shrink-0" />
+                <h4 className="text-xs font-black uppercase tracking-wider text-white">Plataforma Certificada &amp; Habilitada</h4>
+              </div>
+              <p className="text-[11px] text-zinc-400 font-medium leading-relaxed pl-7">
+                Cumplimos con todas las normativas de seguridad de datos, geolocalización inmutable y estándares de encriptación W3C para bitácoras digitales de guardia.
+              </p>
+            </div>
           </div>
 
-          {/* Badges tácticos */}
-          <div className="flex flex-wrap justify-center gap-x-8 gap-y-4 pt-10 border-t border-zinc-800/80 w-full max-w-2xl mx-auto">
-            {[
-              { label: 'Monitoreo 24/7', icon: Clock },
-              { label: 'Control GPS Inviolable', icon: MapPin },
-              { label: 'Transparencia Comercial', icon: Shield },
-            ].map(item => (
-              <div key={item.label} className="flex items-center gap-2">
-                <CheckCircle2 size={16} className="text-[#0F4C5C] shrink-0" />
-                <span className="text-zinc-300 text-xs uppercase tracking-wider font-black">{item.label}</span>
+          {/* Right Column: Real Capture Showcase Card */}
+          <div className="lg:col-span-6 relative">
+            <div className="relative rounded-[2.5rem] overflow-hidden border border-zinc-800 bg-zinc-950 shadow-2xl group">
+              <div className="relative aspect-[4/3] w-full">
+                <Image
+                  src="/hero-dashboard.png"
+                  alt="Captura Real del Dashboard de SIGPAD"
+                  fill
+                  className="object-cover group-hover:scale-105 transition-transform duration-700"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
               </div>
+
+              {/* Stat Badges Overlay (Estilo Nativo) */}
+              <div className="p-6 bg-zinc-950/90 border-t border-zinc-800/80 grid grid-cols-3 gap-3">
+                <div className="text-center p-3 rounded-xl bg-zinc-900/60 border border-zinc-800">
+                  <p className="text-lg font-black text-[#0F4C5C] font-mono">24/7</p>
+                  <p className="text-[8px] font-black uppercase tracking-widest text-zinc-400 mt-0.5">MONITOREO</p>
+                </div>
+                <div className="text-center p-3 rounded-xl bg-zinc-900/60 border border-zinc-800">
+                  <p className="text-lg font-black text-[#0F4C5C] font-mono">100%</p>
+                  <p className="text-[8px] font-black uppercase tracking-widest text-zinc-400 mt-0.5">DIGITAL</p>
+                </div>
+                <div className="text-center p-3 rounded-xl bg-zinc-900/60 border border-zinc-800">
+                  <p className="text-lg font-black text-[#0F4C5C] font-mono">GPS</p>
+                  <p className="text-[8px] font-black uppercase tracking-widest text-zinc-400 mt-0.5">EN VIVO</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </motion.section>
+
+      {/* ── 4. NUESTROS SERVICIOS Y MÓDULOS (ESTILO NATIVO GRID) ───────────── */}
+      <motion.section 
+        id="servicios"
+        initial={{ opacity: 0, y: 50 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-80px" }}
+        transition={{ duration: 0.8 }}
+        className="relative z-10 py-24 px-6 lg:px-16 max-w-7xl mx-auto w-full"
+      >
+        <div className="space-y-12">
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-[#0F4C5C]">
+              <span className="h-[2px] w-6 bg-[#0F4C5C]" />
+              <span className="text-xs font-black uppercase tracking-[0.25em] text-zinc-400">FUNCIONALIDADES OPERATIVAS</span>
+            </div>
+            <h2 className="text-3xl sm:text-5xl font-black uppercase text-white font-display">
+              Nuestros Servicios &amp; Módulos
+            </h2>
+            <p className="text-zinc-400 text-sm font-medium max-w-2xl">
+              Brindamos herramientas integrales de gestión para centrales de monitoreo, personal de vigilancia física y clientes finales.
+            </p>
+          </div>
+
+          {/* Grid de Servicios (Estilo Nativo 3x2) */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[
+              {
+                icon: MapPin,
+                title: 'Mapa Táctico en Tiempo Real',
+                desc: 'Visualización satelital de todo el personal de guardia con geocercas automáticas y alertas de perímetro.'
+              },
+              {
+                icon: Clock,
+                title: 'Fichaje Geolocalizado',
+                desc: 'Check-in y check-out con validación estricta de GPS a 300 metros del puesto. Sin posibilidad de fraude.'
+              },
+              {
+                icon: BookOpen,
+                title: 'Libro de Guardia Digital',
+                desc: 'Registro inmutable de novedades con adjunto de fotos, nivel de urgencia y firma digital del vigilador.'
+              },
+              {
+                icon: Activity,
+                title: 'Control de Rondines QR',
+                desc: 'Verificación física de puntos de patrulla con coordenadas, horario exacto y reporte de eficacia del puesto.'
+              },
+              {
+                icon: Globe,
+                title: 'Portal de Clientes VIP',
+                desc: 'Acceso exclusivo para clientes corporativos para auditar la cobertura y descargar reportes oficiales.'
+              },
+              {
+                icon: FileText,
+                title: 'Cómputo de Nóminas & PDF',
+                desc: 'Generación automática de planillas horarias, horas extra, adicionales CCT e informes listos para liquidación.'
+              },
+            ].map((service, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.08 }}
+                className="p-8 rounded-[1.8rem] bg-zinc-950/80 border border-zinc-800/90 hover:border-[#0F4C5C] hover:bg-zinc-950 transition-all duration-300 group space-y-4 shadow-xl backdrop-blur-sm"
+              >
+                <div className="w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-[#0F4C5C] group-hover:bg-[#0F4C5C] group-hover:text-white transition-all">
+                  <service.icon size={22} />
+                </div>
+                <h3 className="text-lg font-black uppercase text-white tracking-wider">{service.title}</h3>
+                <p className="text-zinc-400 text-xs font-medium leading-relaxed">{service.desc}</p>
+              </motion.div>
             ))}
+          </div>
+
+          <div className="pt-4 text-center">
+            <Link href="/modulos" className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-[#0F4C5C] text-xs font-black uppercase tracking-[0.2em] text-white hover:bg-zinc-800 transition-all">
+              Ver los 10 Módulos en Detalle <ChevronRight size={14} />
+            </Link>
           </div>
         </div>
       </motion.section>
 
-      {/* ── 4. EL SISTEMA POR DENTRO (Scroll Reveal) ─────────────────────── */}
+      {/* ── 5. CAPTURAS DE PANTALLAS INTERACTIVAS (SISTEMA) ────────────────── */}
       <motion.section 
-        id="sistema" 
-        initial={{ opacity: 0, y: 60 }}
+        id="sistema"
+        initial={{ opacity: 0, y: 50 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: "-80px" }}
         transition={{ duration: 0.8 }}
-        className="relative z-10 py-24 px-6 lg:px-12 max-w-7xl mx-auto w-full"
+        className="relative z-10 py-24 px-6 lg:px-16 max-w-7xl mx-auto w-full"
       >
-        <div className="max-w-7xl mx-auto space-y-16">
-          <div className="text-center max-w-2xl mx-auto space-y-4">
-            <SectionTag>Arquitectura Modular</SectionTag>
-            <h2 className="text-3xl lg:text-5xl font-black text-white uppercase font-display leading-tight">
-              Interfaces Diseñadas para <br />
-              <span className="text-zinc-400">Cada Rol Operativo</span>
+        <div className="space-y-12">
+          <div className="space-y-3 text-center max-w-2xl mx-auto">
+            <div className="flex items-center justify-center gap-2 text-[#0F4C5C]">
+              <span className="h-[2px] w-6 bg-[#0F4C5C]" />
+              <span className="text-xs font-black uppercase tracking-[0.25em] text-zinc-400">ECOSISTEMA SIGPAD</span>
+              <span className="h-[2px] w-6 bg-[#0F4C5C]" />
+            </div>
+            <h2 className="text-3xl sm:text-5xl font-black uppercase text-white font-display">
+              Capturas de la Plataforma
             </h2>
             <p className="text-zinc-400 text-sm font-medium">
-              Explora las tres pantallas principales que conectan la central de monitoreo, los vigiladores en campo y los clientes corporativos.
+              Conocé las tres interfaces diseñadas para cada perfil operativo de la empresa de seguridad.
             </p>
           </div>
 
-          {/* Perspective Selector Tabs */}
-          <div className="flex flex-wrap items-center justify-center gap-3 bg-zinc-900/80 p-2 rounded-[2rem] border border-zinc-800 max-w-md mx-auto">
+          {/* Selector de Perspectiva */}
+          <div className="flex flex-wrap items-center justify-center gap-3 bg-zinc-950 p-2 rounded-2xl border border-zinc-800 max-w-md mx-auto">
             {[
-              { id: 'manager', label: 'Gerencia', icon: Building2 },
-              { id: 'guard', label: 'Vigilador', icon: Smartphone },
-              { id: 'client', label: 'Cliente VIP', icon: Users },
+              { id: 'manager', label: 'Central Gerencial', icon: Building2 },
+              { id: 'guard', label: 'App Vigilador', icon: Smartphone },
+              { id: 'client', label: 'Portal Cliente', icon: Users },
             ].map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setActivePerspective(tab.id as any)}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-[1.2rem] text-[10px] font-black uppercase tracking-widest transition-all ${
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
                   activePerspective === tab.id
-                    ? 'bg-white text-zinc-950 shadow-md font-black'
-                    : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
+                    ? 'bg-[#0F4C5C] text-white shadow-md'
+                    : 'text-zinc-400 hover:text-white hover:bg-zinc-900'
                 }`}
               >
                 <tab.icon size={14} />
@@ -306,469 +384,364 @@ export default function RootLandingPage() {
             ))}
           </div>
 
-          {/* Dynamic perspective display */}
-          <div className="grid lg:grid-cols-12 gap-12 items-center">
-            {/* Left Column: Detailed Features list */}
-            <div className="lg:col-span-5 space-y-6">
-              <AnimatePresence mode="wait">
-                {activePerspective === 'manager' && (
-                  <motion.div
-                    key="manager-details"
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 20 }}
-                    className="space-y-6"
-                  >
-                    <div className="inline-flex gap-2 items-center text-xs font-black uppercase text-white tracking-wider">
-                      <Award size={16} className="text-[#0F4C5C]" /> Central de Monitoreo Gerencial
-                    </div>
-                    <h3 className="text-2xl font-black text-white uppercase tracking-tight">Control Operativo Centralizado</h3>
-                    <p className="text-zinc-400 text-sm font-medium leading-relaxed">
-                      La central consolida las posiciones GPS, novedades del libro de guardia y alertas de pánico en tiempo real.
-                    </p>
-                    <ul className="space-y-4">
-                      {[
-                        { title: 'Mapa Táctico GPS', desc: 'Supervisión en vivo de todo el personal asignado a los objetivos.' },
-                        { title: 'Gestión de Alertas y Pánico', desc: 'Recepción instantánea de señales de emergencia con coordenadas.' },
-                        { title: 'Geocercas Operativas', desc: 'Notificación automática si un guardia sale del radio asignado.' }
-                      ].map((item, idx) => (
-                        <li key={idx} className="flex gap-3">
-                          <CheckCircle2 size={18} className="text-[#0F4C5C] shrink-0 mt-0.5" />
-                          <div>
-                            <h4 className="text-xs font-bold text-white uppercase">{item.title}</h4>
-                            <p className="text-zinc-500 text-[11px] font-medium mt-0.5">{item.desc}</p>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  </motion.div>
-                )}
+          {/* Render de la Captura Seleccionada */}
+          <div className="relative flex justify-center max-w-5xl mx-auto">
+            <AnimatePresence mode="wait">
+              {activePerspective === 'manager' && (
+                <motion.div
+                  key="manager-img"
+                  initial={{ opacity: 0, scale: 0.96 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.96 }}
+                  className="relative w-full aspect-[16/10] rounded-[2rem] overflow-hidden border border-zinc-800 shadow-2xl bg-zinc-950"
+                >
+                  <Image
+                    src="/hero-dashboard.png"
+                    alt="Dashboard del Gerente en SIGPAD"
+                    fill
+                    className="object-cover"
+                  />
+                </motion.div>
+              )}
 
-                {activePerspective === 'guard' && (
-                  <motion.div
-                    key="guard-details"
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 20 }}
-                    className="space-y-6"
-                  >
-                    <div className="inline-flex gap-2 items-center text-xs font-black uppercase text-emerald-400 tracking-wider">
-                      <Smartphone size={16} /> App del Vigilador en Celulares
-                    </div>
-                    <h3 className="text-2xl font-black text-white uppercase tracking-tight">Aplicación de Campo Ergonómica</h3>
-                    <p className="text-zinc-400 text-sm font-medium leading-relaxed">
-                      Interface clara y simplificada para celulares, diseñada para fichaje rápido y registro de novedades en terreno.
-                    </p>
-                    <ul className="space-y-4">
-                      {[
-                        { title: 'Fichaje Geolocalizado (GPS)', desc: 'Validación en rango de 300m del puesto de servicio.' },
-                        { title: 'Control de Rondines', desc: 'Registro de puntos de control con coordenadas y hora.' },
-                        { title: 'Libro de Guardia Digital', desc: 'Envío de novedades con fotos y firmas digitales.' }
-                      ].map((item, idx) => (
-                        <li key={idx} className="flex gap-3">
-                          <CheckCircle2 size={18} className="text-emerald-400 shrink-0 mt-0.5" />
-                          <div>
-                            <h4 className="text-xs font-bold text-white uppercase">{item.title}</h4>
-                            <p className="text-zinc-500 text-[11px] font-medium mt-0.5">{item.desc}</p>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  </motion.div>
-                )}
+              {activePerspective === 'guard' && (
+                <motion.div
+                  key="guard-img"
+                  initial={{ opacity: 0, scale: 0.96 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.96 }}
+                  className="relative w-[300px] h-[550px] rounded-[2.5rem] overflow-hidden border-4 border-zinc-800 shadow-2xl bg-zinc-950"
+                >
+                  <Image
+                    src="/mobile-app.png"
+                    alt="App del Vigilador en Celular"
+                    fill
+                    className="object-cover"
+                  />
+                </motion.div>
+              )}
 
-                {activePerspective === 'client' && (
-                  <motion.div
-                    key="client-details"
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 20 }}
-                    className="space-y-6"
-                  >
-                    <div className="inline-flex gap-2 items-center text-xs font-black uppercase text-amber-400 tracking-wider">
-                      <Globe size={16} /> Portal para Clientes Corporativos
-                    </div>
-                    <h3 className="text-2xl font-black text-white uppercase tracking-tight">Transparencia y Auditoría</h3>
-                    <p className="text-zinc-400 text-sm font-medium leading-relaxed">
-                      Tus clientes acceden a un panel privado para auditar el cumplimiento del servicio y descargar reportes oficiales.
-                    </p>
-                    <ul className="space-y-4">
-                      {[
-                        { title: 'Auditoría de Cobertura', desc: 'Verificación en tiempo real del personal asignado a sus instalaciones.' },
-                        { title: 'Reportes en PDF', desc: 'Descarga de informes de asistencia y cumplimiento para auditoría.' },
-                        { title: 'Canal Directo', desc: 'Gestión de requerimientos y tickets de soporte comercial.' }
-                      ].map((item, idx) => (
-                        <li key={idx} className="flex gap-3">
-                          <CheckCircle2 size={18} className="text-amber-400 shrink-0 mt-0.5" />
-                          <div>
-                            <h4 className="text-xs font-bold text-white uppercase">{item.title}</h4>
-                            <p className="text-zinc-500 text-[11px] font-medium mt-0.5">{item.desc}</p>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Right Column: Real Interface Preview */}
-            <div className="lg:col-span-7 relative flex justify-center">
-              <AnimatePresence mode="wait">
-                {activePerspective === 'manager' && (
-                  <motion.div
-                    key="manager-img"
-                    initial={{ opacity: 0, scale: 0.96 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.96 }}
-                    className="relative w-full aspect-[16/10] rounded-[2rem] overflow-hidden border border-zinc-800 shadow-2xl bg-zinc-950"
-                  >
-                    <Image
-                      src="/hero-dashboard.png"
-                      alt="Dashboard del Gerente en SIGPAD"
-                      fill
-                      className="object-cover"
-                    />
-                  </motion.div>
-                )}
-
-                {activePerspective === 'guard' && (
-                  <motion.div
-                    key="guard-img"
-                    initial={{ opacity: 0, scale: 0.96 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.96 }}
-                    className="relative w-[280px] h-[520px] rounded-[2.5rem] overflow-hidden border-4 border-zinc-800 shadow-2xl bg-zinc-950"
-                  >
-                    <Image
-                      src="/mobile-app.png"
-                      alt="App del Vigilador en Celular"
-                      fill
-                      className="object-cover"
-                    />
-                  </motion.div>
-                )}
-
-                {activePerspective === 'client' && (
-                  <motion.div
-                    key="client-img"
-                    initial={{ opacity: 0, scale: 0.96 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.96 }}
-                    className="relative w-full aspect-[16/10] rounded-[2rem] overflow-hidden border border-zinc-800 shadow-2xl bg-zinc-950"
-                  >
-                    <Image
-                      src="/client-portal.png"
-                      alt="Portal de Clientes en SIGPAD"
-                      fill
-                      className="object-cover"
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+              {activePerspective === 'client' && (
+                <motion.div
+                  key="client-img"
+                  initial={{ opacity: 0, scale: 0.96 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.96 }}
+                  className="relative w-full aspect-[16/10] rounded-[2rem] overflow-hidden border border-zinc-800 shadow-2xl bg-zinc-950"
+                >
+                  <Image
+                    src="/client-portal.png"
+                    alt="Portal de Clientes en SIGPAD"
+                    fill
+                    className="object-cover"
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </motion.section>
 
-      {/* ── 5. MÓDULOS DEL SISTEMA (Scroll Reveal) ───────────────────────── */}
+      {/* ── 6. COMPARATIVA OPERATIVA ───────────────────────────────────────── */}
       <motion.section 
-        id="modulos" 
-        initial={{ opacity: 0, y: 60 }}
+        id="porque"
+        initial={{ opacity: 0, y: 50 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: "-80px" }}
         transition={{ duration: 0.8 }}
-        className="relative z-10 py-24 px-6 lg:px-12 max-w-7xl mx-auto w-full"
+        className="relative z-10 py-24 px-6 lg:px-16 max-w-7xl mx-auto w-full"
       >
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <SectionTag>Capacidades de la Plataforma</SectionTag>
-            <h2 className="text-3xl lg:text-5xl font-black text-white uppercase font-display leading-none">
-              Módulos Integrados <br />
-              <span className="text-zinc-400">para la Operación</span>
+        <div className="space-y-12">
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-[#0F4C5C]">
+              <span className="h-[2px] w-6 bg-[#0F4C5C]" />
+              <span className="text-xs font-black uppercase tracking-[0.25em] text-zinc-400">POR QUÉ SIGPAD</span>
+            </div>
+            <h2 className="text-3xl sm:text-5xl font-black uppercase text-white font-display">
+              El Antes y el Después
             </h2>
-            <p className="text-zinc-400 text-sm mt-4 max-w-xl mx-auto font-medium">
-              Herramientas diseñadas para cubrir cada aspecto de la gestión operativa y de personal.
+            <p className="text-zinc-400 text-sm font-medium max-w-2xl">
+              Comparación directa de la gestión tradicional física frente a la plataforma digitalizada SIGPAD.
             </p>
           </div>
 
-          {/* Module Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            {modules.map((mod, i) => (
-              <button
-                key={i}
-                onClick={() => setActiveModule(i)}
-                className={`group text-left p-5 rounded-[1.5rem] border transition-all duration-300 ${
-                  activeModule === i
-                    ? 'bg-zinc-800 border-zinc-600 shadow-lg'
-                    : 'bg-black/80 border-zinc-900 hover:border-zinc-800 hover:bg-zinc-900/50'
-                }`}
-              >
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3 transition-transform group-hover:scale-110" style={{ background: `${mod.color}15`, border: `1px solid ${mod.color}25` }}>
-                  <mod.icon size={18} style={{ color: mod.color }} />
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Gestión Tradicional */}
+            <div className="p-8 rounded-[2rem] bg-red-950/20 border border-red-500/20 space-y-5 backdrop-blur-sm">
+              <div className="flex items-center gap-3 border-b border-red-500/20 pb-4">
+                <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+                  <X size={20} className="text-red-500" />
                 </div>
-                <h4 className="text-[11px] font-black uppercase text-white leading-tight">{mod.title}</h4>
-              </button>
-            ))}
-          </div>
-
-          {/* Active Module Detail */}
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeModule}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="mt-8 p-8 rounded-[2rem] bg-black/95 border border-zinc-900 flex items-start gap-6"
-            >
-              <div className="w-16 h-16 rounded-2xl flex items-center justify-center shrink-0"
-                style={{ background: `${modules[activeModule].color}15`, border: `1px solid ${modules[activeModule].color}25` }}>
-                {React.createElement(modules[activeModule].icon, { size: 28, style: { color: modules[activeModule].color } })}
+                <h3 className="text-lg font-black uppercase text-red-400 tracking-wider">Gestión Tradicional en Papel</h3>
               </div>
-              <div>
-                <h3 className="text-xl font-black uppercase text-white mb-2">{modules[activeModule].title}</h3>
-                <p className="text-zinc-400 text-sm font-medium leading-relaxed max-w-2xl">{modules[activeModule].desc}</p>
-                <Link href="/modulos" className="inline-flex items-center gap-1.5 mt-4 text-[10px] font-black uppercase tracking-wider" style={{ color: modules[activeModule].color }}>
-                  Ver detalle completo <ChevronRight size={12} />
-                </Link>
-              </div>
-            </motion.div>
-          </AnimatePresence>
-        </div>
-      </motion.section>
-
-      {/* ── 6. POR QUÉ SIGPAD — COMPARACIÓN OPERATIVA ───────────────────── */}
-      <motion.section 
-        id="porque" 
-        initial={{ opacity: 0, y: 60 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: "-80px" }}
-        transition={{ duration: 0.8 }}
-        className="relative z-10 py-24 px-6 lg:px-12 max-w-7xl mx-auto w-full"
-      >
-        <div className="text-center mb-16">
-          <SectionTag>Transformación Digital</SectionTag>
-          <h2 className="text-3xl lg:text-5xl font-black text-white uppercase font-display">
-            Comparación <span className="text-zinc-400">Operativa</span>
-          </h2>
-          <p className="text-zinc-400 text-sm mt-4 max-w-xl mx-auto font-medium">
-            Evite los riesgos del papel y profesionalice el control de su servicio de seguridad.
-          </p>
-        </div>
-
-        <div className="grid md:grid-cols-2 gap-6">
-          {/* Gestión Tradicional */}
-          <div className="p-8 rounded-[2rem] bg-red-950/20 border border-red-500/10 space-y-4">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
-                <X size={20} className="text-red-500" />
-              </div>
-              <h3 className="text-lg font-black uppercase text-red-400">Gestión Tradicional en Papel</h3>
+              <ul className="space-y-3">
+                {[
+                  'Planillas de papel propensas a extravío, falsificación o roturas.',
+                  'Incertidumbre geográfica sobre la presencia del vigilador en puesto.',
+                  'Reclamos de clientes por falta de información de la cobertura contratada.',
+                  'Rondines sin comprobantes de ruta ni horarios verificados.',
+                  'Libro de novedades físico vulnerable a alteraciones o pérdida.',
+                  'Cálculo manual de planillas de horas al liquidar haberes.'
+                ].map((item, i) => (
+                  <li key={i} className="flex items-start gap-2.5 text-xs text-red-300/80 font-medium">
+                    <X size={14} className="text-red-500 shrink-0 mt-0.5" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
             </div>
-            <ul className="space-y-3">
-              {[
-                'Planillas escritas a mano propensas a extravío o alteración.',
-                'Falta de certeza geográfica sobre la presencia del guardia.',
-                'Incertidumbre de los clientes sobre la cobertura del puesto.',
-                'Rondines sin registro de ruta ni horas de control verificables.',
-                'Libros de novedades físicos vulnerables a deterioro.',
-                'Procesamiento manual de planillas de horas al liquidar.'
-              ].map((item, i) => (
-                <li key={i} className="flex items-start gap-2.5 text-[11px] text-red-300/70 font-medium">
-                  <X size={12} className="text-red-500/50 mt-0.5 shrink-0" />
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </div>
 
-          {/* Con SIGPAD */}
-          <div className="p-8 rounded-[2rem] bg-emerald-950/20 border border-emerald-500/10 space-y-4">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-                <Check size={20} className="text-emerald-500" />
+            {/* Con SIGPAD */}
+            <div className="p-8 rounded-[2rem] bg-emerald-950/20 border border-emerald-500/20 space-y-5 backdrop-blur-sm">
+              <div className="flex items-center gap-3 border-b border-emerald-500/20 pb-4">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                  <Check size={20} className="text-emerald-400" />
+                </div>
+                <h3 className="text-lg font-black uppercase text-emerald-400 tracking-wider">Con Plataforma SIGPAD</h3>
               </div>
-              <h3 className="text-lg font-black uppercase text-emerald-400">Con Plataforma SIGPAD</h3>
+              <ul className="space-y-3">
+                {[
+                  'Fichaje geolocalizado con GPS inviolable en rango de 300 metros.',
+                  'Monitoreo central en vivo con alertas sonoras instantáneas.',
+                  'Portal de clientes privado para transparente auditoría del servicio.',
+                  'Control de patrullaje vía rondines QR y mapas de recorrido.',
+                  'Libro de Guardia digital con fotos de respaldo y firmas inmutables.',
+                  'Cómputo automático de adicionales y horas extra en PDF/Excel.'
+                ].map((item, i) => (
+                  <li key={i} className="flex items-start gap-2.5 text-xs text-emerald-300/90 font-medium">
+                    <Check size={14} className="text-emerald-400 shrink-0 mt-0.5" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
             </div>
-            <ul className="space-y-3">
-              {[
-                'Fichaje geolocalizado en rango exacto de 300 metros.',
-                'Monitoreo central en vivo con mapa GPS y alertas inmediatas.',
-                'Portal de clientes privado para transparente auditoría del servicio.',
-                'Tracking GPS de patrullas con checkpoints de recorrido.',
-                'Libro de Guardia digital con evidencia fotográfica e historial.',
-                'Cómputo automático de horas y nóminas para liquidación.'
-              ].map((item, i) => (
-                <li key={i} className="flex items-start gap-2.5 text-[11px] text-emerald-300/90 font-medium">
-                  <Check size={12} className="text-emerald-400 mt-0.5 shrink-0" />
-                  {item}
-                </li>
-              ))}
-            </ul>
           </div>
         </div>
       </motion.section>
 
-      {/* ── 7. CONTACTO Y DEMO ───────────────────────────────────────────── */}
+      {/* ── 7. CONTACTO (ESTILO NATIVO CON DATOS Y FORMULARIO CON TABS) ────── */}
       <motion.section 
-        id="contacto" 
-        initial={{ opacity: 0, y: 60 }}
+        id="contacto"
+        initial={{ opacity: 0, y: 50 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: "-80px" }}
         transition={{ duration: 0.8 }}
-        className="relative z-10 py-24 px-6 lg:px-12 max-w-7xl mx-auto w-full"
+        className="relative z-10 py-24 px-6 lg:px-16 max-w-7xl mx-auto w-full"
       >
-        <div className="grid lg:grid-cols-12 gap-16 items-center">
-          {/* Information */}
-          <div className="lg:col-span-6 space-y-8">
-            <div className="space-y-4">
-              <SectionTag>Contacto Directo</SectionTag>
-              <h2 className="text-4xl lg:text-5xl font-black text-white uppercase font-display leading-tight">
-                Consulte por su <br />
-                <span className="text-zinc-400">Implementación</span>
-              </h2>
-              <p className="text-zinc-400 text-sm font-medium leading-relaxed">
-                Póngase en contacto con nuestro equipo para evaluar los requerimientos operativos de su empresa y coordinar una demostración.
-              </p>
+        <div className="space-y-12">
+          
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-[#0F4C5C]">
+              <span className="h-[2px] w-6 bg-[#0F4C5C]" />
+              <span className="text-xs font-black uppercase tracking-[0.25em] text-zinc-400">CONTACTO</span>
             </div>
-
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-white">
-                  <Mail size={16} />
-                </div>
-                <div>
-                  <p className="text-[8px] uppercase tracking-widest text-zinc-500 font-bold">Correo de Contacto</p>
-                  <p className="text-white font-bold text-sm font-mono">contacto@sigpad.com.ar</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-white">
-                  <Phone size={16} />
-                </div>
-                <div>
-                  <p className="text-[8px] uppercase tracking-widest text-zinc-500 font-bold">Líneas Telefónicas</p>
-                  <p className="text-white font-bold text-sm font-mono">3426 310996 · 3425 162372</p>
-                </div>
-              </div>
-            </div>
+            <h2 className="text-3xl sm:text-5xl font-black uppercase text-white font-display">
+              Hablemos de Seguridad
+            </h2>
+            <p className="text-zinc-400 text-sm font-medium max-w-2xl">
+              Contanos tu necesidad y te ofrecemos una solución a medida. También podés comunicarte para coordinar una demostración.
+            </p>
           </div>
 
-          {/* Contact Form */}
-          <div className="lg:col-span-6 bg-zinc-900/80 border border-zinc-800 rounded-[2.5rem] p-8 shadow-2xl">
-            {formSent ? (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="h-full flex flex-col items-center justify-center text-center py-12 gap-4"
-              >
-                <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-                  <CheckCircle2 size={32} className="text-emerald-400" />
+          <div className="grid lg:grid-cols-12 gap-10 items-start">
+            
+            {/* Left Column: 4 Cards de Datos (Estilo Nativo) */}
+            <div className="lg:col-span-5 space-y-4">
+              <div className="p-6 rounded-2xl bg-zinc-950/80 border border-zinc-800 flex items-start gap-4 shadow-lg backdrop-blur-sm">
+                <div className="w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-[#0F4C5C] shrink-0">
+                  <MapPin size={22} />
                 </div>
-                <h3 className="text-xl font-black uppercase text-white">¡Mensaje Enviado!</h3>
-                <p className="text-zinc-400 text-sm font-medium">Nos comunicaremos a la brevedad para coordinar la presentación.</p>
-              </motion.div>
-            ) : (
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <h3 className="text-sm font-black uppercase text-white tracking-wider mb-6">Solicitar Demostración</h3>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-[9px] uppercase tracking-widest text-zinc-400 font-bold block mb-1.5">Nombre *</label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.nombre}
-                      onChange={e => setFormData(p => ({ ...p, nombre: e.target.value }))}
-                      className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600 transition-colors"
-                      placeholder="Tu nombre"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[9px] uppercase tracking-widest text-zinc-400 font-bold block mb-1.5">Empresa *</label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.empresa}
-                      onChange={e => setFormData(p => ({ ...p, empresa: e.target.value }))}
-                      className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600 transition-colors"
-                      placeholder="Nombre de la empresa"
-                    />
-                  </div>
-                </div>
-
                 <div>
-                  <label className="text-[9px] uppercase tracking-widest text-zinc-400 font-bold block mb-1.5">Email *</label>
-                  <input
-                    type="email"
-                    required
-                    value={formData.email}
-                    onChange={e => setFormData(p => ({ ...p, email: e.target.value }))}
-                    className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600 transition-colors"
-                    placeholder="tu@empresa.com"
-                  />
+                  <h4 className="text-xs font-black uppercase tracking-wider text-white">Sede Central</h4>
+                  <p className="text-zinc-400 text-xs font-medium mt-1">Provincia de Santa Fe, Argentina</p>
                 </div>
+              </div>
 
+              <div className="p-6 rounded-2xl bg-zinc-950/80 border border-zinc-800 flex items-start gap-4 shadow-lg backdrop-blur-sm">
+                <div className="w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-[#0F4C5C] shrink-0">
+                  <Phone size={22} />
+                </div>
                 <div>
-                  <label className="text-[9px] uppercase tracking-widest text-zinc-400 font-bold block mb-1.5">Teléfono</label>
-                  <input
-                    type="tel"
-                    value={formData.telefono}
-                    onChange={e => setFormData(p => ({ ...p, telefono: e.target.value }))}
-                    className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600 transition-colors"
-                    placeholder="+54 342..."
-                  />
+                  <h4 className="text-xs font-black uppercase tracking-wider text-white">Teléfonos de Atención</h4>
+                  <p className="text-zinc-400 text-xs font-mono font-medium mt-1">+54 9 342 631-0996 · +54 9 342 516-2372</p>
                 </div>
+              </div>
 
+              <div className="p-6 rounded-2xl bg-zinc-950/80 border border-zinc-800 flex items-start gap-4 shadow-lg backdrop-blur-sm">
+                <div className="w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-[#0F4C5C] shrink-0">
+                  <Mail size={22} />
+                </div>
                 <div>
-                  <label className="text-[9px] uppercase tracking-widest text-zinc-400 font-bold block mb-1.5">Mensaje</label>
-                  <textarea
-                    rows={3}
-                    value={formData.mensaje}
-                    onChange={e => setFormData(p => ({ ...p, mensaje: e.target.value }))}
-                    className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600 transition-colors resize-none"
-                    placeholder="¿Cuáles son los requerimientos de su operación?"
-                  />
+                  <h4 className="text-xs font-black uppercase tracking-wider text-white">Email Corporativo</h4>
+                  <p className="text-zinc-400 text-xs font-mono font-medium mt-1">contacto@sigpad.com.ar</p>
                 </div>
+              </div>
 
+              <div className="p-6 rounded-2xl bg-zinc-950/80 border border-zinc-800 flex items-start gap-4 shadow-lg backdrop-blur-sm">
+                <div className="w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-[#0F4C5C] shrink-0">
+                  <Clock size={22} />
+                </div>
+                <div>
+                  <h4 className="text-xs font-black uppercase tracking-wider text-white">Horario de Atención</h4>
+                  <p className="text-zinc-400 text-xs font-medium mt-1">Lunes a Viernes: 8:00 — 18:00 hs · Monitoreo 24/7</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column: Formulario con Tabs (Estilo Nativo) */}
+            <div className="lg:col-span-7 p-8 rounded-[2rem] bg-zinc-950/90 border border-zinc-800 shadow-2xl backdrop-blur-md">
+              
+              {/* Tab Selector inside Form */}
+              <div className="flex gap-3 mb-8 pb-4 border-b border-zinc-800">
                 <button
-                  type="submit"
-                  className="w-full h-12 py-3.5 rounded-xl bg-white text-zinc-950 font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:bg-zinc-200 transition-all shadow-lg hover:scale-[1.01]"
+                  type="button"
+                  onClick={() => setContactTab('demo')}
+                  className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                    contactTab === 'demo'
+                      ? 'bg-[#0F4C5C] text-white shadow-md'
+                      : 'bg-zinc-900 text-zinc-400 hover:text-white'
+                  }`}
                 >
-                  <Send size={14} />
-                  Enviar Solicitud
+                  Solicitar Demo
                 </button>
-              </form>
-            )}
+                <button
+                  type="button"
+                  onClick={() => setContactTab('consulta')}
+                  className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                    contactTab === 'consulta'
+                      ? 'bg-[#0F4C5C] text-white shadow-md'
+                      : 'bg-zinc-900 text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  Consultas Generales
+                </button>
+              </div>
+
+              {formSent ? (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="py-12 flex flex-col items-center justify-center text-center gap-4"
+                >
+                  <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                    <CheckCircle2 size={36} />
+                  </div>
+                  <h3 className="text-xl font-black uppercase text-white tracking-wider">¡Mensaje Enviado con Éxito!</h3>
+                  <p className="text-zinc-400 text-xs font-medium max-w-md">
+                    Gracias por comunicarte. Nuestro equipo operativo evaluará tu mensaje y se pondrá en contacto a la brevedad.
+                  </p>
+                </motion.div>
+              ) : (
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-[9px] font-black uppercase tracking-widest text-zinc-400 block mb-1.5">
+                        NOMBRE COMPLETO *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={formData.nombre}
+                        onChange={e => setFormData(p => ({ ...p, nombre: e.target.value }))}
+                        className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 text-xs text-white placeholder:text-zinc-600 focus:outline-none focus:border-[#0F4C5C] transition-colors"
+                        placeholder="Tu nombre"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-black uppercase tracking-widest text-zinc-400 block mb-1.5">
+                        EMAIL *
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        value={formData.email}
+                        onChange={e => setFormData(p => ({ ...p, email: e.target.value }))}
+                        className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 text-xs text-white placeholder:text-zinc-600 focus:outline-none focus:border-[#0F4C5C] transition-colors"
+                        placeholder="tu@email.com"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-[9px] font-black uppercase tracking-widest text-zinc-400 block mb-1.5">
+                        TELÉFONO
+                      </label>
+                      <input
+                        type="tel"
+                        value={formData.telefono}
+                        onChange={e => setFormData(p => ({ ...p, telefono: e.target.value }))}
+                        className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 text-xs text-white placeholder:text-zinc-600 focus:outline-none focus:border-[#0F4C5C] transition-colors"
+                        placeholder="+54 342..."
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-black uppercase tracking-widest text-zinc-400 block mb-1.5">
+                        EMPRESA / LOCALIDAD
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.empresa}
+                        onChange={e => setFormData(p => ({ ...p, empresa: e.target.value }))}
+                        className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 text-xs text-white placeholder:text-zinc-600 focus:outline-none focus:border-[#0F4C5C] transition-colors"
+                        placeholder="Empresa o Ciudad"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[9px] font-black uppercase tracking-widest text-zinc-400 block mb-1.5">
+                      MENSAJE *
+                    </label>
+                    <textarea
+                      rows={4}
+                      required
+                      value={formData.mensaje}
+                      onChange={e => setFormData(p => ({ ...p, mensaje: e.target.value }))}
+                      className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 text-xs text-white placeholder:text-zinc-600 focus:outline-none focus:border-[#0F4C5C] transition-colors resize-none"
+                      placeholder="Contanos tu consulta o requerimiento operativo..."
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full h-12 rounded-xl bg-[#0F4C5C] hover:bg-[#146074] text-white font-black uppercase text-[10px] tracking-[0.2em] flex items-center justify-center gap-2 transition-all shadow-lg hover:scale-[1.01]"
+                  >
+                    <Send size={14} />
+                    Enviar Mensaje
+                  </button>
+                </form>
+              )}
+            </div>
+
           </div>
         </div>
       </motion.section>
 
       {/* ── FOOTER ────────────────────────────────────────────────────────── */}
-      <footer className="relative z-10 py-12 px-6 lg:px-12 border-t border-zinc-900 bg-black">
+      <footer className="relative z-10 py-12 px-6 lg:px-16 border-t border-zinc-900 bg-black">
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-4 gap-8 mb-12">
             <div className="space-y-4">
               <div className="flex items-center">
-                <SIGPADIcon className="w-36 h-10" />
+                <SIGPADIcon className="w-40 h-10" />
               </div>
               <p className="text-zinc-500 text-[11px] font-medium leading-relaxed">
-                Plataforma integral de gestión y control para empresas de seguridad privada.
+                Plataforma táctica e integral para la digitalización de empresas de seguridad privada argentina.
               </p>
             </div>
 
             <div>
-              <p className="text-[9px] uppercase tracking-widest text-zinc-500 font-black mb-4">Plataforma</p>
+              <p className="text-[9px] uppercase tracking-widest text-zinc-500 font-black mb-4">Navegación</p>
               <ul className="space-y-2">
-                {['El Sistema', 'Módulos', 'Contacto'].map(l => (
+                {['Sobre Nosotros', 'Servicios', 'Capturas del Sistema', 'Contacto'].map(l => (
                   <li key={l}><a href="#" className="text-[11px] text-zinc-400 hover:text-white transition-colors font-medium">{l}</a></li>
                 ))}
               </ul>
             </div>
 
             <div>
-              <p className="text-[9px] uppercase tracking-widest text-zinc-500 font-black mb-4">Legal</p>
+              <p className="text-[9px] uppercase tracking-widest text-zinc-500 font-black mb-4">Legal &amp; Normativa</p>
               <ul className="space-y-2">
                 {[
                   { label: 'Términos de Servicio', href: '/legal/tos' },
@@ -781,10 +754,10 @@ export default function RootLandingPage() {
 
             <div>
               <p className="text-[9px] uppercase tracking-widest text-zinc-500 font-black mb-4">Contacto</p>
-              <ul className="space-y-2">
-                <li><a href="mailto:contacto@sigpad.com.ar" className="text-[11px] text-zinc-400 hover:text-white transition-colors font-mono">contacto@sigpad.com.ar</a></li>
-                <li><span className="text-[11px] text-zinc-400 font-mono">3426 310996</span></li>
-                <li><span className="text-[11px] text-zinc-400 font-mono">3425 162372</span></li>
+              <ul className="space-y-2 font-mono">
+                <li><a href="mailto:contacto@sigpad.com.ar" className="text-[11px] text-zinc-400 hover:text-white transition-colors">contacto@sigpad.com.ar</a></li>
+                <li><span className="text-[11px] text-zinc-400">+54 9 342 631-0996</span></li>
+                <li><span className="text-[11px] text-zinc-400">+54 9 342 516-2372</span></li>
               </ul>
             </div>
           </div>
@@ -794,7 +767,7 @@ export default function RootLandingPage() {
               © {new Date().getFullYear()} SIGPAD. Todos los derechos reservados.
             </p>
             <p className="text-[10px] text-zinc-600 font-medium">
-              Gestión de seguridad privada
+              Tecnología de vanguardia para seguridad privada
             </p>
           </div>
         </div>
@@ -802,7 +775,7 @@ export default function RootLandingPage() {
 
       {/* ── WhatsApp Button ─────────────────────────────────────────────── */}
       <motion.a
-        href="https://wa.me/5493426310996?text=Hola!%20Quiero%20saber%20más%20sobre%20SIGPAD"
+        href="https://wa.me/5493426310996?text=Hola!%20Quiero%20saber%20más%20sobre%20la%20plataforma%20SIGPAD"
         target="_blank"
         rel="noopener noreferrer"
         initial={{ scale: 0 }}
