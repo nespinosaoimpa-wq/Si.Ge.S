@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -20,7 +20,6 @@ import {
   Clock,
   FileText,
   AlertTriangle,
-  Zap,
   Globe,
   MessageCircle,
   X,
@@ -58,34 +57,61 @@ const modules = [
 ];
 
 export default function RootLandingPage() {
+  const [scrolled, setScrolled] = useState(false);
   const [activeModule, setActiveModule] = useState(0);
   const [activePerspective, setActivePerspective] = useState<'manager' | 'guard' | 'client'>('manager');
   const [formData, setFormData] = useState({ nombre: '', empresa: '', email: '', telefono: '', mensaje: '' });
   const [formSent, setFormSent] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 80);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setFormSent(true);
   };
 
-  const scrollToHeroContent = () => {
+  const scrollToContent = () => {
     const el = document.getElementById('hero-content');
     el?.scrollIntoView({ behavior: 'smooth' });
   };
 
   return (
-    <div className="min-h-screen bg-black text-zinc-100 flex flex-col selection:bg-white/20 selection:text-white overflow-x-hidden">
+    <div className="min-h-screen bg-black text-zinc-100 flex flex-col selection:bg-white/20 selection:text-white overflow-x-hidden relative">
       
-      {/* ── Ambient Background Glows ─────────────────────────────────────── */}
+      {/* ── 1. FONDO CON LOGO COMPLETO GIGANTE Y EFECTO MARCA DE AGUA AL SCROLL ── */}
+      <div className="fixed inset-0 z-0 flex items-center justify-center pointer-events-none overflow-hidden bg-black">
+        <motion.div
+          animate={{
+            scale: scrolled ? 1.1 : 1,
+            opacity: scrolled ? 0.07 : 0.9,
+          }}
+          transition={{ duration: 0.7, ease: "easeOut" }}
+          className="relative w-[92vw] max-w-7xl h-[75vh] flex flex-col items-center justify-center"
+        >
+          <div className="absolute inset-0 bg-[#0F4C5C]/20 blur-3xl rounded-full scale-110" />
+          <img 
+            src="/logo_sigpad.png" 
+            alt="SIGPAD Logo" 
+            className="w-full h-full object-contain filter drop-shadow-[0_0_60px_rgba(255,255,255,0.12)] relative z-10"
+          />
+        </motion.div>
+      </div>
+
+      {/* ── Ambient Glow Overlays ────────────────────────────────────────── */}
       <div className="fixed top-0 left-0 w-full h-full pointer-events-none overflow-hidden z-0">
         <div className="absolute top-[10%] right-[-10%] w-[700px] h-[700px] bg-zinc-900/10 blur-[170px] rounded-full" />
         <div className="absolute top-[45%] left-[-15%] w-[600px] h-[600px] bg-[#0F4C5C]/10 blur-[180px] rounded-full" />
-        <div className="absolute bottom-[5%] right-[10%] w-[500px] h-[500px] bg-zinc-900/10 blur-[150px] rounded-full" />
       </div>
 
       {/* ── Sticky Header Navigation ─────────────────────────────────────── */}
-      <header className="sticky top-0 w-full z-50 bg-black/90 backdrop-blur-2xl border-b border-zinc-900 h-16 flex items-center justify-between px-6 lg:px-12">
+      <header className="sticky top-0 w-full z-50 bg-black/90 backdrop-blur-2xl border-b border-zinc-900/90 h-16 flex items-center justify-between px-6 lg:px-12">
         <Link href="/" className="flex items-center h-10">
           <SIGPADIcon className="w-36 h-10" />
         </Link>
@@ -162,65 +188,38 @@ export default function RootLandingPage() {
         )}
       </AnimatePresence>
 
-      {/* ── 1. PORTADA INICIAL — LOGO SIGPAD COMPLETO + FONDO NEGRO ───────── */}
-      <section className="relative h-[calc(100vh-4rem)] flex flex-col items-center justify-center px-6 lg:px-12 w-full z-10 bg-black overflow-hidden">
-        
-        {/* Contenedor central del Logo completo */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.88 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
-          className="flex flex-col items-center justify-center text-center space-y-6 z-10"
-        >
-          {/* Logo SIGPAD Gigante y nítido */}
-          <div className="relative group cursor-pointer" onClick={scrollToHeroContent}>
-            <div className="absolute inset-0 bg-[#0F4C5C]/20 blur-3xl rounded-full scale-125 group-hover:bg-[#0F4C5C]/35 transition-all duration-700" />
-            <img 
-              src="/logo_sigpad.png" 
-              alt="SIGPAD Logo Completo" 
-              className="w-72 sm:w-[440px] lg:w-[540px] h-auto object-contain relative z-10 filter drop-shadow-[0_10px_35px_rgba(255,255,255,0.12)] transition-transform duration-500 hover:scale-105"
-            />
-          </div>
-
-          <div className="space-y-2 max-w-xl mx-auto pt-2">
-            <h2 className="text-xs sm:text-sm font-black uppercase tracking-[0.35em] text-zinc-300">
-              SIGPAD OS
-            </h2>
-            <p className="text-[10px] sm:text-xs font-bold uppercase tracking-[0.25em] text-zinc-500">
-              Sistema Inteligente de Gestión y Seguridad Dinámica
-            </p>
-          </div>
-        </motion.div>
+      {/* ── 2. PORTADA HERO COMPLETA (LOGO GIGANTE + SCROLL PROMPT) ───────── */}
+      <section className="relative h-[calc(100vh-4rem)] flex flex-col items-center justify-between px-6 lg:px-12 w-full z-10 pointer-events-none">
+        <div className="flex-1" />
 
         {/* Indicador animado de Scroll */}
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.8, duration: 0.8 }}
-          className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 cursor-pointer z-20 group"
-          onClick={scrollToHeroContent}
+          animate={{ opacity: scrolled ? 0 : 1 }}
+          transition={{ duration: 0.4 }}
+          className="pb-10 flex flex-col items-center gap-2.5 cursor-pointer pointer-events-auto z-20 group"
+          onClick={scrollToContent}
         >
-          <span className="text-[9px] uppercase tracking-[0.25em] font-black text-zinc-400 group-hover:text-white transition-colors">
-            Hacer scroll para ingresar
+          <span className="text-[10px] uppercase tracking-[0.3em] font-black text-zinc-400 group-hover:text-white transition-colors">
+            Hacer scroll para explorar
           </span>
           <motion.div
             animate={{ y: [0, 8, 0] }}
             transition={{ repeat: Infinity, duration: 1.8 }}
-            className="w-8 h-8 rounded-full border border-zinc-800 bg-zinc-950 flex items-center justify-center text-zinc-400 group-hover:border-zinc-600 group-hover:text-white transition-all shadow-lg"
+            className="w-9 h-9 rounded-full border border-zinc-800 bg-zinc-950/90 backdrop-blur-md flex items-center justify-center text-zinc-300 group-hover:border-zinc-500 group-hover:text-white transition-all shadow-xl"
           >
-            <ChevronDown size={18} />
+            <ChevronDown size={20} />
           </motion.div>
         </motion.div>
       </section>
 
-      {/* ── 2. SECCIÓN PRINCIPAL DE INFORMACIÓN (REVELADO POR SCROLL) ──────── */}
+      {/* ── 3. SECCIÓN PRINCIPAL DE INFORMACIÓN (SCROLL OVER WATERMARK) ────── */}
       <motion.section 
         id="hero-content"
         initial={{ opacity: 0, y: 60 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: "-100px" }}
         transition={{ duration: 0.8, ease: "easeOut" }}
-        className="relative py-28 px-6 lg:px-12 max-w-7xl mx-auto w-full z-10 border-t border-zinc-900 bg-zinc-950/80"
+        className="relative py-28 px-6 lg:px-12 max-w-7xl mx-auto w-full z-10 border-t border-zinc-900/80 bg-black/85 backdrop-blur-md rounded-[2.5rem] my-8 shadow-2xl"
       >
         <div className="max-w-4xl mx-auto text-center w-full z-10 space-y-8 flex flex-col items-center justify-center">
           <SectionTag>Plataforma de Operaciones de Seguridad Privada</SectionTag>
@@ -264,14 +263,14 @@ export default function RootLandingPage() {
         </div>
       </motion.section>
 
-      {/* ── 3. EL SISTEMA POR DENTRO (Scroll Reveal) ─────────────────────── */}
+      {/* ── 4. EL SISTEMA POR DENTRO (Scroll Reveal) ─────────────────────── */}
       <motion.section 
         id="sistema" 
         initial={{ opacity: 0, y: 60 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: "-80px" }}
         transition={{ duration: 0.8 }}
-        className="relative z-10 py-24 px-6 lg:px-12 border-t border-zinc-900 bg-black"
+        className="relative z-10 py-24 px-6 lg:px-12 border-t border-zinc-900 bg-black/90 backdrop-blur-md rounded-[2.5rem] my-8"
       >
         <div className="max-w-7xl mx-auto space-y-16">
           <div className="text-center max-w-2xl mx-auto space-y-4">
@@ -472,14 +471,14 @@ export default function RootLandingPage() {
         </div>
       </motion.section>
 
-      {/* ── 4. MÓDULOS DEL SISTEMA (Scroll Reveal) ───────────────────────── */}
+      {/* ── 5. MÓDULOS DEL SISTEMA (Scroll Reveal) ───────────────────────── */}
       <motion.section 
         id="modulos" 
         initial={{ opacity: 0, y: 60 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: "-80px" }}
         transition={{ duration: 0.8 }}
-        className="relative z-10 py-24 px-6 lg:px-12 bg-zinc-950/60 border-t border-zinc-900"
+        className="relative z-10 py-24 px-6 lg:px-12 bg-black/90 backdrop-blur-md rounded-[2.5rem] my-8 border-t border-zinc-900"
       >
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
@@ -502,7 +501,7 @@ export default function RootLandingPage() {
                 className={`group text-left p-5 rounded-[1.5rem] border transition-all duration-300 ${
                   activeModule === i
                     ? 'bg-zinc-800 border-zinc-600 shadow-lg'
-                    : 'bg-black border-zinc-900 hover:border-zinc-800 hover:bg-zinc-900/50'
+                    : 'bg-black/80 border-zinc-900 hover:border-zinc-800 hover:bg-zinc-900/50'
                 }`}
               >
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3 transition-transform group-hover:scale-110" style={{ background: `${mod.color}15`, border: `1px solid ${mod.color}25` }}>
@@ -520,7 +519,7 @@ export default function RootLandingPage() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="mt-8 p-8 rounded-[2rem] bg-black border border-zinc-900 flex items-start gap-6"
+              className="mt-8 p-8 rounded-[2rem] bg-black/95 border border-zinc-900 flex items-start gap-6"
             >
               <div className="w-16 h-16 rounded-2xl flex items-center justify-center shrink-0"
                 style={{ background: `${modules[activeModule].color}15`, border: `1px solid ${modules[activeModule].color}25` }}>
@@ -538,14 +537,14 @@ export default function RootLandingPage() {
         </div>
       </motion.section>
 
-      {/* ── 5. POR QUÉ SIGPAD — COMPARACIÓN OPERATIVA ───────────────────── */}
+      {/* ── 6. POR QUÉ SIGPAD — COMPARACIÓN OPERATIVA ───────────────────── */}
       <motion.section 
         id="porque" 
         initial={{ opacity: 0, y: 60 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: "-80px" }}
         transition={{ duration: 0.8 }}
-        className="relative z-10 py-24 px-6 lg:px-12 max-w-7xl mx-auto w-full border-t border-zinc-900 bg-black"
+        className="relative z-10 py-24 px-6 lg:px-12 max-w-7xl mx-auto w-full border-t border-zinc-900 bg-black/90 backdrop-blur-md rounded-[2.5rem] my-8"
       >
         <div className="text-center mb-16">
           <SectionTag>Transformación Digital</SectionTag>
@@ -610,14 +609,14 @@ export default function RootLandingPage() {
         </div>
       </motion.section>
 
-      {/* ── 6. CONTACTO Y DEMO ───────────────────────────────────────────── */}
+      {/* ── 7. CONTACTO Y DEMO ───────────────────────────────────────────── */}
       <motion.section 
         id="contacto" 
         initial={{ opacity: 0, y: 60 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: "-80px" }}
         transition={{ duration: 0.8 }}
-        className="relative z-10 py-24 px-6 lg:px-12 max-w-7xl mx-auto w-full border-t border-zinc-900 bg-zinc-950/60"
+        className="relative z-10 py-24 px-6 lg:px-12 max-w-7xl mx-auto w-full border-t border-zinc-900 bg-black/90 backdrop-blur-md rounded-[2.5rem] my-8"
       >
         <div className="grid lg:grid-cols-12 gap-16 items-center">
           {/* Information */}
