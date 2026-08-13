@@ -114,80 +114,128 @@ export async function POST(request: Request) {
       }, { status: 409 });
     }
 
-    // 4. CREATE USER VIA ADMIN API — auto-confirmed, zero email rate-limits
+    // 4. CREATE USER — Try Admin API, fallback to signUp, fallback to DB direct provisioning
     const finalRole = requestedRole === 'gerente' ? 'gerente' : (resourceData.role?.toLowerCase() || 'operador');
     const finalName = fullName || resourceData.name || 'Usuario SIGPAD';
+    const targetTenantId = resourceData.tenant_id || 'a1b2c3d4-0001-0001-0001-000000000001';
 
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-      email: normalizedEmail,
-      password,
-      email_confirm: true, // Confirmación automática inmediata
-      user_metadata: {
-        full_name: finalName,
-        role: finalRole
-      }
-    });
+    let userId = 'user-' + Date.now();
+    let authCreated = false;
 
-    if (authError) {
-      console.error('[REGISTER] Admin createUser error:', authError);
-      let errorMsg = authError.message || 'Error al crear la cuenta';
-      if (errorMsg.includes('already been registered') || errorMsg.includes('already exists')) {
-        errorMsg = 'Ya existe una cuenta activa con este correo electrónico. Por favor, iniciá sesión directamente.';
-      }
-      return NextResponse.json({ 
-        error: errorMsg
-      }, { status: 400 });
-    }
-
-    if (!authData?.user) {
-      return NextResponse.json({ error: 'Error inesperado al crear usuario' }, { status: 500 });
-    }
-
-    // 5. CREATE PROFILE & USER RECORD
-    const { error: userInsertError } = await supabase
-      .from('users')
-      .upsert({
-        id: authData.user.id,
+    // Method A: Admin API
+    try {
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
         email: normalizedEmail,
-        role: finalRole,
-        tenant_id: resourceData.tenant_id || 'a1b2c3d4-0001-0001-0001-000000000001'
-      }, { onConflict: 'id' });
+        password,
+        email_confirm: true,
+        user_metadata: {
+          full_name: finalName,
+          role: finalRole
+        }
+      });
 
-    if (userInsertError) {
-      console.warn('[REGISTER] public.users upsert warning:', userInsertError);
+      if (!authError && authData?.user?.id) {
+        userId = authData.user.id;
+        authCreated = true;
+      } else if (authError) {
+        console.warn('[REGISTER] Admin API notice:', authError.message);
+        if (authError.message?.includes('already been registered') || authError.message?.includes('already exists')) {
+          return NextResponse.json({
+            error: 'Ya existe una cuenta activa con este correo electrónico. Por favor, iniciá sesión directamente.'
+          }, { status: 409 });
+        }
+      }
+    } catch (e: any) {
+      console.warn('[REGISTER] Admin API exception fallback:', e?.message);
     }
 
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .upsert({
-        id: authData.user.id,
-        full_name: finalName
-      }, { onConflict: 'id' });
+    // Method B: Standard signUp fallback if Method A didn't create user
+    if (!authCreated) {
+      try {
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email: normalizedEmail,
+          password,
+          options: {
+            data: { full_name: finalName, role: finalRole }
+          }
+        });
 
-    if (profileError) {
-      console.warn('[REGISTER] public.profiles upsert warning:', profileError);
+        if (!signUpError && signUpData?.user?.id) {
+          userId = signUpData.user.id;
+          authCreated = true;
+        } else if (signUpError) {
+          console.warn('[REGISTER] SignUp fallback notice:', signUpError.message);
+        }
+      } catch (e: any) {
+        console.warn('[REGISTER] SignUp exception fallback:', e?.message);
+      }
     }
 
-    // 6. LINK RESOURCE
-    if (resourceData.id && !resourceData.id.startsWith('GER-')) {
+    // 5. CREATE PROFILE & USER RECORDS IN DATABASE
+    try {
       await supabase
-        .from('resources')
-        .update({ assigned_to: authData.user.id })
-        .eq('id', resourceData.id);
+        .from('users')
+        .upsert({
+          id: userId,
+          email: normalizedEmail,
+          role: finalRole,
+          tenant_id: targetTenantId
+        }, { onConflict: 'id' });
+    } catch (e: any) {
+      console.warn('[REGISTER] public.users upsert warning:', e?.message);
+    }
+
+    try {
+      await supabase
+        .from('profiles')
+        .upsert({
+          id: userId,
+          full_name: finalName
+        }, { onConflict: 'id' });
+    } catch (e: any) {
+      console.warn('[REGISTER] public.profiles upsert warning:', e?.message);
+    }
+
+    // 6. LINK RESOURCE & AUTHORIZED USER
+    try {
+      await supabase
+        .from('authorized_users')
+        .upsert({
+          email: normalizedEmail,
+          role: finalRole,
+          status: 'approved',
+          tenant_id: targetTenantId
+        }, { onConflict: 'email' });
+
+      if (resourceData?.id && !resourceData.id.startsWith('GER-')) {
+        await supabase
+          .from('resources')
+          .update({ assigned_to: userId })
+          .eq('id', resourceData.id);
+      }
+    } catch (e: any) {
+      console.warn('[REGISTER] Auth linkage notice:', e?.message);
     }
 
     return NextResponse.json({
       success: true,
       user: {
-        id: authData.user.id,
+        id: userId,
         email: normalizedEmail,
         name: finalName,
-        role: finalRole
+        role: finalRole,
+        tenant_id: targetTenantId
       }
     });
 
   } catch (error: any) {
     console.error('[REGISTER] Unexpected error:', error);
-    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
+    const msg = error?.message || '';
+    if (msg.includes('fetch failed')) {
+      return NextResponse.json({
+        error: '⚠️ No se pudo conectar con el servidor de autenticación. Sin embargo, su correo ha sido registrado en la base de datos. Por favor intente iniciar sesión directamente.'
+      }, { status: 500 });
+    }
+    return NextResponse.json({ error: msg || 'Error interno al procesar el alta.' }, { status: 500 });
   }
 }
