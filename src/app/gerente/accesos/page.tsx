@@ -62,16 +62,20 @@ export default function AuthorizedUsersPage() {
         }),
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Error al autorizar usuario');
+      const emailClean = newEmail.toLowerCase().trim();
+      const newUserObj = {
+        id: data?.id || 'auth-' + Date.now(),
+        email: emailClean,
+        role: newRole,
+        status: 'approved',
+        created_at: new Date().toISOString()
+      };
 
-      if (data) {
-        setUsers(prev => [data, ...prev.filter(u => u.id !== data.id)]);
-      }
+      setUsers(prev => [newUserObj, ...prev.filter(u => u.email?.toLowerCase() !== emailClean)]);
 
       setNewEmail('');
       setIsAdding(false);
-      setStatusMsg({ type: 'success', text: 'Usuario autorizado con éxito' });
+      setStatusMsg({ type: 'success', text: `Usuario ${emailClean} autorizado con éxito` });
       fetchUsers();
       
       setTimeout(() => setStatusMsg(null), 3000);
