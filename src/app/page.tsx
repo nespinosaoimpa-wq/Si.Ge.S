@@ -299,13 +299,14 @@ export default function RootLandingPage() {
               },
               {
                 icon: Activity,
-                title: 'Control de Rondines QR',
-                desc: 'Verificación física de puntos de patrulla con coordenadas, horario exacto y reporte de eficacia del puesto.'
+                title: 'Control de Rondines GPS',
+                desc: 'Tracking GPS continuo en tiempo real estilo Uber que registra y dibuja el trazado del recorrido completo del vigilador.'
               },
               {
                 icon: Globe,
-                title: 'Portal de Clientes VIP',
-                desc: 'Acceso exclusivo para clientes corporativos para auditar la cobertura y descargar reportes oficiales.'
+                title: 'Portal de Clientes',
+                badge: 'PRÓXIMAMENTE',
+                desc: 'Próximamente: Acceso exclusivo para clientes corporativos para auditar la cobertura y descargar reportes oficiales.'
               },
               {
                 icon: FileText,
@@ -319,8 +320,13 @@ export default function RootLandingPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.08 }}
-                className="p-8 rounded-[1.8rem] bg-zinc-950/80 border border-zinc-800/90 hover:border-[#0F4C5C] hover:bg-zinc-950 transition-all duration-300 group space-y-4 shadow-xl backdrop-blur-sm"
+                className="p-8 rounded-[1.8rem] bg-zinc-950/80 border border-zinc-800/90 hover:border-[#0F4C5C] hover:bg-zinc-950 transition-all duration-300 group space-y-4 shadow-xl backdrop-blur-sm relative overflow-hidden"
               >
+                {service.badge && (
+                  <span className="absolute top-4 right-4 px-2.5 py-1 bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[8px] font-black uppercase tracking-wider rounded-full">
+                    {service.badge}
+                  </span>
+                )}
                 <div className="w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-[#0F4C5C] group-hover:bg-[#0F4C5C] group-hover:text-white transition-all">
                   <service.icon size={22} />
                 </div>
