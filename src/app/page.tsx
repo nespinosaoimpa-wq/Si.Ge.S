@@ -40,6 +40,8 @@ export default function RootLandingPage() {
   const [contactTab, setContactTab] = useState<'demo' | 'consulta'>('demo');
   const [formData, setFormData] = useState({ nombre: '', empresa: '', email: '', telefono: '', localidad: '', mensaje: '' });
   const [formSent, setFormSent] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -50,9 +52,35 @@ export default function RootLandingPage() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setFormSent(true);
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombre: formData.nombre,
+          email: formData.email,
+          telefono: formData.telefono,
+          mensaje: `${formData.empresa ? `[Empresa/Ciudad: ${formData.empresa}]\n` : ''}${formData.mensaje}`,
+          tipo: contactTab
+        })
+      });
+
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error || 'Error al enviar el mensaje');
+      }
+
+      setFormSent(true);
+    } catch (err: any) {
+      console.error('[Contact Form Error]:', err);
+      setSubmitError(err.message || 'No se pudo enviar el mensaje. Intente nuevamente.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const scrollToContent = () => {
@@ -709,12 +737,25 @@ export default function RootLandingPage() {
                     />
                   </div>
 
+                  {submitError && (
+                    <p className="text-xs font-bold text-red-400 bg-red-500/10 border border-red-500/20 p-3 rounded-xl">
+                      ⚠️ {submitError}
+                    </p>
+                  )}
+
                   <button
                     type="submit"
-                    className="w-full h-12 rounded-xl bg-[#0F4C5C] hover:bg-[#146074] text-white font-black uppercase text-[10px] tracking-[0.2em] flex items-center justify-center gap-2 transition-all shadow-lg hover:scale-[1.01]"
+                    disabled={submitting}
+                    className="w-full h-12 rounded-xl bg-[#0F4C5C] hover:bg-[#146074] disabled:opacity-50 text-white font-black uppercase text-[10px] tracking-[0.2em] flex items-center justify-center gap-2 transition-all shadow-lg hover:scale-[1.01]"
                   >
-                    <Send size={14} />
-                    Enviar Mensaje
+                    {submitting ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <Send size={14} />
+                        Enviar Mensaje
+                      </>
+                    )}
                   </button>
                 </form>
               )}
