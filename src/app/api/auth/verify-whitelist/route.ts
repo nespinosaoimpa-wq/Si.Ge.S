@@ -3,18 +3,21 @@ import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
   try {
-    const { email } = await request.json();
+    const body = await request.json();
+    const email = body.email;
+    const requestedRole = (body.role || '').toLowerCase();
     
     if (!email) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });
     }
 
     const supabase = createServiceClient();
+    const normalizedEmail = email.toLowerCase().trim();
     
     let { data, error } = await supabase
       .from('resources')
       .select('id, name, role')
-      .ilike('email', email.toLowerCase().trim())
+      .ilike('email', normalizedEmail)
       .limit(1)
       .maybeSingle();
 
@@ -28,7 +31,7 @@ export async function POST(request: Request) {
       const { data: authUser, error: authError } = await supabase
         .from('authorized_users')
         .select('id, role')
-        .ilike('email', email.toLowerCase().trim())
+        .ilike('email', normalizedEmail)
         .eq('status', 'approved')
         .limit(1)
         .maybeSingle();
@@ -40,6 +43,15 @@ export async function POST(request: Request) {
           role: authUser.role || 'gerente'
         };
       }
+    }
+
+    // Auto-authorize Gerente role if not present yet
+    if (!data && requestedRole === 'gerente') {
+      data = {
+        id: 'GER-AUTO-' + Date.now(),
+        name: 'Gerente Autorizado',
+        role: 'gerente'
+      };
     }
 
     if (!data) {

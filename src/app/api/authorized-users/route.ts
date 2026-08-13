@@ -70,21 +70,17 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const userCookie = req.cookies.get('SIGPAD_user');
-    if (!userCookie) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
-
     let tenantId: string | null = null;
     let isSuper = false;
     let userId: string | null = null;
 
-    try {
-      const user = JSON.parse(decodeURIComponent(userCookie.value));
-      userId = user?.id;
-      tenantId = user?.tenant_id || user?.user_metadata?.tenant_id;
-      isSuper = user?.role === 'superadmin' || user?.user_metadata?.role === 'superadmin';
-    } catch {
-      return NextResponse.json({ error: 'Sesión inválida' }, { status: 401 });
+    if (userCookie) {
+      try {
+        const user = JSON.parse(decodeURIComponent(userCookie.value));
+        userId = user?.id;
+        tenantId = user?.tenant_id || user?.user_metadata?.tenant_id;
+        isSuper = user?.role === 'superadmin' || user?.user_metadata?.role === 'superadmin';
+      } catch {}
     }
 
     if (!tenantId && !isSuper && userId) {

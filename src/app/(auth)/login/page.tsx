@@ -108,9 +108,16 @@ export default function LoginPage() {
       <Card className="border-zinc-850 bg-zinc-900/40 backdrop-blur-xl shadow-2xl rounded-[2rem] overflow-hidden text-white">
         <CardContent className="pt-8 space-y-6">
           {error && (
-            <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-2xl flex items-center gap-3 text-red-500 text-xs font-bold">
-              <Shield className="w-4 h-4 shrink-0" />
-              <p>{error}</p>
+            <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-2xl space-y-2">
+              <div className="flex items-center gap-3 text-red-400 text-xs font-bold">
+                <Shield className="w-4 h-4 shrink-0" />
+                <p>{error}</p>
+              </div>
+              <div className="pt-2 border-t border-red-500/20 text-right">
+                <Link href="/register" className="text-[11px] font-black text-white hover:underline uppercase tracking-wider">
+                  👉 ¿Crear o registrar cuenta como Gerente ahora? →
+                </Link>
+              </div>
             </div>
           )}
 
