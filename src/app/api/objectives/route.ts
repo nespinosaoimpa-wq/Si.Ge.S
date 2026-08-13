@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
         .eq('is_active', true);
 
       if (!isSuper && tenantId) {
-        query = query.eq('tenant_id', tenantId);
+        query = query.or(`tenant_id.eq.${tenantId},tenant_id.is.null,tenant_id.eq.a1b2c3d4-0001-0001-0001-000000000001`);
       }
 
       const { data, error } = await query.order('name');
@@ -136,6 +136,7 @@ export async function POST(req: NextRequest) {
 
     // Explicitly map only existing physical columns to prevent schema cache mismatches
     const payload = {
+      id: body.id || `OBJ-${Math.floor(Math.random() * 90000) + 10000}`,
       name: body.name || 'Nuevo Objetivo',
       address: body.address || 'Sin dirección registrada',
       client_name: body.client_name || 'Cliente Particular',
@@ -163,7 +164,6 @@ export async function POST(req: NextRequest) {
     } catch (dbError: any) {
       console.warn('[POST_OBJECTIVE] Supabase execution fallback:', dbError?.message);
       const fallbackObj = {
-        id: `obj-${Date.now()}`,
         ...payload,
         status: 'Activo',
         created_at: new Date().toISOString()

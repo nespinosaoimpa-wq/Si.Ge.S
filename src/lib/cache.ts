@@ -44,6 +44,9 @@ export function invalidarCache(tag: string) {
     // En desarrollo o contextos donde revalidateTag no está disponible, ignorar
     console.warn(`[CACHE] No se pudo invalidar tag: ${tag}`, e);
   }
+  try {
+    serverCache.invalidateAll();
+  } catch {}
 }
 
 /**

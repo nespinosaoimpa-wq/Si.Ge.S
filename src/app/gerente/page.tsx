@@ -245,7 +245,7 @@ export default function AdminDashboard() {
       } catch (apiErr) {
         // Direct Supabase Client delete fallback
         await supabase.from('objectives').delete().eq('id', id);
-        await supabase.from('objectives').update({ is_active: false, status: 'Inactivo' }).eq('id', id);
+        await supabase.from('objectives').update({ is_active: false }).eq('id', id);
       }
 
       fetchData();
