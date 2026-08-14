@@ -1,7 +1,11 @@
 import { isConfigured } from '@/lib/supabase';
-import { createServiceClient } from '@/lib/supabase-server';
+import { createServiceClient, hasAdminAccess } from '@/lib/supabase-server';
 import { NextRequest, NextResponse } from 'next/server';
 import { invalidarCache, serverCache } from '@/lib/cache';
+
+// ──────────────────────────────────────────────────────────────────────────────
+// SIGPAD — API Route: /api/objectives
+// ──────────────────────────────────────────────────────────────────────────────
 
 export async function GET(req: NextRequest) {
   try {
@@ -75,6 +79,11 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  // ── Diagnóstico de configuración ─────────────────────────────────────────
+  const keyType = hasAdminAccess() ? 'SERVICE_ROLE ✅' : 'ANON_FALLBACK ⛔ (RLS activo — escrituras pueden fallar)';
+  console.log(`[POST_OBJECTIVE] Key type: ${keyType}`);
+  console.log(`[POST_OBJECTIVE] URL: ${process.env.NEXT_PUBLIC_SUPABASE_URL || 'HARDCODED_FALLBACK'}`);
+
   try {
     let tenantId: string | null = null;
     let isSuper = false;
@@ -87,23 +96,34 @@ export async function POST(req: NextRequest) {
         userId = user?.id;
         tenantId = user?.tenant_id || user?.user_metadata?.tenant_id;
         isSuper = user?.role === 'superadmin' || user?.user_metadata?.role === 'superadmin' || user?.role === 'gerente';
+        console.log(`[POST_OBJECTIVE] Cookie: userId=${userId}, tenantId=${tenantId}, isSuper=${isSuper}`);
       } catch (e) {
         console.warn('[POST_OBJECTIVE] Cookie parse warning:', e);
       }
+    } else {
+      console.warn('[POST_OBJECTIVE] ⚠️ No se encontró cookie SIGPAD_user');
     }
 
     if (!tenantId && !isSuper && userId) {
       try {
         const supabase = createServiceClient();
-        const { data: dbUser } = await supabase
+        const { data: dbUser, error: userErr } = await supabase
           .from('users')
           .select('tenant_id')
           .eq('id', userId)
           .maybeSingle();
-        if (dbUser?.tenant_id) {
+
+        if (userErr) {
+          console.warn('[POST_OBJECTIVE] Error buscando tenant en DB:', userErr.message);
+        } else if (dbUser?.tenant_id) {
           tenantId = dbUser.tenant_id;
+          console.log(`[POST_OBJECTIVE] tenant_id recuperado de DB: ${tenantId}`);
+        } else {
+          console.warn('[POST_OBJECTIVE] ⚠️ Usuario en DB sin tenant_id');
         }
-      } catch {}
+      } catch (err: any) {
+        console.warn('[POST_OBJECTIVE] Excepción al buscar tenant en DB:', err?.message);
+      }
     }
 
     const body = await req.json().catch(() => ({}));
@@ -116,34 +136,45 @@ export async function POST(req: NextRequest) {
     let targetTenantId = isSuper ? (body.tenant_id || tenantId) : tenantId;
 
     if (targetTenantId && !isValidUUID(targetTenantId)) {
+      console.warn(`[POST_OBJECTIVE] ⚠️ tenant_id inválido ignorado: "${targetTenantId}"`);
       targetTenantId = null;
     }
 
     if (!targetTenantId) {
       try {
         const supabaseAdmin = createServiceClient();
-        const { data: firstTenant } = await supabaseAdmin
+        const { data: firstTenant, error: tenantErr } = await supabaseAdmin
           .from('tenants')
           .select('id')
           .eq('is_active', true)
           .order('created_at', { ascending: true })
           .limit(1)
           .maybeSingle();
-        
+
+        if (tenantErr) {
+          console.warn('[POST_OBJECTIVE] Error buscando primer tenant:', tenantErr.message);
+        }
         targetTenantId = firstTenant?.id || null;
-      } catch {
+        console.log(`[POST_OBJECTIVE] tenant_id fallback (primer tenant activo): ${targetTenantId}`);
+      } catch (err: any) {
+        console.warn('[POST_OBJECTIVE] Excepción al buscar primer tenant:', err?.message);
         targetTenantId = null;
       }
     } else {
       try {
         const supabaseAdmin = createServiceClient();
-        const { data: tenantExists } = await supabaseAdmin
+        const { data: tenantExists, error: existsErr } = await supabaseAdmin
           .from('tenants')
           .select('id')
           .eq('id', targetTenantId)
           .maybeSingle();
-        
+
+        if (existsErr) {
+          console.warn('[POST_OBJECTIVE] Error verificando tenant:', existsErr.message);
+        }
+
         if (!tenantExists) {
+          console.warn(`[POST_OBJECTIVE] ⚠️ tenant_id ${targetTenantId} no existe en tabla tenants — buscando fallback`);
           const { data: fallbackTenant } = await supabaseAdmin
             .from('tenants')
             .select('id')
@@ -151,8 +182,10 @@ export async function POST(req: NextRequest) {
             .limit(1)
             .maybeSingle();
           targetTenantId = fallbackTenant?.id || null;
+          console.log(`[POST_OBJECTIVE] tenant_id fallback (existente): ${targetTenantId}`);
         }
-      } catch {
+      } catch (err: any) {
+        console.warn('[POST_OBJECTIVE] Excepción verificando tenant:', err?.message);
         targetTenantId = null;
       }
     }
@@ -175,20 +208,35 @@ export async function POST(req: NextRequest) {
       geofence_radius: parseCoord(body.geofence_radius, 200),
       hourly_billing_rate: body.hourly_billing_rate ? parseCoord(body.hourly_billing_rate, 0) : null,
       is_active: true,
-      tenant_id: targetTenantId
+      tenant_id: targetTenantId,
     };
+
+    // ── Log del payload completo antes del insert ────────────────────────────
+    console.log('[POST_OBJECTIVE] Payload final para INSERT:', JSON.stringify(payload, null, 2));
 
     try {
       const supabase = createServiceClient();
-      let { data, error } = await supabase
+      const { data, error } = await supabase
         .from('objectives')
         .insert([payload])
         .select()
         .single();
 
       if (error) {
-        console.warn('[POST_OBJECTIVE] Supabase insert failed, attempting fallback to tenant_id = null:', error.message);
+        // ── Diagnóstico detallado del error de inserción ─────────────────────
+        console.error('[POST_OBJECTIVE] ⛔ INSERT falló:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+          keyType,
+          tenant_id: targetTenantId,
+        });
+
+        // ── Intento de retry con tenant_id: null ─────────────────────────────
+        console.log('[POST_OBJECTIVE] Intentando retry con tenant_id: null...');
         const retryPayload = { ...payload, tenant_id: null };
+
         const { data: retryData, error: retryError } = await supabase
           .from('objectives')
           .insert([retryPayload])
@@ -196,21 +244,46 @@ export async function POST(req: NextRequest) {
           .single();
 
         if (retryError) {
-          console.error('[POST_OBJECTIVE] Retry with tenant_id: null failed:', retryError.message);
-          return NextResponse.json({ error: `Error de base de datos: ${retryError.message}` }, { status: 500 });
+          console.error('[POST_OBJECTIVE] ⛔ Retry con tenant_id: null también falló:', {
+            message: retryError.message,
+            code: retryError.code,
+            details: retryError.details,
+            hint: retryError.hint,
+          });
+          return NextResponse.json(
+            {
+              error: `Error de base de datos: ${retryError.message}`,
+              code: retryError.code,
+              hint: retryError.hint || 'Verificar /api/diagnostics/supabase para diagnóstico completo',
+              keyType,
+            },
+            { status: 500 }
+          );
         }
-        data = retryData;
+
+        console.log('[POST_OBJECTIVE] ✅ Retry exitoso con tenant_id: null, id:', retryData?.id);
+
+        invalidarCache('objectives');
+        serverCache.invalidatePattern('dashboard-map');
+        return NextResponse.json(retryData);
       }
 
+      console.log('[POST_OBJECTIVE] ✅ INSERT exitoso, id:', data?.id);
       invalidarCache('objectives');
       serverCache.invalidatePattern('dashboard-map');
       return NextResponse.json(data);
     } catch (dbError: any) {
-      console.error('[POST_OBJECTIVE] Supabase execution exception:', dbError?.message);
-      return NextResponse.json({ error: `Excepción de base de datos: ${dbError?.message}` }, { status: 500 });
+      console.error('[POST_OBJECTIVE] ⛔ Excepción en ejecución Supabase:', dbError?.message);
+      return NextResponse.json(
+        { error: `Excepción de base de datos: ${dbError?.message}` },
+        { status: 500 }
+      );
     }
   } catch (error: any) {
     console.error('[POST_OBJECTIVE_ERROR]', error);
-    return NextResponse.json({ error: error?.message || 'Error al procesar objetivo' }, { status: 500 });
+    return NextResponse.json(
+      { error: error?.message || 'Error al procesar objetivo' },
+      { status: 500 }
+    );
   }
 }
