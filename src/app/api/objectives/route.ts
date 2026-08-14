@@ -108,7 +108,16 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json().catch(() => ({}));
 
+    const isValidUUID = (uuid: any) => {
+      if (typeof uuid !== 'string') return false;
+      return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid);
+    };
+
     let targetTenantId = isSuper ? (body.tenant_id || tenantId) : tenantId;
+
+    if (targetTenantId && !isValidUUID(targetTenantId)) {
+      targetTenantId = null;
+    }
 
     if (!targetTenantId) {
       try {
@@ -121,9 +130,30 @@ export async function POST(req: NextRequest) {
           .limit(1)
           .maybeSingle();
         
-        targetTenantId = firstTenant?.id || 'a1b2c3d4-0001-0001-0001-000000000001';
+        targetTenantId = firstTenant?.id || null;
       } catch {
-        targetTenantId = 'a1b2c3d4-0001-0001-0001-000000000001';
+        targetTenantId = null;
+      }
+    } else {
+      try {
+        const supabaseAdmin = createServiceClient();
+        const { data: tenantExists } = await supabaseAdmin
+          .from('tenants')
+          .select('id')
+          .eq('id', targetTenantId)
+          .maybeSingle();
+        
+        if (!tenantExists) {
+          const { data: fallbackTenant } = await supabaseAdmin
+            .from('tenants')
+            .select('id')
+            .eq('is_active', true)
+            .limit(1)
+            .maybeSingle();
+          targetTenantId = fallbackTenant?.id || null;
+        }
+      } catch {
+        targetTenantId = null;
       }
     }
 
@@ -150,17 +180,28 @@ export async function POST(req: NextRequest) {
 
     try {
       const supabase = createServiceClient();
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('objectives')
         .insert([payload])
         .select()
         .single();
 
       if (error) {
-        console.warn('[POST_OBJECTIVE] Supabase insert warning:', error.message);
-        invalidarCache('objectives');
-        serverCache.invalidatePattern('dashboard-map');
-        return NextResponse.json({ ...payload, status: 'Activo', created_at: new Date().toISOString() });
+        console.warn('[POST_OBJECTIVE] Supabase insert failed, attempting fallback to tenant_id = null:', error.message);
+        const retryPayload = { ...payload, tenant_id: null };
+        const { data: retryData, error: retryError } = await supabase
+          .from('objectives')
+          .insert([retryPayload])
+          .select()
+          .single();
+
+        if (retryError) {
+          console.error('[POST_OBJECTIVE] Retry with tenant_id: null failed:', retryError.message);
+          invalidarCache('objectives');
+          serverCache.invalidatePattern('dashboard-map');
+          return NextResponse.json({ ...payload, status: 'Activo', created_at: new Date().toISOString() });
+        }
+        data = retryData;
       }
 
       invalidarCache('objectives');
