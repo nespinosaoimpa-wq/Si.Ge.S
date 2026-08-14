@@ -197,26 +197,17 @@ export async function POST(req: NextRequest) {
 
         if (retryError) {
           console.error('[POST_OBJECTIVE] Retry with tenant_id: null failed:', retryError.message);
-          invalidarCache('objectives');
-          serverCache.invalidatePattern('dashboard-map');
-          return NextResponse.json({ ...payload, status: 'Activo', created_at: new Date().toISOString() });
+          return NextResponse.json({ error: `Error de base de datos: ${retryError.message}` }, { status: 500 });
         }
         data = retryData;
       }
 
       invalidarCache('objectives');
       serverCache.invalidatePattern('dashboard-map');
-      return NextResponse.json(data || { ...payload, status: 'Activo', created_at: new Date().toISOString() });
+      return NextResponse.json(data);
     } catch (dbError: any) {
-      console.warn('[POST_OBJECTIVE] Supabase execution fallback:', dbError?.message);
-      const fallbackObj = {
-        ...payload,
-        status: 'Activo',
-        created_at: new Date().toISOString()
-      };
-      invalidarCache('objectives');
-      serverCache.invalidatePattern('dashboard-map');
-      return NextResponse.json(fallbackObj);
+      console.error('[POST_OBJECTIVE] Supabase execution exception:', dbError?.message);
+      return NextResponse.json({ error: `Excepción de base de datos: ${dbError?.message}` }, { status: 500 });
     }
   } catch (error: any) {
     console.error('[POST_OBJECTIVE_ERROR]', error);
