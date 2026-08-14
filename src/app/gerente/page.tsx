@@ -209,6 +209,7 @@ export default function AdminDashboard() {
   };
 
   const handleSelectMapboxResult = async (result: any) => {
+    if (!result) return;
     let finalCoords: [number, number] | null = null;
     let displayName = result.displayName;
 
@@ -225,9 +226,16 @@ export default function AdminDashboard() {
     if (finalCoords) {
       setMapCenter(finalCoords as [number, number]);
       setPreviewCoords({ lat: finalCoords[0], lng: finalCoords[1] });
+      setLastClickedCoords({ lat: finalCoords[0], lng: finalCoords[1] });
+      setNewObjective((prev: any) => ({ ...prev, address: displayName }));
       setSearchQuery(displayName);
     }
     setMapboxSuggestions([]);
+  };
+
+  const handleQuickCreateAtAddress = async (result: any) => {
+    await handleSelectMapboxResult(result);
+    setIsAddingPoint(true);
   };
 
   const handleDeleteObjective = async (id: string, name: string) => {
@@ -290,21 +298,72 @@ export default function AdminDashboard() {
   const handleAddObjective = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!lastClickedCoords) return;
+
+    const parseCoord = (val: any, fallback: number = 0) => {
+      if (val === null || val === undefined || val === '') return fallback;
+      const str = String(val).trim().replace(',', '.');
+      const num = parseFloat(str);
+      return isNaN(num) ? fallback : num;
+    };
+
+    const latVal = parseCoord(lastClickedCoords.lat, -31.6107);
+    const lngVal = parseCoord(lastClickedCoords.lng, -60.6973);
+
+    const tempId = `obj-temp-${Date.now()}`;
+    const optimisticObj = {
+      id: tempId,
+      name: newObjective.name || 'Nuevo Objetivo',
+      address: newObjective.address || '',
+      client_name: newObjective.client_name || '',
+      contact_phone: newObjective.contact_phone || '',
+      latitude: latVal,
+      longitude: lngVal,
+      status: 'Activo',
+      is_active: true
+    };
+
+    // 1. Optimistic update (0ms UI feedback)
+    setData((prev: any) => ({
+      ...prev,
+      objectives: [optimisticObj, ...(prev.objectives || []).filter((o: any) => o.id !== tempId)]
+    }));
+
+    setMapCenter([latVal, lngVal]);
+    setSelectedObjective(optimisticObj);
+    setIsAddingPoint(false);
+
     try {
-      await api.objectives.create({
+      const createdObj = await api.objectives.create({
         ...newObjective,
-        latitude: lastClickedCoords.lat,
-        longitude: lastClickedCoords.lng,
+        latitude: latVal,
+        longitude: lngVal,
         status: 'Activo'
       });
-      setMapCenter([lastClickedCoords.lat, lastClickedCoords.lng]);
-      setIsAddingPoint(false);
+
+      if (createdObj) {
+        const realObj = {
+          ...createdObj,
+          latitude: parseCoord(createdObj.latitude, latVal),
+          longitude: parseCoord(createdObj.longitude, lngVal),
+        };
+        setData((prev: any) => ({
+          ...prev,
+          objectives: [realObj, ...(prev.objectives || []).filter((o: any) => o.id !== tempId && o.id !== realObj.id)]
+        }));
+        setSelectedObjective(realObj);
+      }
+
       setLastClickedCoords(null);
       setPreviewCoords(null);
       setNewObjective({ name: '', address: '', client_name: '', contact_phone: '' });
       fetchData();
     } catch (err: any) {
-      alert(err.message);
+      // Rollback optimistic update
+      setData((prev: any) => ({
+        ...prev,
+        objectives: (prev.objectives || []).filter((o: any) => o.id !== tempId)
+      }));
+      alert(err.message || 'Error al guardar el objetivo');
     }
   };
 
@@ -698,6 +757,10 @@ export default function AdminDashboard() {
           selectedObjective={selectedObjective}
           setSelectedObjective={setSelectedObjective}
           activeGuards={activeGuards}
+          mapboxSuggestions={mapboxSuggestions}
+          isSearchingMapbox={isSearchingMapbox}
+          handleSelectMapboxResult={handleSelectMapboxResult}
+          onQuickCreateAtAddress={handleQuickCreateAtAddress}
           onGuardSelect={(guard) => {
             setMapCenter([guard.latitude, guard.longitude]);
             if (isMobile) setIsSidebarOpen(false);
@@ -730,31 +793,42 @@ export default function AdminDashboard() {
               isMobile && "rounded-2xl"
             )}>
               <div className="flex items-center gap-2">
-                {isMobile ? (
-                  <>
-                    <button onClick={() => setIsSidebarOpen(true)} className="text-[#0F4C5C] p-2 -ml-1 border-r border-zinc-100 mr-1">
-                      <MapPin size={20} />
-                    </button>
-                    <input type="text" placeholder="Buscar dirección o POI..." className="flex-1 w-full min-w-0 bg-transparent border-none focus:ring-0 text-xs py-2 font-medium text-zinc-900 placeholder:text-zinc-400" value={searchQuery} onChange={(e) => handleMapboxSearch(e.target.value)} />
-                  </>
-                ) : (
-                  <>
-                    <div className="text-[#0F4C5C] pl-1.5 flex items-center justify-center shrink-0">
-                      {isSearchingMapbox ? <div className="w-4 h-4 border-2 border-[#0F4C5C] border-t-transparent animate-spin rounded-full" /> : <Search size={18} />}
-                    </div>
-                    <input type="text" placeholder="Buscar dirección o POI..." className="flex-1 bg-transparent border-none focus:ring-0 text-sm py-2.5 font-medium text-zinc-900 placeholder:text-zinc-400 focus:outline-none" value={searchQuery} onChange={(e) => handleMapboxSearch(e.target.value)} />
-                    {searchQuery && (
-                      <button 
-                        onClick={() => handleMapboxSearch('')}
-                        className="p-1 hover:bg-zinc-100 rounded-full transition-colors text-zinc-400 hover:text-zinc-600 mr-1"
-                        title="Limpiar búsqueda"
-                      >
-                        <X size={14} />
+                <form 
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (mapboxSuggestions.length > 0) {
+                      handleSelectMapboxResult(mapboxSuggestions[0]);
+                    }
+                  }}
+                  className="flex items-center gap-2 flex-1 min-w-0"
+                >
+                  {isMobile ? (
+                    <>
+                      <button type="button" onClick={() => setIsSidebarOpen(true)} className="text-[#0F4C5C] p-2 -ml-1 border-r border-zinc-100 mr-1 shrink-0">
+                        <MapPin size={20} />
                       </button>
-                    )}
-                  </>
-                )}
-                
+                      <input type="text" placeholder="Buscar dirección o POI..." className="flex-1 w-full min-w-0 bg-transparent border-none focus:ring-0 text-xs py-2 font-medium text-zinc-900 placeholder:text-zinc-400 focus:outline-none" value={searchQuery} onChange={(e) => handleMapboxSearch(e.target.value)} />
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-[#0F4C5C] pl-1.5 flex items-center justify-center shrink-0">
+                        {isSearchingMapbox ? <div className="w-4 h-4 border-2 border-[#0F4C5C] border-t-transparent animate-spin rounded-full" /> : <Search size={18} />}
+                      </div>
+                      <input type="text" placeholder="Buscar dirección o POI..." className="flex-1 bg-transparent border-none focus:ring-0 text-sm py-2.5 font-medium text-zinc-900 placeholder:text-zinc-400 focus:outline-none" value={searchQuery} onChange={(e) => handleMapboxSearch(e.target.value)} />
+                      {searchQuery && (
+                        <button 
+                          type="button"
+                          onClick={() => handleMapboxSearch('')}
+                          className="p-1 hover:bg-zinc-100 rounded-full transition-colors text-zinc-400 hover:text-zinc-600 mr-1"
+                          title="Limpiar búsqueda"
+                        >
+                          <X size={14} />
+                        </button>
+                      )}
+                    </>
+                  )}
+                </form>
+
                 <div className="flex items-center gap-1 ml-1 pl-2.5 pr-1 border-l border-zinc-100">
                   <button onClick={() => setShowHeatmap(!showHeatmap)} className={cn("p-1.5 rounded-xl transition-all", showHeatmap ? "bg-[#0F4C5C]/10 text-[#0F4C5C] border border-[#0F4C5C]/20" : "hover:bg-zinc-50 border border-transparent text-zinc-500")} title="Mapa de Calor">
                     <Layers size={18} />
@@ -782,7 +856,7 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               </div>
- 
+
               {/* Suggestions Dropdown */}
               {mapboxSuggestions.length > 0 && (
                 <div className="absolute top-full left-0 right-0 mt-2 bg-white/95 backdrop-blur-xl border border-zinc-200/80 rounded-[22px] shadow-[0_20px_50px_rgba(0,0,0,0.15)] z-[60] max-h-[300px] overflow-y-auto no-scrollbar p-2 space-y-1">

@@ -30,6 +30,10 @@ interface ObjectiveSidebarProps {
   setSelectedObjective: (val: any) => void;
   activeGuards: any[];
   onGuardSelect?: (guard: any) => void;
+  mapboxSuggestions?: any[];
+  isSearchingMapbox?: boolean;
+  handleSelectMapboxResult?: (res: any) => void;
+  onQuickCreateAtAddress?: (res: any) => void;
 }
 
 export function ObjectiveSidebar({
@@ -46,7 +50,11 @@ export function ObjectiveSidebar({
   selectedObjective,
   setSelectedObjective,
   activeGuards,
-  onGuardSelect
+  onGuardSelect,
+  mapboxSuggestions = [],
+  isSearchingMapbox = false,
+  handleSelectMapboxResult,
+  onQuickCreateAtAddress
 }: ObjectiveSidebarProps) {
   const [activeTab, setActiveTab] = React.useState<'objectives' | 'operators' | 'payroll'>('objectives');
 
@@ -122,31 +130,95 @@ export function ObjectiveSidebar({
             </div>
 
             {/* Search */}
-            <div className="relative mb-4">
+            <form 
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (mapboxSuggestions.length > 0 && handleSelectMapboxResult) {
+                  handleSelectMapboxResult(mapboxSuggestions[0]);
+                }
+              }}
+              className="relative mb-4"
+            >
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600" size={16} />
               <input
                 type="text"
-                placeholder={activeTab === 'objectives' ? "Filtrar objetivos..." : "Filtrar personal..."}
-                className="w-full bg-white border border-zinc-200 rounded-xl py-2.5 pl-10 pr-4 text-[13px] text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-[#0F4C5C]/50 shadow-sm"
+                placeholder={activeTab === 'objectives' ? "Buscar dirección u objetivo..." : "Filtrar personal..."}
+                className="w-full bg-white border border-zinc-200 rounded-xl py-2.5 pl-10 pr-8 text-[13px] text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-[#0F4C5C]/50 shadow-sm"
                 value={searchQuery}
                 onChange={(e) => handleMapboxSearch(e.target.value)}
               />
-            </div>
+              {isSearchingMapbox && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <div className="w-3.5 h-3.5 border-2 border-[#0F4C5C] border-t-transparent rounded-full animate-spin" />
+                </div>
+              )}
+            </form>
+
+            {/* Address Suggestions Dropdown in Sidebar */}
+            {activeTab === 'objectives' && mapboxSuggestions.length > 0 && (
+              <div className="mb-4 bg-white border border-zinc-200 rounded-xl shadow-lg divide-y divide-zinc-100 overflow-hidden max-h-48 overflow-y-auto">
+                <div className="px-3 py-1.5 bg-zinc-50 border-b border-zinc-100 text-[9px] font-black uppercase text-zinc-400 tracking-wider">
+                  Direcciones encontradas en el mapa
+                </div>
+                {mapboxSuggestions.map((sug, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => {
+                      if (handleSelectMapboxResult) handleSelectMapboxResult(sug);
+                      if (isMobile) setIsSidebarOpen(false);
+                    }}
+                    className="w-full text-left px-3.5 py-2.5 text-xs text-zinc-700 hover:bg-zinc-50 rounded-none transition-colors font-medium flex items-start gap-2.5 group"
+                  >
+                    <MapPin size={15} className="text-[#0F4C5C] shrink-0 mt-0.5" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold text-zinc-900 line-clamp-1 group-hover:text-[#0F4C5C] transition-colors">{sug.displayName}</p>
+                      <p className="text-[9px] text-zinc-400 font-medium uppercase mt-0.5">{sug.city ? `${sug.city}, ` : ''}{sug.state}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* List Area */}
           <div className="flex-1 overflow-y-auto">
             {activeTab === 'objectives' ? (
               filteredObjectives.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-24 px-6 text-center">
-                  <div className="w-20 h-20 bg-white border border-zinc-100 rounded-3xl flex items-center justify-center mb-6 shadow-sm">
-                    <MapPin size={32} className="text-zinc-200" strokeWidth={1} />
+                mapboxSuggestions.length > 0 ? (
+                  <div className="p-4 bg-white border border-[#0F4C5C]/30 rounded-2xl shadow-sm space-y-3 m-3">
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 bg-[#0F4C5C]/10 rounded-xl flex items-center justify-center text-[#0F4C5C] shrink-0">
+                        <MapPin size={20} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[10px] font-black text-[#0F4C5C] uppercase tracking-wider">Dirección Encontrada</p>
+                        <p className="text-xs font-semibold text-zinc-900 line-clamp-2 mt-0.5">{mapboxSuggestions[0].displayName}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (handleSelectMapboxResult) handleSelectMapboxResult(mapboxSuggestions[0]);
+                        if (onQuickCreateAtAddress) onQuickCreateAtAddress(mapboxSuggestions[0]);
+                        if (isMobile) setIsSidebarOpen(false);
+                      }}
+                      className="w-full h-11 bg-[#0F4C5C] hover:bg-[#0a333e] text-white rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-md transition-all active:scale-[0.98]"
+                    >
+                      <Plus size={16} />
+                      REGISTRAR OBJETIVO EN ESTA DIRECCIÓN
+                    </button>
                   </div>
-                  <p className="text-sm font-medium text-zinc-400">Sin objetivos vinculados</p>
-                  <p className="text-xs font-normal text-zinc-400 mt-1 leading-relaxed">
-                    Ajustá el filtro o buscá una <br/> dirección en el mapa
-                  </p>
-                </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-24 px-6 text-center">
+                    <div className="w-20 h-20 bg-white border border-zinc-100 rounded-3xl flex items-center justify-center mb-6 shadow-sm">
+                      <MapPin size={32} className="text-zinc-200" strokeWidth={1} />
+                    </div>
+                    <p className="text-sm font-medium text-zinc-400">Sin objetivos vinculados</p>
+                    <p className="text-xs font-normal text-zinc-400 mt-1 leading-relaxed">
+                      Ajustá el filtro o buscá una <br/> dirección en el mapa
+                    </p>
+                  </div>
+                )
               ) : (
                 <div className="p-3 space-y-2">
                   {filteredObjectives.map((obj: any) => (

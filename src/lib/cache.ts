@@ -85,6 +85,14 @@ class SimpleCache {
     this.cache.delete(key);
   }
 
+  invalidatePattern(pattern: string) {
+    for (const key of this.cache.keys()) {
+      if (key.includes(pattern)) {
+        this.cache.delete(key);
+      }
+    }
+  }
+
   invalidateAll() {
     this.cache.clear();
   }

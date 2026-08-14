@@ -21,6 +21,7 @@ import { Input } from '@/components/ui/Input';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import { searchBoxRetrieve } from '@/lib/geocoding';
 
 interface ObjectiveDetailPanelProps {
   selectedObjective: any;
@@ -346,9 +347,20 @@ export function NewObjectiveForm({
                           key={i}
                           type="button"
                           className="w-full text-left px-5 py-4 hover:bg-zinc-50 transition-colors border-b last:border-0 border-zinc-100"
-                          onClick={() => {
-                            setNewObjective({...newObjective, address: s.displayName});
-                            setLastClickedCoords({ lat: s.lat, lng: s.lng });
+                          onClick={async () => {
+                            let lat = s.lat;
+                            let lng = s.lng;
+                            let displayName = s.displayName;
+                            if (s.mapbox_id) {
+                              const details = await searchBoxRetrieve(s.mapbox_id);
+                              if (details) {
+                                lat = details.lat;
+                                lng = details.lng;
+                                displayName = details.displayName;
+                              }
+                            }
+                            setNewObjective((prev: any) => ({ ...prev, address: displayName }));
+                            setLastClickedCoords({ lat, lng });
                             setAddressSuggestions([]);
                           }}
                         >
@@ -435,22 +447,28 @@ export function NewObjectiveForm({
                 <div className="space-y-1">
                   <span className="text-[10px] font-black text-zinc-200 uppercase ml-1 tracking-widest">LAT</span>
                   <Input 
-                    type="number" 
-                    step="any"
+                    type="text" 
                     placeholder="-31.6..."
-                    value={lastClickedCoords?.lat || ''}
-                    onChange={(e) => setLastClickedCoords({ ...lastClickedCoords, lat: parseFloat(e.target.value) })}
+                    value={lastClickedCoords?.lat !== undefined && lastClickedCoords?.lat !== null ? String(lastClickedCoords.lat) : ''}
+                    onChange={(e) => {
+                      const str = e.target.value;
+                      const parsed = parseFloat(str.replace(',', '.'));
+                      setLastClickedCoords((prev: any) => ({ ...(prev || {}), lat: isNaN(parsed) ? str : parsed }));
+                    }}
                     className="h-12 bg-zinc-50 border-zinc-200 text-zinc-900 rounded-xl text-xs font-mono shadow-sm"
                   />
                 </div>
                 <div className="space-y-1">
                   <span className="text-[10px] font-black text-zinc-200 uppercase ml-1 tracking-widest">LNG</span>
                   <Input 
-                    type="number" 
-                    step="any"
+                    type="text" 
                     placeholder="-60.7..."
-                    value={lastClickedCoords?.lng || ''}
-                    onChange={(e) => setLastClickedCoords({ ...lastClickedCoords, lng: parseFloat(e.target.value) })}
+                    value={lastClickedCoords?.lng !== undefined && lastClickedCoords?.lng !== null ? String(lastClickedCoords.lng) : ''}
+                    onChange={(e) => {
+                      const str = e.target.value;
+                      const parsed = parseFloat(str.replace(',', '.'));
+                      setLastClickedCoords((prev: any) => ({ ...(prev || {}), lng: isNaN(parsed) ? str : parsed }));
+                    }}
                     className="h-12 bg-zinc-50 border-zinc-200 text-zinc-900 rounded-xl text-xs font-mono shadow-sm"
                   />
                 </div>

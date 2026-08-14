@@ -134,11 +134,11 @@ function normalizeAddress(query: string): string {
  */
 export function parseCoordinates(query: string): { lat: number, lng: number } | null {
   const q = query.trim();
-  const ddMatch = q.match(/([-+]?\d+\.\d+)\s*[,|\s]\s*([-+]?\d+\.\d+)/);
+  const ddMatch = q.match(/([-+]?\d+[.,]\d+)\s*[,|\s]\s*([-+]?\d+[.,]\d+)/);
   
   if (ddMatch) {
-    const lat = parseFloat(ddMatch[1]);
-    const lng = parseFloat(ddMatch[2]);
+    const lat = parseFloat(ddMatch[1].replace(',', '.'));
+    const lng = parseFloat(ddMatch[2].replace(',', '.'));
     if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
       return { lat, lng };
     }
