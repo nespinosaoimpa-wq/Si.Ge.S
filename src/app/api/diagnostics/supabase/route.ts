@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient, hasAdminAccess } from '@/lib/supabase-server';
+import { createServiceClient } from '@/lib/supabase-server';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // SIGPAD — Endpoint de Diagnóstico de Supabase
@@ -10,10 +10,12 @@ import { createServiceClient, hasAdminAccess } from '@/lib/supabase-server';
 //   2. Conectividad (SELECT count(*) FROM objectives)
 //   3. Permisos de escritura (INSERT + DELETE en objectives)
 //
-// ⚠️ IMPORTANTE: Este endpoint es solo para diagnóstico. Retirarlo o
-//    protegerlo con autenticación una vez resuelto el problema de producción.
+// ⚠️ Este endpoint es solo para diagnóstico. Protegerlo o retirarlo
+//    una vez resuelto el problema de producción.
 // ──────────────────────────────────────────────────────────────────────────────
 
+// Forzar Node.js runtime (no Edge) para compatibilidad con process.env y supabase-js
+export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(_req: NextRequest) {
@@ -24,7 +26,7 @@ export async function GET(_req: NextRequest) {
   const hasServiceKey = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
   const hasAnonKey = !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  // Extraer el dominio de la URL para no exponer la URL completa
+  // Extraer el dominio de la URL sin exponer la URL completa
   let urlDomain: string | null = null;
   try {
     if (supabaseUrl) urlDomain = new URL(supabaseUrl).hostname;
@@ -34,9 +36,13 @@ export async function GET(_req: NextRequest) {
 
   const envReport = {
     NEXT_PUBLIC_SUPABASE_URL: supabaseUrl ? `present (domain: ${urlDomain})` : '⛔ MISSING',
-    SUPABASE_SERVICE_ROLE_KEY: hasServiceKey ? '✅ present' : '⛔ MISSING — RLS no será bypasseado, las escrituras pueden fallar',
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: hasAnonKey ? '✅ present' : '⚠️ missing (usando hardcoded fallback)',
-    adminAccess: hasAdminAccess() ? '✅ service_role' : '⛔ anon_key (RLS activo)',
+    SUPABASE_SERVICE_ROLE_KEY: hasServiceKey
+      ? '✅ present'
+      : '⛔ MISSING — RLS no será bypasseado, las escrituras pueden fallar',
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: hasAnonKey
+      ? '✅ present'
+      : '⚠️ missing (usando hardcoded fallback)',
+    adminAccess: hasServiceKey ? '✅ service_role' : '⛔ anon_key (RLS activo)',
   };
 
   // ── 2. Test de conectividad (SELECT) ─────────────────────────────────────
@@ -57,7 +63,12 @@ export async function GET(_req: NextRequest) {
   }
 
   // ── 3. Test de permisos de escritura (INSERT + DELETE) ───────────────────
-  let writeResult: { ok: boolean; insertedId?: string; error?: string; rlsBlocked?: boolean } = { ok: false };
+  let writeResult: {
+    ok: boolean;
+    insertedId?: string;
+    error?: string;
+    rlsBlocked?: boolean;
+  } = { ok: false };
   const diagId = `DIAG-${Date.now()}`;
 
   try {
@@ -102,40 +113,26 @@ export async function GET(_req: NextRequest) {
         rlsBlocked: isRls,
       };
     } else {
-      // INSERT exitoso — ahora limpiamos
       writeResult = { ok: true, insertedId: inserted?.id };
+      // Limpieza: borrar la fila de prueba
       await supabase.from('objectives').delete().eq('id', diagId);
     }
   } catch (e: any) {
     writeResult = { ok: false, error: e?.message || 'Unknown exception during write test' };
   }
 
-  // ── 4. Verificar políticas RLS activas en objectives ─────────────────────
-  let rlsPolicies: { name: string; command: string }[] = [];
-  try {
-    const supabase = createServiceClient();
-    const { data } = await supabase
-      .rpc('get_objectives_policies' as any)
-      .select('*');
-    if (data) rlsPolicies = data;
-  } catch {
-    // La función RPC puede no existir — es opcional
-    rlsPolicies = [];
-  }
-
-  // ── 5. Diagnóstico consolidado ────────────────────────────────────────────
-  const overallStatus =
-    hasServiceKey && connectivityResult.ok && writeResult.ok
-      ? '✅ CONFIGURACIÓN CORRECTA'
-      : !hasServiceKey
-      ? '⛔ CRÍTICO: Falta SUPABASE_SERVICE_ROLE_KEY en Vercel'
-      : !connectivityResult.ok
-      ? '⛔ CRÍTICO: Sin conectividad a Supabase'
-      : !writeResult.ok
-      ? writeResult.rlsBlocked
-        ? '⛔ CRÍTICO: RLS bloquea escrituras — aplicar script SQL de emergencia'
-        : '⛔ ERROR: Fallo de escritura (ver detalles)'
-      : '⚠️ PARCIAL';
+  // ── 4. Diagnóstico consolidado ────────────────────────────────────────────
+  const overallStatus = hasServiceKey && connectivityResult.ok && writeResult.ok
+    ? '✅ CONFIGURACIÓN CORRECTA'
+    : !hasServiceKey
+    ? '⛔ CRÍTICO: Falta SUPABASE_SERVICE_ROLE_KEY en Vercel'
+    : !connectivityResult.ok
+    ? '⛔ CRÍTICO: Sin conectividad a Supabase'
+    : !writeResult.ok
+    ? writeResult.rlsBlocked
+      ? '⛔ CRÍTICO: RLS bloquea escrituras — aplicar script SQL de emergencia'
+      : '⛔ ERROR: Fallo de escritura (ver detalles)'
+    : '⚠️ PARCIAL';
 
   const recommendation = !hasServiceKey
     ? 'Agregar SUPABASE_SERVICE_ROLE_KEY en Vercel → Settings → Environment Variables. El valor debe ser el JWT del service_role (empieza con eyJ...)'
@@ -156,7 +153,6 @@ export async function GET(_req: NextRequest) {
       environment: envReport,
       connectivity: connectivityResult,
       write_permissions: writeResult,
-      rls_policies: rlsPolicies.length > 0 ? rlsPolicies : 'No se pudieron consultar (función RPC no disponible)',
     },
     {
       status: 200,
