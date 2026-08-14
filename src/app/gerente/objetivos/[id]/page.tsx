@@ -1360,44 +1360,45 @@ export default function ObjectiveDetail() {
               billingRate={parseFloat(billingRate) || objective.hourly_billing_rate || 3500}
             />
           )}
-    </div>
+      </div>
 
       {/* ====== MODAL: Asignar Personal ====== */}
       <BottomSheet isOpen={isAssignModalOpen} onClose={() => setIsAssignModalOpen(false)} title="Vincular Personal">
-        <div className="space-y-6 pb-12 px-2">
-          <div className="flex gap-4">
+        <div className="space-y-5 pb-8 px-1">
+          {/* Buscador + Filtros de Horario */}
+          <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-end">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
               <Input 
-                placeholder="Buscar por nombre..." 
+                placeholder="Buscar por nombre o rol..." 
                 value={assignSearch}
                 onChange={e => setAssignSearch(e.target.value)}
-                className="pl-10 h-14 rounded-2xl bg-gray-50 border-gray-100"
+                className="pl-10 h-11 rounded-xl bg-zinc-900/70 border-zinc-800 text-zinc-100 placeholder:text-zinc-500 text-xs focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/30"
               />
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
                <div className="flex flex-col gap-1">
-                  <span className="text-[9px] font-black uppercase text-gray-400 ml-1">Desde</span>
+                  <span className="text-[9px] font-bold uppercase text-zinc-400 tracking-wider ml-1">Desde</span>
                   <Input 
                     type="time" 
                     value={assignStartTime} 
                     onChange={e => setAssignStartTime(e.target.value)}
-                    className="h-10 w-28 rounded-xl bg-gray-50"
+                    className="h-11 w-28 rounded-xl bg-zinc-900/70 border-zinc-800 text-zinc-100 text-xs font-mono text-center"
                   />
                </div>
                <div className="flex flex-col gap-1">
-                  <span className="text-[9px] font-black uppercase text-gray-400 ml-1">Hasta</span>
+                  <span className="text-[9px] font-bold uppercase text-zinc-400 tracking-wider ml-1">Hasta</span>
                   <Input 
                     type="time" 
                     value={assignEndTime} 
                     onChange={e => setAssignEndTime(e.target.value)}
-                    className="h-10 w-28 rounded-xl bg-gray-50"
+                    className="h-11 w-28 rounded-xl bg-zinc-900/70 border-zinc-800 text-zinc-100 text-xs font-mono text-center"
                   />
                </div>
             </div>
           </div>
 
-          <div className="max-h-[400px] overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+          <div className="max-h-[380px] overflow-y-auto space-y-2.5 pr-1 custom-scrollbar">
             {(() => {
               const availableStaff = allStaff.filter(s => !s.current_objective_id || s.current_objective_id === id);
               const unavailableCount = allStaff.length - availableStaff.length;
@@ -1408,42 +1409,49 @@ export default function ObjectiveDetail() {
               
               return (
                 <>
-                  {filteredStaff.map(staff => (
-                    <div 
-                      key={staff.id} 
-                      className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-2xl transition-colors border border-transparent hover:border-gray-100 group"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-                          <User size={18} className="text-gray-400 group-hover:text-primary" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-black text-gray-900 uppercase tracking-tight">{staff.name}</p>
-                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{staff.role || 'Vigilador'}</p>
-                        </div>
-                      </div>
-                      
-                      <Button 
-                        size="sm" 
-                        variant={staff.current_objective_id === id ? "outline" : "primary"}
-                        disabled={isAssigning || staff.current_objective_id === id}
-                        className="h-9 px-4 text-[10px] font-black uppercase tracking-widest"
-                        onClick={() => handleAssign(staff.id)}
+                  {filteredStaff.map(staff => {
+                    const isAlreadyAssigned = staff.current_objective_id === id;
+                    return (
+                      <div 
+                        key={staff.id} 
+                        className="flex items-center justify-between p-3.5 bg-zinc-900/60 hover:bg-zinc-800/80 rounded-2xl border border-zinc-800/70 hover:border-zinc-700/80 transition-all group"
                       >
-                        {staff.current_objective_id === id ? 'Ya vinculado' : 'Vincular'}
-                      </Button>
-                    </div>
-                  ))}
+                        <div className="flex items-center gap-3.5">
+                          <div className="w-10 h-10 bg-zinc-800/90 rounded-xl flex items-center justify-center text-cyan-400 border border-zinc-700/50 group-hover:bg-cyan-500/10 transition-colors">
+                            <User size={18} />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-zinc-100 uppercase tracking-tight">{staff.name}</p>
+                            <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest">{staff.role || 'Vigilador'}</p>
+                          </div>
+                        </div>
+                        
+                        <Button 
+                          size="sm" 
+                          disabled={isAssigning || isAlreadyAssigned}
+                          className={cn(
+                            "h-9 px-4 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all",
+                            isAlreadyAssigned
+                              ? "bg-zinc-800/80 text-zinc-500 border border-zinc-700/50 cursor-not-allowed"
+                              : "bg-cyan-500 hover:bg-cyan-400 text-zinc-950 shadow-lg shadow-cyan-500/20 active:scale-95"
+                          )}
+                          onClick={() => handleAssign(staff.id)}
+                        >
+                          {isAlreadyAssigned ? 'Ya vinculado' : 'Vincular'}
+                        </Button>
+                      </div>
+                    );
+                  })}
                   
                   {filteredStaff.length === 0 && (
-                    <div className="py-12 text-center text-gray-400 text-xs font-bold uppercase tracking-widest italic">
+                    <div className="py-12 text-center text-zinc-400 text-xs font-semibold uppercase tracking-widest italic bg-zinc-900/40 rounded-2xl border border-dashed border-zinc-800">
                       No hay personal disponible para vincular
                     </div>
                   )}
 
                   {unavailableCount > 0 && (
-                    <div className="mt-4 pt-4 border-t border-gray-100 text-center">
-                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                    <div className="mt-4 pt-3 border-t border-zinc-800/60 text-center">
+                      <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
                         {unavailableCount} operador{unavailableCount !== 1 ? 'es' : ''} no disponible{unavailableCount !== 1 ? 's' : ''} (vinculados a otros objetivos)
                       </p>
                     </div>
@@ -1451,38 +1459,37 @@ export default function ObjectiveDetail() {
                 </>
               );
             })()}
-            {/* Round Map Modal is now moved to the end of the component */}
           </div>
         </div>
       </BottomSheet>
 
       {/* ====== MODAL: Enviar Mensaje Rápido ====== */}
       <BottomSheet isOpen={isMessageModalOpen} onClose={() => setIsMessageModalOpen(false)} title="Enviar Mensaje">
-        <div className="space-y-6 pb-12 px-2">
+        <div className="space-y-5 pb-8 px-1">
           {selectedResForMsg && (
-            <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl border border-gray-100">
-               <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center border border-gray-100">
-                  <User size={18} className="text-primary" />
+            <div className="flex items-center gap-3.5 p-3.5 bg-zinc-900/60 rounded-2xl border border-zinc-800">
+               <div className="w-10 h-10 bg-zinc-800 rounded-xl flex items-center justify-center border border-zinc-700 text-cyan-400">
+                  <User size={18} />
                </div>
                <div>
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Para:</p>
-                  <p className="text-sm font-black text-gray-900 uppercase tracking-tight">{selectedResForMsg.name}</p>
+                  <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">Para:</p>
+                  <p className="text-xs font-bold text-zinc-100 uppercase tracking-tight">{selectedResForMsg.name}</p>
                </div>
             </div>
           )}
 
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Contenido del Mensaje</label>
+            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">Contenido del Mensaje</label>
             <textarea 
               placeholder="Escribe tu mensaje aquí..." 
               value={quickMessage}
               onChange={e => setQuickMessage(e.target.value)}
-              className="w-full h-32 p-4 rounded-2xl bg-gray-50 border-gray-100 focus:border-primary focus:ring-0 text-sm font-medium resize-none"
+              className="w-full h-32 p-4 rounded-2xl bg-zinc-900/70 border border-zinc-800 text-zinc-100 placeholder:text-zinc-500 focus:border-cyan-500/50 focus:ring-0 text-xs font-medium resize-none"
             />
           </div>
 
           <Button 
-            className="w-full h-14 text-xs font-black uppercase tracking-[0.2em] shadow-xl shadow-primary/20"
+            className="w-full h-12 text-xs font-black uppercase tracking-[0.2em] bg-cyan-500 hover:bg-cyan-400 text-zinc-950 rounded-xl shadow-lg shadow-cyan-500/20"
             disabled={isSendingMsg || !quickMessage.trim()}
             onClick={handleSendQuickMessage}
           >
@@ -1493,31 +1500,30 @@ export default function ObjectiveDetail() {
 
       {/* ====== MODAL: Vincular Inventario ====== */}
       <BottomSheet isOpen={isInventoryModalOpen} onClose={() => setIsInventoryModalOpen(false)} title="Vincular Equipamiento">
-        <div className="space-y-6 pb-12 px-2">
-           <div className="bg-amber-50 p-6 rounded-3xl flex gap-4 border border-amber-100 mb-4">
-              <Package size={24} className="text-amber-600 shrink-0" />
-              <p className="text-[11px] text-amber-800 font-medium leading-relaxed">
+        <div className="space-y-5 pb-8 px-1">
+           <div className="bg-amber-500/10 p-4 rounded-2xl flex gap-3 border border-amber-500/20 mb-3">
+              <Package size={22} className="text-amber-400 shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-200/90 font-medium leading-relaxed">
                 Seleccione los elementos disponibles en el Depósito Central para asignarlos a este nodo operativo.
               </p>
            </div>
 
-           <div className="max-h-[400px] overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+           <div className="max-h-[380px] overflow-y-auto space-y-2.5 pr-1 custom-scrollbar">
               {unassignedItems.length > 0 ? unassignedItems.map(item => (
-                <div key={item.id} className="p-4 bg-gray-50 rounded-2xl flex items-center justify-between group hover:bg-white hover:shadow-md transition-all">
-                   <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-gray-400 group-hover:text-primary transition-colors">
+                <div key={item.id} className="p-3.5 bg-zinc-900/60 rounded-2xl flex items-center justify-between border border-zinc-800/70 hover:bg-zinc-800/70 hover:border-zinc-700/80 transition-all">
+                   <div className="flex items-center gap-3.5">
+                      <div className="w-10 h-10 bg-zinc-800 rounded-xl flex items-center justify-center text-cyan-400 border border-zinc-700/50">
                         {item.category === 'celular' ? <Smartphone size={18} /> : 
                          item.category === 'linterna' ? <Zap size={18} /> : <Package size={18} />}
                       </div>
                       <div>
-                        <p className="text-xs font-black text-gray-900 uppercase">{item.item_name}</p>
-                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{item.serial_number || 'S/N'}</p>
+                        <p className="text-xs font-bold text-zinc-100 uppercase">{item.item_name}</p>
+                        <p className="text-[9px] font-semibold text-zinc-400 uppercase tracking-widest">{item.serial_number || 'S/N'}</p>
                       </div>
                    </div>
                    <Button 
-                     variant="primary" 
                      size="sm" 
-                     className="h-9 px-4 rounded-xl text-[9px] font-black uppercase"
+                     className="h-9 px-4 rounded-xl text-[9px] font-black uppercase tracking-widest bg-cyan-500 hover:bg-cyan-400 text-zinc-950 shadow-md shadow-cyan-500/20"
                      onClick={async () => {
                        await supabase.from('resource_inventory').update({ objective_id: id }).eq('id', item.id);
                        setInventory(prev => [...prev, {...item, objective_id: id}]);
@@ -1529,7 +1535,7 @@ export default function ObjectiveDetail() {
                    </Button>
                 </div>
               )) : (
-                <div className="py-12 text-center text-gray-400 uppercase text-[10px] font-black italic">
+                <div className="py-12 text-center text-zinc-400 uppercase text-xs font-semibold italic bg-zinc-900/40 rounded-2xl border border-dashed border-zinc-800">
                   No hay elementos disponibles en Depósito
                 </div>
               )}
@@ -1546,9 +1552,9 @@ export default function ObjectiveDetail() {
         }} 
         title="Programar Requerimiento de Turno"
       >
-        <form onSubmit={handleCreateRequirement} className="space-y-6 pb-12 px-2">
+        <form onSubmit={handleCreateRequirement} className="space-y-5 pb-8 px-1">
           {newReqError && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-2xl flex items-center gap-3 text-red-700 text-xs font-semibold">
+            <div className="p-3.5 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-3 text-red-400 text-xs font-semibold">
               <AlertCircle size={16} />
               <span>{newReqError}</span>
             </div>
@@ -1556,77 +1562,76 @@ export default function ObjectiveDetail() {
 
           <div className="space-y-4">
             <div>
-              <label className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Fecha</label>
+              <label className="text-[10px] font-bold uppercase text-zinc-400 tracking-wider ml-1">Fecha</label>
               <Input 
                 type="date"
                 required
                 value={newReqDate}
                 onChange={e => setNewReqDate(e.target.value)}
-                className="mt-1 h-12 rounded-xl bg-gray-50 border-gray-100"
+                className="mt-1 h-11 rounded-xl bg-zinc-900/70 border-zinc-800 text-zinc-100 text-xs"
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Hora Inicio</label>
+                <label className="text-[10px] font-bold uppercase text-zinc-400 tracking-wider ml-1">Hora Inicio</label>
                 <Input 
                   type="time"
                   required
                   value={newReqStartTime}
                   onChange={e => setNewReqStartTime(e.target.value)}
-                  className="mt-1 h-12 rounded-xl bg-gray-50 border-gray-100"
+                  className="mt-1 h-11 rounded-xl bg-zinc-900/70 border-zinc-800 text-zinc-100 text-xs font-mono text-center"
                 />
               </div>
               <div>
-                <label className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Hora Fin</label>
+                <label className="text-[10px] font-bold uppercase text-zinc-400 tracking-wider ml-1">Hora Fin</label>
                 <Input 
                   type="time"
                   required
                   value={newReqEndTime}
                   onChange={e => setNewReqEndTime(e.target.value)}
-                  className="mt-1 h-12 rounded-xl bg-gray-50 border-gray-100"
+                  className="mt-1 h-11 rounded-xl bg-zinc-900/70 border-zinc-800 text-zinc-100 text-xs font-mono text-center"
                 />
               </div>
             </div>
 
             <div>
-              <label className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Rol Requerido</label>
+              <label className="text-[10px] font-bold uppercase text-zinc-400 tracking-wider ml-1">Rol Requerido</label>
               <select
                 value={newReqRole}
                 onChange={e => setNewReqRole(e.target.value)}
-                className="mt-1 w-full h-12 rounded-xl bg-gray-50 border border-gray-100 px-4 text-sm font-medium"
+                className="mt-1 w-full h-11 rounded-xl bg-zinc-900/70 border border-zinc-800 text-zinc-100 px-4 text-xs font-medium focus:border-cyan-500/50"
               >
-                <option value="vigilador">Vigilador</option>
-                <option value="supervisor">Supervisor</option>
-                <option value="sereno">Sereno</option>
+                <option value="vigilador" className="bg-zinc-900 text-zinc-100">Vigilador</option>
+                <option value="supervisor" className="bg-zinc-900 text-zinc-100">Supervisor</option>
+                <option value="sereno" className="bg-zinc-900 text-zinc-100">Sereno</option>
               </select>
             </div>
 
             <div>
-              <label className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Notas / Observaciones</label>
+              <label className="text-[10px] font-bold uppercase text-zinc-400 tracking-wider ml-1">Notas / Observaciones</label>
               <Input 
                 placeholder="Ej: Cobertura por evento especial"
                 value={newReqNotes}
                 onChange={e => setNewReqNotes(e.target.value)}
-                className="mt-1 h-12 rounded-xl bg-gray-50 border-gray-100"
+                className="mt-1 h-11 rounded-xl bg-zinc-900/70 border-zinc-800 text-zinc-100 placeholder:text-zinc-500 text-xs"
               />
             </div>
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex gap-3 pt-2">
             <Button 
               type="button" 
               variant="outline" 
               onClick={() => setIsNewRequirementModalOpen(false)}
-              className="flex-1 h-12 rounded-xl uppercase text-[10px] font-black tracking-wider"
+              className="flex-1 h-11 rounded-xl uppercase text-[10px] font-black tracking-wider border-zinc-800 text-zinc-400 hover:bg-zinc-800/50"
             >
               Cancelar
             </Button>
             <Button 
               type="submit" 
-              variant="primary" 
               disabled={isCreatingRequirement}
-              className="flex-1 h-12 rounded-xl uppercase text-[10px] font-black tracking-wider bg-zinc-900 text-white"
+              className="flex-1 h-11 rounded-xl uppercase text-[10px] font-black tracking-wider bg-cyan-500 hover:bg-cyan-400 text-zinc-950 shadow-lg shadow-cyan-500/20"
             >
               {isCreatingRequirement ? <Loader2 className="animate-spin" size={16} /> : 'Crear'}
             </Button>
