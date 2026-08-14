@@ -65,40 +65,40 @@ export function ObjectiveDetailPanel({
               : "absolute bottom-6 left-6 right-6 rounded-[2rem] p-8 max-w-lg mx-auto border border-zinc-200 shadow-2xl"
           )}
         >
-          <div className="flex justify-between items-start mb-6">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 bg-zinc-50 rounded-[1.25rem] flex items-center justify-center border border-zinc-200 shadow-sm">
-                <MapPin size={24} className="text-[#0F4C5C]" />
+          <div className="flex justify-between items-start mb-5 gap-3">
+            <div className="flex items-center gap-3.5 min-w-0 flex-1">
+              <div className="w-12 h-12 bg-zinc-50 rounded-[1.25rem] flex items-center justify-center border border-zinc-200 shadow-sm shrink-0">
+                <MapPin size={22} className="text-[#0F4C5C]" />
               </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="text-2xl font-black text-zinc-900 uppercase tracking-tighter truncate leading-none">{selectedObjective.name}</h3>
+              <div className="flex-1 min-w-0 overflow-hidden">
+                <h3 className="text-xl font-black text-zinc-900 uppercase tracking-tight truncate leading-tight">{selectedObjective.name}</h3>
                 {selectedObjective.address && (
-                  <p className="text-[10px] text-zinc-900 font-black tracking-[0.2em] uppercase mt-2 truncate">{selectedObjective.address}</p>
+                  <p className="text-[11px] text-zinc-600 font-semibold uppercase mt-1 truncate">{selectedObjective.address}</p>
                 )}
               </div>
             </div>
-            <button onClick={() => setSelectedObjective(null)} className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
-              <X size={20} className="text-zinc-600" />
+            <button onClick={() => setSelectedObjective(null)} className="p-2 hover:bg-zinc-100 rounded-full transition-colors shrink-0">
+              <X size={18} className="text-zinc-600" />
             </button>
           </div>
 
           {/* Info chips */}
-          <div className="flex flex-wrap gap-2 mb-6">
+          <div className="flex flex-wrap gap-2 mb-5">
             {selectedObjective.client_name && (
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-50 border border-zinc-200 rounded-xl">
-                <Building2 size={12} className="text-zinc-600" />
-                <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">{selectedObjective.client_name}</span>
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-50 border border-zinc-200 rounded-xl max-w-full overflow-hidden">
+                <Building2 size={12} className="text-zinc-600 shrink-0" />
+                <span className="text-[10px] font-black uppercase tracking-wider text-zinc-600 truncate">{selectedObjective.client_name}</span>
               </div>
             )}
             {selectedObjective.contact_phone && (
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-50 border border-zinc-200 rounded-xl">
-                <Phone size={12} className="text-zinc-600" />
-                <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">{selectedObjective.contact_phone}</span>
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-50 border border-zinc-200 rounded-xl max-w-full overflow-hidden">
+                <Phone size={12} className="text-zinc-600 shrink-0" />
+                <span className="text-[10px] font-black uppercase tracking-wider text-zinc-600 truncate">{selectedObjective.contact_phone}</span>
               </div>
             )}
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-50 border border-[#0F4C5C]/20 rounded-xl">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-50 border border-[#0F4C5C]/20 rounded-xl shrink-0">
               <div className="w-1.5 h-1.5 rounded-full bg-[#0F4C5C]" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-[#0F4C5C]">{selectedObjective.status || 'Activo'}</span>
+              <span className="text-[10px] font-black uppercase tracking-wider text-[#0F4C5C]">{selectedObjective.status || 'Activo'}</span>
             </div>
           </div>
 
@@ -185,10 +185,10 @@ export function ObjectiveDetailPanel({
           {/* Action Buttons */}
           <div className="flex gap-3 mt-auto">
             <div className="flex-1 flex gap-2">
-              <Link href={`/gerente/objetivos/${selectedObjective.id}`} className="flex-1">
-                <button className="w-full h-12 text-[11px] font-black uppercase tracking-[0.2em] bg-[#0F4C5C] text-black rounded-xl hover:bg-[#C4A030] transition-all flex items-center justify-center gap-2 shadow-lg shadow-[#0F4C5C]/10">
+              <Link href={`/gerente/objetivos/${selectedObjective.id}`} className="flex-1 min-w-0">
+                <button className="w-full h-12 text-[11px] font-black uppercase tracking-wider bg-[#0F4C5C] text-white rounded-xl hover:bg-[#0a333e] transition-all flex items-center justify-center gap-1.5 shadow-md px-3 truncate">
                   AUDITAR SERVICIO
-                  <ChevronRight size={16} />
+                  <ChevronRight size={15} className="shrink-0" />
                 </button>
               </Link>
                 <button 

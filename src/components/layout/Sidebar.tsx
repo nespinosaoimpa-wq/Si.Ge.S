@@ -270,20 +270,20 @@ export function Sidebar() {
               animate={{ opacity: 1, y: 0 }}
               className="mt-4 pt-4 border-t border-white/5"
             >
-              <div className="flex items-center gap-4 px-3 py-3 bg-white/5 rounded-2xl border border-white/5">
-                <div className="w-12 h-12 rounded-full bg-zinc-900 flex items-center justify-center overflow-hidden border border-primary/30 shrink-0 shadow-[0_0_20px_rgba(15,76,92,0.15)]">
+              <div className="flex items-center gap-2.5 px-2.5 py-2 bg-white/5 rounded-xl border border-white/5 overflow-hidden">
+                <div className="w-9 h-9 rounded-full bg-zinc-900 flex items-center justify-center overflow-hidden border border-primary/30 shrink-0 shadow-sm">
                   {user.user_metadata?.avatar_url ? (
                     <img src={user.user_metadata.avatar_url} className="w-full h-full object-cover" alt="Perfil" />
                   ) : (
-                    <User className="w-6 h-6 text-zinc-500" />
+                    <User className="w-4 h-4 text-zinc-400" />
                   )}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-semibold text-white truncate leading-tight">
+                <div className="flex-1 min-w-0 overflow-hidden">
+                  <p className="text-xs font-semibold text-white truncate leading-tight">
                     {user.user_metadata?.full_name || user.email?.split('@')[0] || 'Usuario'}
                   </p>
-                  <p className="text-[11px] text-amber-400 font-bold mt-0.5 flex items-center gap-1 truncate">
-                    <Building2 size={11} className="shrink-0 text-amber-400" />
+                  <p className="text-[10px] text-amber-400 font-bold mt-0.5 flex items-center gap-1 truncate">
+                    <Building2 size={10} className="shrink-0 text-amber-400" />
                     <span className="truncate">
                       {(user as any)?.company_name || user?.user_metadata?.company_name || (role === 'superadmin' ? 'Matriz SIGPAD' : 'Empresa de Seguridad')}
                     </span>
@@ -291,10 +291,10 @@ export function Sidebar() {
                 </div>
                 <button
                   onClick={() => { signOut(); window.location.href = '/login'; }}
-                  className="p-2 text-zinc-600 hover:text-red-400 hover:bg-red-400/10 rounded-xl transition-all"
+                  className="p-1.5 text-zinc-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all shrink-0 ml-auto"
                   title="Cerrar Sesión"
                 >
-                  <LogOut size={14} />
+                  <LogOut size={13} />
                 </button>
               </div>
             </motion.div>

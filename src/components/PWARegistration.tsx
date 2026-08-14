@@ -104,27 +104,28 @@ export default function PWARegistration() {
   if (isStandalone || !showInstallBanner) return null;
 
   return (
-    <div className="fixed bottom-24 left-4 right-4 z-[200] animate-slide-up lg:left-auto lg:right-6 lg:bottom-6 lg:w-96">
-      <div className="bg-black/95 backdrop-blur-xl rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.5)] p-5 border border-primary/20 flex items-center gap-4">
-        <div className="w-14 h-14 bg-primary rounded-xl flex items-center justify-center shrink-0 shadow-lg">
-          <Download size={24} className="text-black" />
+    <div className="fixed bottom-24 left-4 right-4 z-[200] animate-slide-up lg:left-auto lg:right-6 lg:bottom-6 lg:w-96 overflow-hidden">
+      <div className="bg-zinc-950/95 backdrop-blur-2xl rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.7)] p-4 border border-amber-400/30 flex items-center gap-3 overflow-hidden">
+        <div className="w-11 h-11 bg-amber-400 rounded-xl flex items-center justify-center shrink-0 shadow-lg">
+          <Download size={20} className="text-black" />
         </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-white text-sm font-black uppercase tracking-tight">Instalar App SIGPAD</p>
-          <p className="text-gray-400 text-[10px] font-medium mt-0.5">
-            {isIOS ? 'Toca Instalar y sigue los pasos' : 'Acceso rápido desde tu pantalla de inicio'}
+        <div className="flex-1 min-w-0 overflow-hidden">
+          <p className="text-white text-xs font-black uppercase tracking-tight truncate">Instalar App SIGPAD</p>
+          <p className="text-zinc-400 text-[10px] font-medium mt-0.5 truncate">
+            {isIOS ? 'Toca Instalar y sigue los pasos' : 'Acceso rápido desde tu inicio'}
           </p>
         </div>
-        <div className="flex gap-2 shrink-0">
+        <div className="flex items-center gap-1.5 shrink-0">
           <button 
             onClick={handleDismiss}
-            className="w-9 h-9 flex items-center justify-center rounded-full text-gray-500 hover:text-white hover:bg-white/10 transition-all font-black"
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 transition-all"
+            title="Cerrar banner"
           >
-            <X size={16} />
+            <X size={15} />
           </button>
           <button 
             onClick={handleInstall}
-            className="px-4 py-2 bg-primary text-black rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-primary/90 transition-all shadow-lg"
+            className="px-3 py-1.5 bg-amber-400 text-black rounded-lg text-[10px] font-black uppercase tracking-wider hover:bg-amber-300 transition-all shadow-md shrink-0"
           >
             {isIOS ? 'Pasos' : 'Instalar'}
           </button>
