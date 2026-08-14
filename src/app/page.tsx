@@ -238,16 +238,7 @@ export default function RootLandingPage() {
               Eliminamos las planillas de papel y los libros físicos manuales. Brindamos visibilidad en tiempo real a gerentes, vigiladores en campo y clientes corporativos.
             </p>
 
-            {/* Habilitación / Certificación Card (Estilo Nativo) */}
-            <div className="p-5 rounded-2xl bg-zinc-950/90 border border-[#0F4C5C]/50 space-y-2 shadow-xl backdrop-blur-md">
-              <div className="flex items-center gap-2.5">
-                <CheckCircle2 size={18} className="text-[#0F4C5C] shrink-0" />
-                <h4 className="text-xs font-black uppercase tracking-wider text-white">Plataforma Certificada &amp; Habilitada</h4>
-              </div>
-              <p className="text-[11px] text-zinc-400 font-medium leading-relaxed pl-7">
-                Cumplimos con todas las normativas de seguridad de datos, geolocalización inmutable y estándares de encriptación W3C para bitácoras digitales de guardia.
-              </p>
-            </div>
+
           </div>
 
           {/* Right Column: Real Capture Showcase Card */}
