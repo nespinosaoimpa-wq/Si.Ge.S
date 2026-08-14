@@ -181,7 +181,7 @@ export class GPSTracker {
     this.watchId = navigator.geolocation.watchPosition(
       (pos) => this.handlePosition(pos),
       (err) => this.onError(err.message),
-      { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+      { enableHighAccuracy: true, maximumAge: 1000, timeout: 15000 }
     );
 
     // 3. Start Sync Monitor
@@ -273,10 +273,23 @@ export class GPSTracker {
     const rawSpeed = pos.coords.speed || 0;
     const rawAccuracy = pos.coords.accuracy || 30;
 
-    // Discard extremely noisy measurements (>120 meters accuracy) to prevent jumps
-    if (rawAccuracy > 120 && this.kalmanVariance !== -1) {
-      console.warn(`[SIGPAD GPS] Discarding highly inaccurate coordinate: ${rawAccuracy}m`);
+    // Discard extremely noisy measurements (>90 meters accuracy) to prevent jumps
+    if (rawAccuracy > 90 && this.kalmanVariance !== -1) {
+      console.warn(`[SIGPAD GPS] Descartando coordenada imprecisa: ±${Math.round(rawAccuracy)}m`);
       return;
+    }
+
+    // Speed spike check: discard physically impossible GPS teleports (>42 m/s or ~150 km/h)
+    if (this.lastUpdateTs > 0 && this.kalmanLat !== 0) {
+      const dtSeconds = (now - this.lastUpdateTs) / 1000;
+      if (dtSeconds > 0 && dtSeconds < 10) {
+        const dist = calculateDistance(pos.coords.latitude, pos.coords.longitude, this.kalmanLat, this.kalmanLng);
+        const derivedSpeed = dist / dtSeconds;
+        if (derivedSpeed > 42) { // >150 km/h
+          console.warn(`[SIGPAD GPS] Descartando salto GPS anómalo: ${Math.round(derivedSpeed * 3.6)} km/h en ${dtSeconds.toFixed(1)}s`);
+          return;
+        }
+      }
     }
 
     const filtered = this.applyKalmanFilter(

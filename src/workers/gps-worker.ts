@@ -140,7 +140,7 @@ function startTracking() {
   watchId = navigator.geolocation.watchPosition(
     handlePosition,
     (err) => self.postMessage({ type: 'ERROR', payload: err.message }),
-    { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+    { enableHighAccuracy: true, maximumAge: 1000, timeout: 15000 }
   );
   self.postMessage({ type: 'STATUS', payload: 'TRACKING_STARTED' });
 }
