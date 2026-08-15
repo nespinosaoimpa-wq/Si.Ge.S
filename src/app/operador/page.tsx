@@ -7,7 +7,7 @@ import {
   CheckCircle2, Clock, MapPin, AlertCircle, AlertTriangle,
   User, ChevronRight, LogIn, LogOut, Building2,
   Calendar, ShieldCheck, Activity, Map as MapIcon, Zap,
-  Book, ShieldAlert, Smartphone, Share2
+  Book, ShieldAlert, Smartphone, Share2, Download
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -220,6 +220,16 @@ export default function GuardiaDashboard() {
               </div>
               
               <div className="flex items-center gap-3">
+                {/* Install PWA Button */}
+                <button 
+                  onClick={() => window.dispatchEvent(new CustomEvent('trigger-pwa-install'))}
+                  className="h-10 px-3.5 bg-[#0F4C5C]/30 backdrop-blur-md rounded-full flex items-center gap-2 border border-[#0F4C5C]/50 text-white hover:bg-[#0F4C5C]/50 transition-all text-xs font-black uppercase tracking-tight shadow-lg active:scale-95"
+                  title="Instalar App en el Celular"
+                >
+                  <Download size={15} />
+                  <span className="hidden sm:inline">Instalar App</span>
+                </button>
+
                 {/* Share Button */}
                 <button 
                   onClick={handleShare}
