@@ -2,7 +2,7 @@ import React from 'react';
 import { createServiceClient } from '@/lib/supabase-server';
 import { Card } from '@/components/ui/Card';
 import { DownloadEvidenceButton } from '@/components/gerente/DownloadEvidenceButton';
-import { ShieldCheck, Crosshair, Package, AlertTriangle, Clock, Camera, FileText, Loader2, User } from 'lucide-react';
+import { ShieldCheck, Crosshair, Package, AlertTriangle, Clock, Camera, FileText, Loader2, User, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { PayrollPanel } from './PayrollPanel';
 import { DocumentPanel } from './DocumentPanel';
@@ -180,8 +180,19 @@ export default async function OperatorProfilePage(props: { params: Promise<{ id:
   const isExpiringSoon = expiryDate ? (expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24) < 30 : false;
 
   return (
-    <div className="p-6 lg:p-10 max-w-7xl mx-auto space-y-10 bg-zinc-50 min-h-screen text-zinc-900 pb-32">
+    <div className="p-6 lg:p-10 max-w-7xl mx-auto space-y-8 bg-zinc-50 min-h-screen text-zinc-900 pb-32">
       
+      {/* BACK NAVIGATION BUTTON */}
+      <div>
+        <Link 
+          href="/gerente/personal" 
+          className="inline-flex items-center gap-2.5 px-4 py-2.5 bg-white border border-zinc-200 rounded-2xl text-xs font-black uppercase tracking-widest text-zinc-700 hover:text-zinc-900 hover:border-zinc-300 hover:bg-zinc-100/70 shadow-sm transition-all group"
+        >
+          <ArrowLeft size={16} className="text-[#0F4C5C] group-hover:-translate-x-1 transition-transform" />
+          <span>Volver al Personal</span>
+        </Link>
+      </div>
+
       {/* HEADER */}
       <div className="flex flex-col md:flex-row items-center md:items-start gap-8 pb-10 border-b border-zinc-200">
         <div className="relative">
@@ -257,7 +268,8 @@ export default async function OperatorProfilePage(props: { params: Promise<{ id:
              </a>
            )}
            <Link href="/gerente/personal">
-             <button className="w-full h-11 px-6 bg-[#0F4C5C] text-white rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-[#146074] transition-colors">
+             <button className="w-full h-11 px-6 bg-[#0F4C5C] text-white rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-[#146074] transition-colors flex items-center justify-center gap-2">
+               <ArrowLeft size={14} />
                Volver a Personal
              </button>
            </Link>
