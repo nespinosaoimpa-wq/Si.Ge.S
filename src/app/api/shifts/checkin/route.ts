@@ -8,25 +8,30 @@ export async function POST(request: Request) {
     const supabase = createServiceClient();
 
     // 1. Fetch Objective specific radius if available
-    let targetRadius = 70;
+    let targetRadius = 100;
     let objectiveLocation: { lat: number, lng: number } | null = null;
     if (objective_id && objective_id !== 'null') {
       try {
         const { data: objective } = await supabase
           .from('objectives')
-          .select('geofence_radius_meters, latitude, longitude')
+          .select('geofence_radius, geofence_radius_meters, latitude, longitude, name')
           .eq('id', objective_id)
           .maybeSingle();
-        if (objective?.geofence_radius_meters) targetRadius = objective.geofence_radius_meters;
-        if (objective?.latitude) objectiveLocation = { lat: objective.latitude, lng: objective.longitude };
+
+        const configuredRadius = Number(objective?.geofence_radius || objective?.geofence_radius_meters || 100);
+        if (configuredRadius > 0) targetRadius = configuredRadius;
+
+        if (objective?.latitude && objective?.longitude) {
+          objectiveLocation = { lat: Number(objective.latitude), lng: Number(objective.longitude) };
+        }
       } catch (e) {}
     }
 
-    // 2. Verify Geofence (DYNAMIC TOLERANCE: Radio + Accuracy)
+    // 2. Verify Geofence (DYNAMIC TOLERANCE: Radio + Accuracy + Minimum Indoor Margin)
     let isWithinGeofence = true;
     let distanceToObjective = 0;
     
-    if (objective_id && objective_id !== 'null' && objectiveLocation) {
+    if (objective_id && objective_id !== 'null' && objectiveLocation && objectiveLocation.lat !== 0 && objectiveLocation.lng !== 0) {
       // Calculate real distance using Haversine
       const R = 6371e3; // meters
       const φ1 = latitude * Math.PI / 180;
@@ -40,16 +45,17 @@ export async function POST(request: Request) {
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
       distanceToObjective = R * c;
 
-      // FORMULA: Distance <= (Target Radius + Accuracy)
-      // This allows check-in when inside buildings with degraded accuracy
-      const dynamicTolerance = targetRadius + (accuracy || 0);
+      // FORMULA: Distance <= (Target Radius + Dynamic Margin for GPS Accuracy)
+      // Dynamic margin guarantees indoor/subterranean checkin when near objective
+      const gpsMargin = Math.max(Number(accuracy || 0), 25);
+      const dynamicTolerance = targetRadius + gpsMargin;
       isWithinGeofence = distanceToObjective <= dynamicTolerance;
       
-      // STRICT BLOCK: Phase 3 Requirement (Modified for dynamic tolerance)
+      // STRICT BLOCK IF OUTSIDE GEOFENCE
       if (!isWithinGeofence) {
         return NextResponse.json({ 
           error: 'FUERA DE RANGO',
-          message: `Estás a ${Math.round(distanceToObjective)}m. El radio permitido es ${targetRadius}m (+${Math.round(accuracy || 0)}m de margen por precisión GPS).`,
+          message: `Estás a ${Math.round(distanceToObjective)}m del objetivo. El radio permitido es ${targetRadius}m (+${Math.round(gpsMargin)}m de margen GPS).`,
           isWithinGeofence: false,
           targetRadius,
           distance: Math.round(distanceToObjective),

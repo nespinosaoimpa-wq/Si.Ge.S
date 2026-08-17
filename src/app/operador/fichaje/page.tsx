@@ -353,22 +353,26 @@ export default function FichajePage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             shift_id: shiftId,
-            latitude: location?.lat,
-            longitude: location?.lng
+            operator_id: OPERATOR_ID,
+            email: user?.email,
+            latitude: location?.lat || 0,
+            longitude: location?.lng || 0
           })
         });
         
-        if (!res.ok) throw new Error('Error al finalizar turno');
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          console.warn('[CHECKOUT] Response warning:', errData);
+        }
       } catch (e: any) {
-        console.error("Checkout error:", e);
-        alert(e.message || "Error al finalizar turno.");
+        console.error("[CHECKOUT] Network exception:", e);
+      } finally {
+        // ALWAYS end shift locally so the active shift timer 100% stops running
+        endShift();
         setLocating(false);
-        return;
+        setGpsProgress({ accuracy: null, count: 0 });
+        setCanSkipGps(false);
       }
-      endShift();
-      setLocating(false);
-      setGpsProgress({ accuracy: null, count: 0 });
-      setCanSkipGps(false);
       return;
     }
 
