@@ -416,12 +416,7 @@ export default function ObjectiveDetail() {
 
     setIsSubmittingEntry(true);
     try {
-      // Manager entries use a fixed marker; resource_id will be the first assigned guard or a placeholder
-      const assignedGuardId = resources[0]?.id;
-      if (!assignedGuardId) {
-        alert('Asigná al menos un guardia al objetivo antes de registrar novedades desde el panel.');
-        return;
-      }
+      const assignedGuardId = resources[0]?.id || 'gerente_master';
       await api.guardBook.create({
         objective_id: id,
         resource_id: assignedGuardId,
@@ -1084,26 +1079,44 @@ export default function ObjectiveDetail() {
               {/* Listado de Entradas */}
               <Card className="overflow-hidden border-none shadow-2xl shadow-gray-200/30 rounded-3xl bg-white">
                 <div className="divide-y divide-gray-50">
-                  {guardBook.length > 0 ? guardBook.map((entry: any) => (
-                    <div key={entry.id} className="px-8 py-6 flex items-start gap-6 hover:bg-gray-50/30 transition-colors">
-                      <div className={cn(
-                        "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm",
-                        entry.entry_type === 'incidente' ? "bg-red-600 text-white" : "bg-blue-600 text-white"
-                      )}>
-                        {entry.entry_type === 'incidente' ? <AlertCircle size={20} /> : <MessageSquare size={20} />}
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex justify-between items-start mb-2">
-                          <span className={cn(
-                            "text-[10px] font-black uppercase tracking-[0.2em]",
-                            entry.entry_type === 'incidente' ? "text-red-600" : "text-blue-600"
-                          )}>{entry.entry_type}</span>
-                          <span className="text-[10px] font-black text-gray-400">{new Date(entry.created_at).toLocaleString()}</span>
+                  {guardBook.length > 0 ? guardBook.map((entry: any) => {
+                    const authorName = 
+                      entry.author_name ||
+                      entry.resources?.name ||
+                      (entry.content?.startsWith('[GERENTE]') ? 'Gerente Operativo (Mesa de Control)' : null) ||
+                      (entry.entry_type === 'fichaje' ? 'Sistema / Fichaje Automático' : null) ||
+                      'Personal Autorizado';
+                    const isGerente = entry.content?.startsWith('[GERENTE]');
+
+                    return (
+                      <div key={entry.id} className="px-8 py-6 flex items-start gap-6 hover:bg-gray-50/30 transition-colors border-b border-gray-50 last:border-b-0">
+                        <div className={cn(
+                          "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm",
+                          entry.entry_type === 'incidente' ? "bg-red-600 text-white" : "bg-blue-600 text-white"
+                        )}>
+                          {entry.entry_type === 'incidente' ? <AlertCircle size={20} /> : <MessageSquare size={20} />}
                         </div>
-                        <p className="text-base font-bold text-gray-800 italic leading-relaxed">"{entry.content}"</p>
+                        <div className="flex-1">
+                          <div className="flex justify-between items-start mb-2">
+                            <div className="flex items-center gap-3">
+                              <span className={cn(
+                                "text-[10px] font-black uppercase tracking-[0.2em]",
+                                entry.entry_type === 'incidente' ? "text-red-600" : "text-blue-600"
+                              )}>{entry.entry_type}</span>
+                              <span className={cn(
+                                "px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider flex items-center gap-1",
+                                isGerente ? "bg-amber-100 text-amber-900 border border-amber-200" : "bg-zinc-100 text-zinc-700"
+                              )}>
+                                ✍️ {authorName}
+                              </span>
+                            </div>
+                            <span className="text-[10px] font-black text-gray-400">{new Date(entry.created_at).toLocaleString('es-AR')}</span>
+                          </div>
+                          <p className="text-base font-bold text-gray-800 italic leading-relaxed">"{entry.content}"</p>
+                        </div>
                       </div>
-                    </div>
-                  )) : (
+                    );
+                  }) : (
                     <div className="py-24 text-center">
                       <MessageSquare size={48} className="text-gray-100 mx-auto mb-4" />
                       <p className="text-sm font-black text-gray-400 uppercase tracking-widest italic">Diario de guardia vacío</p>

@@ -411,14 +411,29 @@ export default function GuardBookPage() {
                           )}>
                             {entry.entry_type}
                           </span>
-                          {entry.resources?.name && (
-                            <>
-                              <span className={cn('text-[9px]', isDark ? 'text-white/20' : 'text-gray-300')}>·</span>
-                              <span className={cn('text-[9px] font-bold uppercase tracking-wide', isDark ? 'text-white/40' : 'text-gray-400')}>
-                                {entry.resources.name}
-                              </span>
-                            </>
-                          )}
+                          {(() => {
+                            const authorName = 
+                              entry.author_name ||
+                              entry.written_by ||
+                              entry.resources?.name ||
+                              (entry.content?.startsWith('[GERENTE]') ? '✍️ Gerencia (Mesa de Control)' : null) ||
+                              (entry.entry_type === 'fichaje' ? '🤖 Sistema (Fichaje)' : null) ||
+                              'Personal Autorizado';
+
+                            const isGerente = entry.content?.startsWith('[GERENTE]');
+
+                            return (
+                              <>
+                                <span className={cn('text-[9px]', isDark ? 'text-white/20' : 'text-gray-300')}>·</span>
+                                <span className={cn(
+                                  'text-[9px] font-black uppercase tracking-wide px-2 py-0.5 rounded',
+                                  isGerente ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : (isDark ? 'text-white/60' : 'text-gray-600')
+                                )}>
+                                  {authorName}
+                                </span>
+                              </>
+                            );
+                          })()}
                         </div>
                         <div className="text-right shrink-0">
                           <p className="text-[9px] font-mono text-gray-400">

@@ -314,6 +314,29 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // If written by Gerente, dispatch notification to active operators on duty at this objective
+    if (content?.startsWith('[GERENTE]') && objective_id) {
+      try {
+        const { data: activeGuards } = await supabase
+          .from('resources')
+          .select('id, assigned_to')
+          .eq('current_objective_id', objective_id);
+
+        if (activeGuards && activeGuards.length > 0) {
+          const notificationsToInsert = activeGuards.map(g => ({
+            resource_id: g.id,
+            title: '📢 Novedad de Gerencia en Bitácora',
+            body: content.replace('[GERENTE]', '').trim(),
+            type: 'novedad',
+            tenant_id: targetTenantId
+          }));
+          await supabase.from('notifications').insert(notificationsToInsert);
+        }
+      } catch (e) {
+        console.warn('[GUARD_BOOK_POST] Notice dispatch warning:', e);
+      }
+    }
+
     return NextResponse.json(responseData);
   } catch (error: any) {
     console.error('[GUARD_BOOK_POST]', error);

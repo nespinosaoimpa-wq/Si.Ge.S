@@ -377,8 +377,8 @@ export default function GuardBookPage() {
                             url={entry.resources?.avatar_url}
                           />
                           <div>
-                            <p className="text-sm font-semibold text-zinc-900 leading-tight">
-                              {entry.resources?.name || 'Operador desconocido'}
+                            <p className="text-sm font-bold text-zinc-900 leading-tight">
+                              {entry.author_name || entry.written_by || entry.resources?.name || (entry.content?.startsWith('[GERENTE]') ? '✍️ Mesa de Control (Gerente)' : (entry.entry_type === 'fichaje' ? '🤖 Sistema (Fichaje)' : 'Personal Autorizado'))}
                             </p>
                             <p className="text-xs text-zinc-500 mt-0.5">
                               {entry.objectives?.name || 'Objetivo general'}

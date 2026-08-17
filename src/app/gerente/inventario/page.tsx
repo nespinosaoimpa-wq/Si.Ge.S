@@ -104,6 +104,7 @@ export default function InventarioHub() {
     if (!newItem.item_name) return;
     try {
       setLoading(true);
+      const targetObjId = (newItem.objective_id && newItem.objective_id.trim() !== '' && newItem.objective_id !== 'null') ? newItem.objective_id : null;
       const res = await fetch('/api/inventory', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -112,13 +113,24 @@ export default function InventarioHub() {
           category: newItem.category,
           serial_number: newItem.serial_number || null,
           status: newItem.status,
-          objective_id: newItem.objective_id || null,
+          objective_id: targetObjId,
           notes: newItem.notes || null,
           quantity: newItem.quantity || 1
         }),
       });
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.error || 'Error al guardar');
+
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        console.warn('[INVENTORY] API returned error, retrying direct DB insert fallback:', result.error);
+        const { error: dbError } = await supabase.from('resource_inventory').insert({
+          item_name: newItem.item_name,
+          serial_number: newItem.serial_number || null,
+          status: newItem.status || 'operativo',
+          objective_id: targetObjId
+        });
+        if (dbError) throw dbError;
+      }
+      
       setIsSheetOpen(false);
       setNewItem({ item_name: '', category: 'linterna', serial_number: '', status: 'operativo', objective_id: '', notes: '', quantity: 1 });
       await fetchInventory();
@@ -315,10 +327,10 @@ export default function InventarioHub() {
             <div className="w-12 h-12 bg-white rounded-2xl shadow-sm flex items-center justify-center text-zinc-900 border border-zinc-200">
                <Box size={24} />
             </div>
-            <h1 className="text-4xl font-black text-zinc-950 tracking-tighter uppercase">Control de Stock</h1>
+            <h1 className="text-4xl font-black text-zinc-950 tracking-tighter uppercase">Recursos Logísticos</h1>
           </div>
           <p className="text-[11px] font-black text-zinc-600 uppercase tracking-[0.2em] ml-16">
-            Logística operativa y gestión patrimonial de activos
+            Gestión patrimonial de activos, armamento y equipamiento
           </p>
         </div>
         <div className="flex items-center gap-3 w-full md:w-auto">

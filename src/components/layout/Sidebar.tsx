@@ -21,7 +21,7 @@ const adminItems = [
   { name: 'Objetivos', href: '/gerente/objetivos', icon: ClipboardList },
   { name: 'Libro', href: '/gerente/libro', icon: BookOpen },
   { name: 'Hombre Vivo', href: '/gerente/hombre-vivo', icon: Activity },
-  { name: 'Stock', href: '/gerente/inventario', icon: Package },
+  { name: 'Recurso Logístico', href: '/gerente/inventario', icon: Package },
   { name: 'Planillas', href: '/gerente/planillas', icon: Calculator },
   { name: 'Accesos', href: '/gerente/accesos', icon: Settings },
 ];
