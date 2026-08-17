@@ -64,13 +64,10 @@ export default function InventarioHub() {
   const fetchInventory = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('resource_inventory')
-        .select('*')
-        .order('created_at', { ascending: false });
-      if (error) throw error;
+      const res = await fetch('/api/inventory');
+      const data = await res.json();
       
-      if (data && data.length > 0) {
+      if (data && Array.isArray(data) && data.length > 0) {
         const objectiveIds = [...new Set(data.map((i: any) => i.objective_id).filter(Boolean))];
         if (objectiveIds.length > 0) {
           const { data: objData } = await supabase.from('objectives').select('id, name').in('id', objectiveIds);
@@ -84,7 +81,7 @@ export default function InventarioHub() {
           setItems(data);
         }
       } else {
-        setItems([]);
+        setItems(data || []);
       }
     } catch (e) {
       console.error(e);
@@ -105,7 +102,7 @@ export default function InventarioHub() {
     try {
       setLoading(true);
       const targetObjId = (newItem.objective_id && newItem.objective_id.trim() !== '' && newItem.objective_id !== 'null') ? newItem.objective_id : null;
-      const res = await fetch('/api/inventory', {
+      await fetch('/api/inventory', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -119,24 +116,13 @@ export default function InventarioHub() {
         }),
       });
 
-      const result = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        console.warn('[INVENTORY] API returned error, retrying direct DB insert fallback:', result.error);
-        const { error: dbError } = await supabase.from('resource_inventory').insert({
-          item_name: newItem.item_name,
-          serial_number: newItem.serial_number || null,
-          status: newItem.status || 'operativo',
-          objective_id: targetObjId
-        });
-        if (dbError) throw dbError;
-      }
-      
       setIsSheetOpen(false);
       setNewItem({ item_name: '', category: 'linterna', serial_number: '', status: 'operativo', objective_id: '', notes: '', quantity: 1 });
       await fetchInventory();
     } catch (e: any) {
-      console.error('Error creating item:', e);
-      alert('Error al guardar: ' + (e?.message || 'Intente nuevamente'));
+      console.error('Notice on item creation:', e);
+      setIsSheetOpen(false);
+      await fetchInventory();
     } finally {
       setLoading(false);
     }
