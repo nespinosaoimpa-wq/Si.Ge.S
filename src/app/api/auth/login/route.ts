@@ -2,6 +2,15 @@ import { createClient } from '@/lib/supabase';
 import { createServiceClient } from '@/lib/supabase-server';
 import { NextResponse } from 'next/server';
 
+function normalizeRole(rawRole?: string): string {
+  if (!rawRole) return 'operador';
+  const r = rawRole.toLowerCase().trim();
+  if (r === 'superadmin') return 'superadmin';
+  if (r.includes('gerente') || r.includes('admin') || r.includes('supervisor')) return 'gerente';
+  if (r.includes('guardia') || r.includes('vigilador') || r.includes('operador') || r.includes('sereno') || r.includes('operativo')) return 'operador';
+  return r;
+}
+
 export async function POST(request: Request) {
   try {
     const { email, password, role: requestedRole } = await request.json();
