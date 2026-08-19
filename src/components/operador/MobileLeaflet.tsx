@@ -265,12 +265,47 @@ export default function MobileLeaflet({
     fetchDirections();
   }, [currentPosition, destinations]);
 
-  // Uncontrolled viewport configurations
+  // GeoJSON circle for Objective Geofence Perimeter
+  const destinationGeofenceData = useMemo(() => {
+    if (!destinations || destinations.length === 0) return null;
+    const dest = destinations[0];
+    const radiusMeters = (dest as any).radius || 150;
+    const lat = dest.position[0];
+    const lng = dest.position[1];
+
+    if (!lat || !lng) return null;
+
+    const points = 64;
+    const coords: [number, number][] = [];
+    const km = radiusMeters / 1000;
+
+    for (let i = 0; i < points; i++) {
+      const angle = (i * 360) / points;
+      const rad = (angle * Math.PI) / 180;
+      const dx = km * Math.cos(rad);
+      const dy = km * Math.sin(rad);
+      const pointLat = lat + (dy / 111.32);
+      const pointLng = lng + (dx / (111.32 * Math.cos((lat * Math.PI) / 180)));
+      coords.push([pointLng, pointLat]);
+    }
+    coords.push(coords[0]);
+
+    return {
+      type: 'Feature' as const,
+      properties: {},
+      geometry: {
+        type: 'Polygon' as const,
+        coordinates: [coords]
+      }
+    };
+  }, [destinations]);
+
+  // Uncontrolled viewport configurations: pitch 0 for 100% accurate 2D ortho alignment
   const initialViewState = useMemo(() => ({
     latitude: currentPosition?.[0] ?? -31.6350,
     longitude: currentPosition?.[1] ?? -60.7000,
     zoom: 16.5,
-    pitch: 55,
+    pitch: 0,
     bearing: 0
   }), []); // Empty deps: only initialize once on mount
 
@@ -327,49 +362,7 @@ export default function MobileLeaflet({
         style={{ width: '100%', height: '100%' }}
         ref={mapRef}
         onLoad={() => setMapLoaded(true)}
-        terrain={{ source: 'mapbox-dem', exaggeration: 1.3 }}
-        fog={{
-          'range': [0.8, 10],
-          'color': activeStyle === 'DARK' || activeStyle === 'NAVIGATION' ? '#09090b' : '#fafafa',
-          'horizon-blend': 0.15,
-          'star-intensity': activeStyle === 'DARK' || activeStyle === 'NAVIGATION' ? 0.6 : 0
-        }}
       >
-        {/* TERRAIN DEM */}
-        <Source
-          id="mapbox-dem"
-          type="raster-dem"
-          url="mapbox://mapbox.mapbox-terrain-dem-v1"
-          tileSize={512}
-        />
-        <Layer
-          id="sky"
-          type="sky"
-          paint={{
-            'sky-type': 'atmosphere',
-            'sky-atmosphere-sun': [0.0, 0.0],
-            'sky-atmosphere-sun-intensity': 12
-          }}
-        />
-
-        {/* 3D BUILDINGS */}
-        {activeStyle !== 'STANDARD' && (
-          <Layer
-            id="3d-buildings"
-            source="composite"
-            source-layer="building"
-            filter={['==', 'extrude', 'true']}
-            type="fill-extrusion"
-            minzoom={15.5}
-            paint={{
-              'fill-extrusion-color': activeStyle === 'DARK' || activeStyle === 'NAVIGATION' ? '#18181b' : '#e4e4e7',
-              'fill-extrusion-height': ['get', 'height'],
-              'fill-extrusion-base': ['get', 'min_height'],
-              'fill-extrusion-opacity': 0.75
-            }}
-          />
-        )}
-
         <GeolocateControl 
           position="top-right" 
           positionOptions={{ enableHighAccuracy: true }}
@@ -377,6 +370,29 @@ export default function MobileLeaflet({
           showUserHeading={true}
         />
         <NavigationControl position="top-right" showCompass={true} />
+
+        {/* ─── NATIVE GEOJSON DESTINATION GEOFENCE CIRCLE ─── */}
+        {destinationGeofenceData && (
+          <Source id="destination-geofence" type="geojson" data={destinationGeofenceData as any}>
+            <Layer
+              id="geofence-fill"
+              type="fill"
+              paint={{
+                'fill-color': '#0F4C5C',
+                'fill-opacity': 0.12
+              }}
+            />
+            <Layer
+              id="geofence-outline"
+              type="line"
+              paint={{
+                'line-color': '#0F4C5C',
+                'line-width': 2,
+                'line-dasharray': [3, 2]
+              }}
+            />
+          </Source>
+        )}
 
         {/* ─── ISOLATED BREADCRUMB GROUP ─── */}
         <OperatorLocationGroup
