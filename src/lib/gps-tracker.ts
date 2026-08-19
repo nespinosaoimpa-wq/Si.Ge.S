@@ -274,9 +274,9 @@ export class GPSTracker {
     const rawSpeed = pos.coords.speed || 0;
     const rawAccuracy = pos.coords.accuracy || 30;
 
-    // Discard extremely noisy measurements (>90 meters accuracy) to prevent jumps
-    if (rawAccuracy > 90 && this.kalmanVariance !== -1) {
-      console.warn(`[SIGPAD GPS] Descartando coordenada imprecisa: ±${Math.round(rawAccuracy)}m`);
+    // Discard extremely noisy measurements (>50 meters accuracy) to prevent jumps
+    if (rawAccuracy > 50 && this.kalmanVariance !== -1) {
+      console.warn(`[SIGPAD GPS] Descartando coordenada imprecisa (>50m): ±${Math.round(rawAccuracy)}m`);
       return;
     }
 
@@ -340,7 +340,7 @@ export class GPSTracker {
       }
     }
 
-    // 2. Adaptive sampling logic (Standard tracking)
+    // 2. Adaptive sampling logic (Tactical Blueprint: 60s stationary inside, 12s moving or outside)
     if (speed < ADAPTIVE_STATIONARY_SPEED) {
       if (this.stationaryStartTime === null) this.stationaryStartTime = now;
     } else {
@@ -348,7 +348,8 @@ export class GPSTracker {
     }
 
     const isStationary = this.stationaryStartTime !== null && (now - this.stationaryStartTime > STATIONARY_TIME_THRESHOLD);
-    const currentInterval = isStationary ? STATIONARY_INTERVAL : NORMAL_INTERVAL;
+    const isStationaryInside = isStationary && !this.isCurrentlyOutside;
+    const currentInterval = isStationaryInside ? 60000 : 12000;
 
     // 3. Geofence Logic
     if (this.objectiveLocation && this.geofenceRadius) {

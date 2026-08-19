@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Activity, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { playAlertTone } from '@/lib/push-notifications';
+import { playAlertTone, startCrazyHombreVivoAlarm, stopCrazyHombreVivoAlarm, unlockAudioContext } from '@/lib/push-notifications';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/components/providers/AuthProvider';
 
@@ -84,10 +84,12 @@ export default function HombreVivoCheckModal({
     setActiveCheck(alarm);
     setCountdown(180);
     setAnsweredSuccess(false);
-    playAlertTone('emergency');
+
+    unlockAudioContext();
+    startCrazyHombreVivoAlarm();
 
     if (typeof navigator !== 'undefined' && navigator.vibrate) {
-      navigator.vibrate([500, 150, 500, 150, 800]);
+      navigator.vibrate([500, 150, 500, 150, 800, 150, 500]);
     }
 
     if (timerRef.current) clearInterval(timerRef.current);
@@ -218,16 +220,20 @@ export default function HombreVivoCheckModal({
     };
   }, [activeCheck, triggerCheckModal, isTargetOperator]);
 
-  // Loop siren and vibration every 2.5 seconds while modal is active and unanswered
+  // Loop tactical vibration every 3 seconds while modal is active and unanswered
   useEffect(() => {
     if (activeCheck && !answeredSuccess) {
       const soundInterval = setInterval(() => {
-        playAlertTone('emergency');
         if (typeof navigator !== 'undefined' && navigator.vibrate) {
-          navigator.vibrate([400, 100, 400, 100, 600]);
+          navigator.vibrate([500, 150, 500, 150, 800, 150, 500]);
         }
-      }, 2500);
-      return () => clearInterval(soundInterval);
+      }, 3000);
+      return () => {
+        clearInterval(soundInterval);
+        stopCrazyHombreVivoAlarm();
+      };
+    } else {
+      stopCrazyHombreVivoAlarm();
     }
   }, [activeCheck?.id, answeredSuccess]);
 

@@ -48,29 +48,58 @@ export async function POST(request: Request) {
       if (activeS) currentShift = activeS;
     }
 
+    const targetShiftId = currentShift?.id || shift_id;
     const checkoutTime = new Date().toISOString();
     const checkinTime = currentShift?.checkin_time ? new Date(currentShift.checkin_time) : new Date(Date.now() - 8 * 3600 * 1000);
-    const durationMs = new Date(checkoutTime).getTime() - checkinTime.getTime();
-    const durationMinutes = Math.max(1, Math.round(durationMs / 60000));
-    const totalHours = parseFloat((durationMs / 3600000).toFixed(2));
-    const overtimeMinutes = Math.max(0, durationMinutes - STANDARD_SHIFT_MINUTES);
+    const grossDurationMs = new Date(checkoutTime).getTime() - checkinTime.getTime();
+    const grossDurationMinutes = Math.max(1, Math.round(grossDurationMs / 60000));
+    const grossHours = parseFloat((grossDurationMs / 3600000).toFixed(2));
+
+    // TACTICAL BLUEPRINT REQUIREMENT: Calculate total abandonment time for shift audit deduction
+    let abandonedMs = 0;
+    if (targetShiftId) {
+      try {
+        const { data: incidents } = await supabase
+          .from('geofencing_incidents')
+          .select('exit_at, return_at')
+          .eq('shift_id', targetShiftId);
+
+        if (incidents && incidents.length > 0) {
+          incidents.forEach(inc => {
+            const exit = inc.exit_at ? new Date(inc.exit_at).getTime() : null;
+            const ret = inc.return_at ? new Date(inc.return_at).getTime() : new Date(checkoutTime).getTime();
+            if (exit && ret > exit) {
+              abandonedMs += (ret - exit);
+            }
+          });
+        }
+      } catch (e) {
+        console.warn('[CHECKOUT] Abandonment calculation notice:', e);
+      }
+    }
+
+    const abandonedMinutes = Math.round(abandonedMs / 60000);
+    const netDurationMs = Math.max(0, grossDurationMs - abandonedMs);
+    const netDurationMinutes = Math.max(0, Math.round(netDurationMs / 60000));
+    const totalNetHours = parseFloat((netDurationMs / 3600000).toFixed(2));
+    const overtimeMinutes = Math.max(0, netDurationMinutes - STANDARD_SHIFT_MINUTES);
 
     const basePayload: Record<string, any> = {
       checkout_time: checkoutTime,
       checkout_latitude: latitude || 0,
       checkout_longitude: longitude || 0,
       status: 'completado',
-      duration_minutes: durationMinutes,
+      duration_minutes: netDurationMinutes,
+      gross_duration_minutes: grossDurationMinutes,
+      abandoned_minutes: abandonedMinutes,
       overtime_minutes: overtimeMinutes,
     };
 
-    const targetShiftId = currentShift?.id || shift_id;
-
     if (targetShiftId) {
-      // 3. Update the shift record with calculated hours
+      // 3. Update the shift record with calculated net hours
       const { error: shiftErrorFull } = await supabase
         .from('guard_shifts')
-        .update({ ...basePayload, total_hours: totalHours })
+        .update({ ...basePayload, total_hours: totalNetHours })
         .eq('id', targetShiftId);
 
       if (shiftErrorFull) {
@@ -87,7 +116,7 @@ export async function POST(request: Request) {
       try {
         await supabase
           .from('guard_shifts')
-          .update({ ...basePayload, total_hours: totalHours })
+          .update({ ...basePayload, total_hours: totalNetHours })
           .eq('operator_id', finalOpId)
           .in('status', ['activo', 'active']);
       } catch (e) {}
@@ -158,7 +187,7 @@ export async function POST(request: Request) {
           objective_id: currentShift.objective_id,
           operator_id: finalOpId,
           entry_type: 'fichaje',
-          content: `CIERRE DE TURNO — Duración: ${Math.floor(durationMinutes / 60)}h ${durationMinutes % 60}m${overtimeMinutes > 0 ? ` (Horas extra: ${Math.floor(overtimeMinutes / 60)}h ${overtimeMinutes % 60}m)` : ''}`,
+          content: `CIERRE DE TURNO — Duración neta: ${Math.floor(netDurationMinutes / 60)}h ${netDurationMinutes % 60}m${abandonedMinutes > 0 ? ` (Abandono descontado: ${abandonedMinutes}m)` : ''}${overtimeMinutes > 0 ? ` (Horas extra: ${Math.floor(overtimeMinutes / 60)}h ${overtimeMinutes % 60}m)` : ''}`,
           latitude: latitude || 0,
           longitude: longitude || 0,
           urgency: 'normal',
@@ -167,9 +196,11 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ 
-      shift: { id: targetShiftId || 'checkout-completed', status: 'completado', total_hours: totalHours }, 
-      durationMinutes, 
-      totalHours,
+      shift: { id: targetShiftId || 'checkout-completed', status: 'completado', total_hours: totalNetHours }, 
+      durationMinutes: netDurationMinutes,
+      grossDurationMinutes,
+      abandonedMinutes, 
+      totalHours: totalNetHours,
       overtimeMinutes 
     });
   } catch (error: any) {

@@ -10,6 +10,7 @@ import { useShift } from '@/components/providers/ShiftProvider';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { supabase } from '@/lib/supabase';
 
+import { unlockAudioContext } from '@/lib/push-notifications';
 import HombreVivoCheckModal from '@/components/operador/HombreVivoCheckModal';
 
 const navItems = [
@@ -31,9 +32,21 @@ export default function OperadorLayout({
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
+    // Tactically unlock Web Audio API Context on first screen touch/click
+    const handleUserGesture = () => {
+      unlockAudioContext();
+      window.removeEventListener('touchstart', handleUserGesture);
+      window.removeEventListener('click', handleUserGesture);
+    };
+
+    window.addEventListener('touchstart', handleUserGesture, { passive: true });
+    window.addEventListener('click', handleUserGesture, { passive: true });
+
     // Add a class to the html/body to trigger the scoped CSS overrides in globals.css
     document.documentElement.classList.add('operator-mode-layout');
     return () => {
+      window.removeEventListener('touchstart', handleUserGesture);
+      window.removeEventListener('click', handleUserGesture);
       document.documentElement.classList.remove('operator-mode-layout');
     };
   }, []);
