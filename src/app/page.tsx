@@ -92,21 +92,21 @@ export default function RootLandingPage() {
   return (
     <div className="min-h-screen bg-black text-zinc-100 flex flex-col selection:bg-white/20 selection:text-white overflow-x-hidden relative font-sans">
       
-      {/* ── 1. MARCA DE AGUA DEL LOGO SIGPAD FIJA AL FONDO (RESPONSIVE EN CELULARES) ──── */}
-      <div className="fixed inset-0 z-0 flex items-center justify-center pointer-events-none overflow-hidden bg-black p-4 md:p-8">
+      {/* ── 1. MARCA DE AGUA DEL LOGO SIGPAD FIJA AL FONDO (100% PANTALLA COMPLETA EN DESKTOP) ──── */}
+      <div className="fixed inset-0 z-0 flex items-center justify-center pointer-events-none overflow-hidden bg-black">
         <motion.div
           animate={{
-            scale: scrolled ? 1.1 : 1,
-            opacity: scrolled ? 0.05 : 0.95,
+            scale: scrolled ? 1.15 : 1,
+            opacity: scrolled ? 0.06 : 0.95,
           }}
           transition={{ duration: 0.7, ease: "easeOut" }}
-          className="relative w-full h-full flex items-center justify-center max-w-6xl mx-auto"
+          className="relative w-screen h-screen flex items-center justify-center"
         >
-          <div className="absolute inset-0 bg-[#0F4C5C]/25 blur-[120px] md:blur-[160px] rounded-full scale-125 md:scale-150" />
+          <div className="absolute inset-0 bg-[#0F4C5C]/25 blur-[160px] rounded-full scale-150" />
           <img 
             src="/logo_sigpad.png" 
             alt="SIGPAD Logo Background" 
-            className="w-full h-auto max-h-[60vh] md:max-h-[85vh] object-contain filter drop-shadow-[0_0_90px_rgba(255,255,255,0.22)] relative z-10 p-2 md:p-0"
+            className="w-full h-full md:object-cover object-contain filter drop-shadow-[0_0_90px_rgba(255,255,255,0.22)] relative z-10 scale-105 p-2 md:p-0"
           />
         </motion.div>
       </div>
@@ -117,7 +117,7 @@ export default function RootLandingPage() {
         <div className="absolute top-[60%] left-[-10%] w-[350px] md:w-[600px] h-[350px] md:h-[600px] bg-zinc-900/40 blur-[140px] md:blur-[180px] rounded-full" />
       </div>
 
-      {/* ── STICKY HEADER NAVIGATION (RESPONSIVE CELULAR / ESCRITORIO) ──────────────── */}
+      {/* ── STICKY HEADER NAVIGATION ─────────────────────────────────────── */}
       <header className="sticky top-0 w-full z-50 bg-black/90 backdrop-blur-2xl border-b border-zinc-900/90 h-16 md:h-20 flex items-center justify-between px-4 sm:px-6 lg:px-16">
         <Link href="/" className="flex items-center shrink-0">
           <SIGPADIcon className="w-28 sm:w-36 md:w-40 h-8 sm:h-10" />
@@ -186,7 +186,7 @@ export default function RootLandingPage() {
         )}
       </AnimatePresence>
 
-      {/* ── 2. PORTADA CUBIERTA INICIAL (PORTADA EN CELULARES Y ESCRITORIO) ────── */}
+      {/* ── 2. PORTADA CUBIERTA INICIAL ────────────────────────────────────── */}
       <section className="relative min-h-[calc(100vh-4rem)] md:h-[calc(100vh-5rem)] flex flex-col items-center justify-between px-4 sm:px-6 lg:px-12 w-full z-10 pointer-events-none py-6">
         <div className="flex-1" />
 
