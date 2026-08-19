@@ -289,13 +289,17 @@ export default function GuardiaDashboard() {
 
         {/* Warning if unlinked */}
         {linkageError && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-6 p-4 rounded-3xl bg-red-500/10 border border-red-500/20 flex items-center gap-4">
-            <div className="w-12 h-12 bg-red-500/20 text-red-500 rounded-2xl flex items-center justify-center shrink-0">
-              <AlertCircle size={24} />
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            className="mb-6 p-5 rounded-3xl bg-zinc-950 border-2 border-red-500/80 shadow-2xl backdrop-blur-xl flex items-center gap-4 text-white relative z-30"
+          >
+            <div className="w-12 h-12 bg-red-600/30 border border-red-500 text-red-400 rounded-2xl flex items-center justify-center shrink-0 shadow-lg">
+              <AlertCircle size={26} />
             </div>
-            <div>
-              <p className="text-xs font-black uppercase tracking-widest text-red-500">Cuenta No Vinculada</p>
-              <p className="text-sm font-medium text-red-400 mt-1">{linkageError}</p>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-black uppercase tracking-widest text-red-400">Cuenta No Vinculada</p>
+              <p className="text-xs font-semibold text-zinc-200 mt-1 leading-relaxed">{linkageError}</p>
             </div>
           </motion.div>
         )}

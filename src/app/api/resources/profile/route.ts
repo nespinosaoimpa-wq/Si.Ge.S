@@ -69,9 +69,33 @@ export async function GET(request: Request) {
         }
       }
 
-      if (!resource && primary) {
-        resource = primary;
-        debug.foundBy = 'primary_id_legacy_baja';
+      // 3. Tertiary: Auto-provision resource legajo for logged-in operator if email exists
+      if (!resource && email) {
+        try {
+          const rawName = email.split('@')[0];
+          const formattedName = rawName.charAt(0).toUpperCase() + rawName.slice(1).replace(/[._-]/g, ' ');
+          const nextId = `S-${Math.floor(1000 + Math.random() * 9000)}`;
+
+          const { data: newRes } = await supabase
+            .from('resources')
+            .insert({
+              id: nextId,
+              name: formattedName,
+              email: email.toLowerCase().trim(),
+              assigned_to: userId && userId !== 'recurso_demo' ? userId : null,
+              status: 'active',
+              role: 'Guardia de Seguridad'
+            })
+            .select('*, objectives!current_objective_id(*)')
+            .maybeSingle();
+
+          if (newRes) {
+            resource = newRes;
+            debug.action = 'auto_provisioned_legajo';
+          }
+        } catch (e) {
+          console.error('[PROFILE_API] Auto-provision error:', e);
+        }
       }
     }
 
