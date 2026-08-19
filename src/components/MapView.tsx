@@ -694,22 +694,41 @@ export default function MapView({
       .map(g => createCirclePolygon([g.latitude, g.longitude], g.accuracy || 10))
   }), [guards]);
 
-  const guardLinkLinesData = useMemo(() => ({
-    type: 'FeatureCollection',
-    features: (guards || [])
-      .filter(g => g.current_objective_id && g.latitude && g.longitude)
-      .map(g => {
-        const obj = objectives.find(o => o.id === g.current_objective_id);
-        if (!obj) return null;
-        return {
-          type: 'Feature',
-          geometry: {
-            type: 'LineString',
-            coordinates: [[g.longitude, g.latitude], [obj.longitude, obj.latitude]]
-          }
-        };
-      }).filter(Boolean)
-  }), [guards, objectives]);
+  const guardLinkLinesData = useMemo(() => {
+    const getDistanceKm = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+      const R = 6371;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = 
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    };
+
+    return {
+      type: 'FeatureCollection',
+      features: (guards || [])
+        .filter(g => g.current_objective_id && g.latitude && g.longitude)
+        .map(g => {
+          const obj = objectives.find(o => o.id === g.current_objective_id);
+          if (!obj || !obj.latitude || !obj.longitude) return null;
+          
+          // Omit lines for dummy test data across long distances (> 100 km)
+          const dist = getDistanceKm(g.latitude, g.longitude, obj.latitude, obj.longitude);
+          if (dist > 100) return null;
+
+          return {
+            type: 'Feature',
+            geometry: {
+              type: 'LineString',
+              coordinates: [[g.longitude, g.latitude], [obj.longitude, obj.latitude]]
+            }
+          };
+        }).filter(Boolean)
+    };
+  }, [guards, objectives]);
 
   if (!MAPBOX_TOKEN) {
     return (
