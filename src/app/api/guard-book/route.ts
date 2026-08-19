@@ -1,13 +1,17 @@
 import { createServiceClient } from '@/lib/supabase-server';
 import { NextRequest, NextResponse } from 'next/server';
 
-// GET /api/guard-book?objective_id=X&date=YYYY-MM-DD
+// GET /api/guard-book?objective_id=X&date=YYYY-MM-DD&start_date=X&end_date=Y&urgency=X&entry_type=Y
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const objectiveId = searchParams.get('objective_id');
     const date = searchParams.get('date');
-    const limit = parseInt(searchParams.get('limit') || '100');
+    const startDate = searchParams.get('start_date');
+    const endDate = searchParams.get('end_date');
+    const urgency = searchParams.get('urgency');
+    const entryType = searchParams.get('entry_type');
+    const limit = parseInt(searchParams.get('limit') || '300');
 
     const userCookie = request.cookies.get('SIGPAD_user');
     if (!userCookie) {
@@ -59,11 +63,17 @@ export async function GET(request: NextRequest) {
       query = query.eq('tenant_id', tenantId);
     }
 
-    if (objectiveId) query = query.eq('objective_id', objectiveId);
-    if (date) {
+    if (objectiveId && objectiveId !== 'all') query = query.eq('objective_id', objectiveId);
+    if (urgency && urgency !== 'all') query = query.eq('urgency', urgency);
+    if (entryType && entryType !== 'all') query = query.eq('entry_type', entryType);
+
+    if (date && date !== 'all') {
       query = query
         .gte('created_at', `${date}T00:00:00.000Z`)
         .lte('created_at', `${date}T23:59:59.999Z`);
+    } else if (startDate || endDate) {
+      if (startDate) query = query.gte('created_at', `${startDate}T00:00:00.000Z`);
+      if (endDate) query = query.lte('created_at', `${endDate}T23:59:59.999Z`);
     }
 
     let { data, error } = await query;
@@ -82,11 +92,17 @@ export async function GET(request: NextRequest) {
         .limit(limit);
 
       if (!isSuper && tenantId) fallbackQuery = fallbackQuery.eq('tenant_id', tenantId);
-      if (objectiveId) fallbackQuery = fallbackQuery.eq('objective_id', objectiveId);
-      if (date) {
+      if (objectiveId && objectiveId !== 'all') fallbackQuery = fallbackQuery.eq('objective_id', objectiveId);
+      if (urgency && urgency !== 'all') fallbackQuery = fallbackQuery.eq('urgency', urgency);
+      if (entryType && entryType !== 'all') fallbackQuery = fallbackQuery.eq('entry_type', entryType);
+
+      if (date && date !== 'all') {
         fallbackQuery = fallbackQuery
           .gte('created_at', `${date}T00:00:00.000Z`)
           .lte('created_at', `${date}T23:59:59.999Z`);
+      } else if (startDate || endDate) {
+        if (startDate) fallbackQuery = fallbackQuery.gte('created_at', `${startDate}T00:00:00.000Z`);
+        if (endDate) fallbackQuery = fallbackQuery.lte('created_at', `${endDate}T23:59:59.999Z`);
       }
 
       const fallbackResult = await fallbackQuery;
@@ -98,7 +114,7 @@ export async function GET(request: NextRequest) {
 
     const entries = data || [];
 
-    // ── Tarea 1: Calcular abandon_duration_seconds ──────────────────────────
+    // Calcular abandono en incidentes
     const enriched = entries.map(entry => {
       const legacyEntry = {
         ...entry,
@@ -130,16 +146,10 @@ export async function GET(request: NextRequest) {
       return legacyEntry;
     });
 
-    // ── Tarea 2: Zona Táctica (sin N+1) ────────────────────────────────────
-    // ANTES: Promise.all con 1 RPC por fila = N llamadas a Supabase
-    // AHORA: La zona se infiere del objetivo ya cargado en la query principal.
-    // Si una entrada tiene latitude/longitude, marcamos "Con coordenadas".
-    // Esto elimina completamente las llamadas RPC adicionales.
     const withZones = enriched.map((entry) => {
       if (!entry.latitude || !entry.longitude) {
         return { ...entry, tactical_zone: null };
       }
-      // Si el objetivo tiene nombre, lo usamos como zona de referencia
       const objectiveName = (entry.objectives as any)?.name || null;
       return {
         ...entry,
@@ -147,8 +157,6 @@ export async function GET(request: NextRequest) {
       };
     });
 
-
-    // ── Tarea 3: Reincidencia de Operadores (últimos 7 días) ────────────────
     const resourceIds = [...new Set(withZones.map(e => e.resource_id).filter(Boolean))];
     const weeklyAlertCounts: Record<string, number> = {};
 
@@ -236,7 +244,6 @@ export async function POST(request: NextRequest) {
       audio_url = null,
     } = body;
 
-    // Validate FKs exist before inserting to avoid silent failures
     if (!objective_id || objective_id === 'objetivo_demo') {
       return NextResponse.json({ error: 'objective_id inválido o faltante' }, { status: 400 });
     }
@@ -250,7 +257,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'tenant_id es requerido' }, { status: 400 });
     }
 
-    // RESOLVE: If rawResourceId is a UUID, find the actual resource.id
     let resource_id = rawResourceId;
     const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawResourceId);
     
@@ -287,7 +293,6 @@ export async function POST(request: NextRequest) {
 
     const responseData = data ? { ...data, resource_id: data.operator_id } : data;
 
-    // If critical alarm, insert into alarms table for push notification to ALL managers
     if (urgency === 'critica' || entry_type === 'emergencia') {
       let operatorName = resource_id;
       let objectiveName = '';
@@ -314,7 +319,6 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // If written by Gerente, dispatch notification to active operators on duty at this objective
     if (content?.startsWith('[GERENTE]') && objective_id) {
       try {
         const { data: activeGuards } = await supabase
