@@ -165,16 +165,31 @@ export function ObjectiveDetailPanel({
                   </div>
                   {onAssignOperator && (
                     <select 
-                      className="w-full h-11 text-xs font-black uppercase tracking-widest border border-zinc-200 rounded-xl px-4 bg-white text-zinc-900 focus:ring-1 focus:ring-[#0F4C5C]/50 appearance-none shadow-sm"
+                      className="w-full h-11 text-xs font-black uppercase tracking-widest border border-zinc-200 rounded-xl px-4 bg-white text-zinc-900 focus:ring-1 focus:ring-[#0F4C5C]/50 appearance-none shadow-sm cursor-pointer"
                       onChange={(e) => {
                         if (e.target.value) onAssignOperator(selectedObjective.id, e.target.value);
                       }}
                       defaultValue=""
                     >
-                      <option value="" disabled className="bg-white">Seleccionar Operador Libre...</option>
+                      <option value="" disabled className="bg-white">
+                        {activeGuards.filter(g => !g.current_objective_id).length > 0
+                          ? `Seleccionar Operador Libre (${activeGuards.filter(g => !g.current_objective_id).length} disponibles)...`
+                          : 'No hay operadores libres (Seleccionar para reasignar)...'}
+                      </option>
                       {activeGuards.filter(g => !g.current_objective_id).map(g => (
-                        <option key={g.id} value={g.id} className="bg-white">{g.name}</option>
+                        <option key={g.id} value={g.id} className="bg-white font-bold">
+                          🟢 {g.name} {g.role ? `• ${g.role}` : ''}
+                        </option>
                       ))}
+                      {activeGuards.filter(g => g.current_objective_id && g.current_objective_id !== selectedObjective.id).length > 0 && (
+                        <optgroup label="Operadores Asignados en otros puestos">
+                          {activeGuards.filter(g => g.current_objective_id && g.current_objective_id !== selectedObjective.id).map(g => (
+                            <option key={g.id} value={g.id} className="bg-white text-zinc-500">
+                              🔄 {g.name} (Reasignar desde otro puesto)
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
                     </select>
                   )}
                 </div>

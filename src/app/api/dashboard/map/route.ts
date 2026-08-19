@@ -135,8 +135,8 @@ export async function GET(req: NextRequest) {
 
     let resourcesQuery = supabase.from('resources')
       .select('*')
-      .in('status', ['activo', 'active'])
-      .gte('last_gps_update', new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString());
+      .neq('status', 'baja')
+      .neq('status', 'inactivo');
 
     let guardBookQuery = supabase.from('guard_book_entries')
       .select('*')

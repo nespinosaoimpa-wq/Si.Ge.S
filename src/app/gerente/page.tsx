@@ -176,7 +176,7 @@ export default function AdminDashboard() {
         shiftId: activeShift?.id,
         status: isAbandoned ? 'abandoned' : (isOffline ? 'offline' : r.status)
       };
-    }).filter((r: any) => r.status === 'active' || r.status === 'activo' || r.status === 'abandoned' || r.status === 'offline');
+    }).filter((r: any) => r.status !== 'baja' && r.status !== 'inactivo');
   }, [data.resources, data.activeShifts]);
 
   // --- HANDLERS ---
