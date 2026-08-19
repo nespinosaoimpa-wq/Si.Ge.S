@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Users, Search, Plus, ChevronRight, Phone, Mail, User,
   CheckCircle2, AlertCircle, Clock, X, AlertTriangle, ShieldCheck, Trash2, Package,
-  Shield, UserCheck, UserMinus, Settings
+  Shield, UserCheck, UserMinus, Settings, Filter, ShieldAlert
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
@@ -25,7 +25,9 @@ const EMPTY_FORM = {
 
 function daysUntilExpiry(expiry: string | null): number | null {
   if (!expiry) return null;
-  return Math.ceil((new Date(expiry).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+  const expiryDate = new Date(expiry);
+  if (isNaN(expiryDate.getTime())) return null;
+  return Math.ceil((expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 }
 
 // --- STABLE SUB-COMPONENTS ---
@@ -57,14 +59,11 @@ export default function PersonalPage() {
         return;
       }
       
-      // Fallback: request from the secure server-side session API
       if (user?.id) {
         try {
           const dbUser = await api.auth.session();
           if (dbUser?.tenant_id) {
             setResolvedTenantId(dbUser.tenant_id);
-            
-            // Self-healing: cache the tenant_id to local session storage and cookie
             const localUserJson = localStorage.getItem('SIGPAD_user');
             if (localUserJson) {
               const localUser = JSON.parse(localUserJson);
@@ -87,6 +86,8 @@ export default function PersonalPage() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [filter, setFilter] = useState('Todos');
+  const [kpiFilter, setKpiFilter] = useState<'all' | 'active' | 'service' | 'alert'>('all');
+  
   const [newStaff, setNewStaff] = useState({ ...EMPTY_FORM });
   const [objectives, setObjectives] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
@@ -220,7 +221,6 @@ export default function PersonalPage() {
       
       if (id && id.trim()) normalizedData.id = id.trim();
       
-      // Clean empty strings
       Object.keys(normalizedData).forEach(k => {
         if (normalizedData[k] === '') normalizedData[k] = null;
       });
@@ -273,23 +273,50 @@ export default function PersonalPage() {
     }
   };
 
-  const filteredStaff = useMemo(() => {
-    let list = staff.filter(s =>
-      (s.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (s.role || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (s.dni || '').toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    list = list.filter(s => s.status !== 'baja');
-    if (filter === 'Activos') list = list.filter(s => s.status === 'active' || s.status === 'Activo');
-    if (filter === 'Inactivos') list = list.filter(s => s.status !== 'active' && s.status !== 'Activo');
-    return list;
-  }, [searchTerm, staff, filter]);
+  // Cálculo de alertas
+  const alertStaffList = useMemo(() => {
+    return staff.filter(s => {
+      if (s.status === 'baja') return false;
+      const days = daysUntilExpiry(s.credential_expiry);
+      const isExpiring = days !== null && days <= 30; // incluye vencidos (<0) y por vencer (0..30)
+      const isMissingDoc = !s.dni || !s.credential_number;
+      return isExpiring || isMissingDoc;
+    });
+  }, [staff]);
 
   const activeCount = staff.filter(s => s.status === 'active' || s.status === 'Activo').length;
-  const expiringCount = staff.filter(s => {
-    const days = daysUntilExpiry(s.credential_expiry);
-    return s.status !== 'baja' && days !== null && days <= 30 && days >= 0;
-  }).length;
+  const inServiceCount = staff.filter(s => (s.status === 'active' || s.status === 'Activo') && !!s.current_objective_id).length;
+  const expiringCount = alertStaffList.length;
+
+  // Filtrado combinado (Buscador + Tab + KPI Card)
+  const filteredStaff = useMemo(() => {
+    let list = staff.filter(s => s.status !== 'baja');
+
+    // KPI Card Filter
+    if (kpiFilter === 'active') {
+      list = list.filter(s => s.status === 'active' || s.status === 'Activo');
+    } else if (kpiFilter === 'service') {
+      list = list.filter(s => (s.status === 'active' || s.status === 'Activo') && !!s.current_objective_id);
+    } else if (kpiFilter === 'alert') {
+      list = alertStaffList;
+    }
+
+    // Tab Filter (Activos / Inactivos)
+    if (filter === 'Activos') list = list.filter(s => s.status === 'active' || s.status === 'Activo');
+    if (filter === 'Inactivos') list = list.filter(s => s.status !== 'active' && s.status !== 'Activo');
+
+    // Search query
+    if (searchTerm.trim()) {
+      const q = searchTerm.toLowerCase().trim();
+      list = list.filter(s =>
+        (s.name || '').toLowerCase().includes(q) ||
+        (s.role || '').toLowerCase().includes(q) ||
+        (s.dni || '').toLowerCase().includes(q)
+      );
+    }
+
+    return list;
+  }, [searchTerm, staff, filter, kpiFilter, alertStaffList]);
 
   const filteredAuthUsers = useMemo(() => {
     return authorizedUsers.filter(u => 
@@ -298,7 +325,7 @@ export default function PersonalPage() {
   }, [authorizedUsers, authSearchTerm]);
 
   return (
-    <div className="p-6 lg:p-10 space-y-8 max-w-7xl mx-auto bg-zinc-50 min-h-screen pb-32">
+    <div className="p-6 lg:p-10 space-y-8 max-w-7xl mx-auto bg-zinc-50 min-h-screen pb-32 font-sans">
 
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 pb-8 border-b border-zinc-200">
@@ -382,33 +409,97 @@ export default function PersonalPage() {
       {/* TAB CONTENT: STAFF */}
       {activeTab === 'staff' && (
         <div className="space-y-8">
-          {/* Stats */}
+          
+          {/* TARJETAS KPI INTERACTIVAS DE FILTRADO */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { label: 'Fuerza Total', value: staff.length, icon: Users, color: 'text-zinc-900', bg: 'bg-zinc-100' },
-              { label: 'Nivel Operativo', value: activeCount, icon: CheckCircle2, color: 'text-[#0F4C5C]', bg: 'bg-[#0F4C5C]/10' },
-              { label: 'Servicio Activo', value: activeCount, icon: Clock, color: 'text-blue-600', bg: 'bg-blue-50' },
               {
-                label: 'Credenciales Alert', value: expiringCount, icon: AlertTriangle,
-                color: expiringCount > 0 ? 'text-red-500' : 'text-zinc-400', bg: expiringCount > 0 ? 'bg-red-50' : 'bg-zinc-100'
+                id: 'all',
+                label: 'Fuerza Total',
+                value: staff.length,
+                icon: Users,
+                color: 'text-zinc-900',
+                bg: 'bg-zinc-100',
+                activeBorder: 'ring-2 ring-zinc-900 border-zinc-900 bg-zinc-50'
               },
-            ].map((stat, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-white border border-zinc-200 shadow-sm rounded-2xl p-4 sm:p-6 flex items-center gap-4 group hover:border-[#0F4C5C]/30 transition-all overflow-hidden"
-              >
-                <div className={cn('w-12 h-12 rounded-xl flex items-center justify-center transition-transform group-hover:scale-105 shrink-0', stat.bg)}>
-                  <stat.icon size={22} className={stat.color} />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xl sm:text-2xl font-bold text-zinc-950 tracking-tight leading-none truncate">{stat.value}</p>
-                  <p className="text-xs font-medium text-zinc-500 mt-1 truncate">{stat.label}</p>
-                </div>
-              </motion.div>
-            ))}
+              {
+                id: 'active',
+                label: 'Nivel Operativo',
+                value: activeCount,
+                icon: CheckCircle2,
+                color: 'text-[#0F4C5C]',
+                bg: 'bg-[#0F4C5C]/10',
+                activeBorder: 'ring-2 ring-[#0F4C5C] border-[#0F4C5C] bg-[#0F4C5C]/5'
+              },
+              {
+                id: 'service',
+                label: 'Servicio Activo',
+                value: inServiceCount,
+                icon: Clock,
+                color: 'text-blue-600',
+                bg: 'bg-blue-50',
+                activeBorder: 'ring-2 ring-blue-600 border-blue-600 bg-blue-50/50'
+              },
+              {
+                id: 'alert',
+                label: 'Credenciales Alert',
+                value: expiringCount,
+                icon: AlertTriangle,
+                color: expiringCount > 0 ? 'text-red-600' : 'text-zinc-400',
+                bg: expiringCount > 0 ? 'bg-red-100' : 'bg-zinc-100',
+                activeBorder: 'ring-2 ring-red-500 border-red-500 bg-red-50'
+              },
+            ].map((stat) => {
+              const isSelected = kpiFilter === stat.id;
+
+              return (
+                <motion.div
+                  key={stat.id}
+                  onClick={() => setKpiFilter(isSelected && stat.id !== 'all' ? 'all' : (stat.id as any))}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={cn(
+                    'cursor-pointer bg-white border border-zinc-200 shadow-sm rounded-2xl p-4 sm:p-6 flex items-center justify-between transition-all relative overflow-hidden group hover:shadow-md select-none',
+                    isSelected ? stat.activeBorder : 'hover:border-zinc-300'
+                  )}
+                >
+                  <div className="flex items-center gap-4 min-w-0">
+                    <div className={cn('w-12 h-12 rounded-xl flex items-center justify-center transition-transform group-hover:scale-105 shrink-0', stat.bg)}>
+                      <stat.icon size={22} className={stat.color} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xl sm:text-2xl font-black text-zinc-950 tracking-tight leading-none truncate">{stat.value}</p>
+                      <p className="text-xs font-bold text-zinc-500 uppercase tracking-wider mt-1 truncate">{stat.label}</p>
+                    </div>
+                  </div>
+
+                  {isSelected && stat.id !== 'all' && (
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-zinc-900 text-white shrink-0">
+                      Filtro Activo
+                    </span>
+                  )}
+                </motion.div>
+              );
+            })}
           </div>
+
+          {/* INDICADOR DE FILTRO ACTIVO POR KPI */}
+          {kpiFilter !== 'all' && (
+            <div className="flex items-center justify-between bg-zinc-900 text-white px-5 py-3 rounded-xl text-xs font-bold uppercase tracking-wider shadow-md animate-fadeIn">
+              <div className="flex items-center gap-2">
+                <Filter size={16} className="text-amber-400" />
+                <span>
+                  Filtrando por: <strong>{kpiFilter === 'alert' ? '🚨 Credenciales Alert / Legajos Incompletos' : kpiFilter === 'service' ? '⏰ Servicio Activo en Objetivo' : '✅ Nivel Operativo Activo'}</strong> ({filteredStaff.length} de {staff.length} personal)
+                </span>
+              </div>
+              <button
+                onClick={() => setKpiFilter('all')}
+                className="flex items-center gap-1 px-3 py-1 bg-white/10 hover:bg-white/20 text-white rounded-lg text-[10px] font-black transition-colors"
+              >
+                <X size={14} /> Mostrar Todos
+              </button>
+            </div>
+          )}
 
           {/* Search & Filters */}
           <div className="flex flex-col md:flex-row gap-5">
@@ -427,7 +518,7 @@ export default function PersonalPage() {
                   key={f}
                   onClick={() => setFilter(f)}
                   className={cn(
-                    'px-4 py-2 rounded-lg text-xs font-medium transition-all',
+                    'px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all',
                     filter === f ? 'bg-zinc-900 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-950'
                   )}
                 >
@@ -437,7 +528,7 @@ export default function PersonalPage() {
             </div>
           </div>
 
-          {/* Staff Grid */}
+          {/* GRID DE PERSONAL CON ESTILOS COMPLETOS DE ALERTA (Fondo Rojo/Ámbar) */}
           {loading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {Array.from({ length: 6 }).map((_, i) => (
@@ -447,69 +538,141 @@ export default function PersonalPage() {
           ) : filteredStaff.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-32 bg-white border border-dashed border-zinc-200 rounded-[3rem]">
               <div className="w-20 h-20 bg-zinc-50 rounded-full flex items-center justify-center mb-6">
-                 <Users size={40} className="text-zinc-200" />
+                <Users size={40} className="text-zinc-200" />
               </div>
-              <p className="text-sm font-medium text-zinc-400">No se encontraron registros de personal</p>
+              <p className="text-sm font-bold text-zinc-400 uppercase tracking-wider">
+                {kpiFilter === 'alert' ? 'No hay credenciales vencidas ni alertas activas' : 'No se encontraron registros de personal'}
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {filteredStaff.map((person) => {
                 const days = daysUntilExpiry(person.credential_expiry);
-                const isExpiringSoon = days !== null && days <= 30 && days >= 0;
                 const isExpired = days !== null && days < 0;
+                const isExpiringSoon = days !== null && days <= 30 && days >= 0;
+                const isMissingDoc = !person.dni || !person.credential_number;
                 const objectiveName = objectives.find(o => o.id === person.current_objective_id)?.name;
+
+                // Estilo del perfil completo según el estado de alerta
+                const cardContainerStyle = isExpired
+                  ? 'bg-red-500/10 border-2 border-red-500 shadow-xl shadow-red-500/10'
+                  : isExpiringSoon
+                  ? 'bg-amber-500/10 border-2 border-amber-500 shadow-xl shadow-amber-500/10'
+                  : isMissingDoc
+                  ? 'bg-orange-500/5 border-2 border-orange-400/70 shadow-sm'
+                  : 'bg-white border border-zinc-200 shadow-sm hover:shadow-xl hover:border-[#0F4C5C]/30';
 
                 return (
                   <motion.div
                     key={person.id}
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="group bg-white border border-zinc-200 shadow-sm hover:shadow-xl hover:border-[#0F4C5C]/30 rounded-[2.5rem] overflow-hidden transition-all relative flex flex-col"
+                    className={cn(
+                      'group rounded-[2.5rem] overflow-hidden transition-all relative flex flex-col',
+                      cardContainerStyle
+                    )}
                   >
-                    {(isExpiringSoon || isExpired) && (
-                      <div className={cn('h-1.5 w-full', isExpired ? 'bg-red-500' : 'bg-[#0F4C5C]')} />
+                    {/* BANNERS DESTACADOS EN LA PARTE SUPERIOR DEL PERFIL */}
+                    {isExpired && (
+                      <div className="w-full bg-red-600 text-white text-[11px] font-black uppercase px-6 py-2.5 flex items-center justify-between tracking-wider shadow-sm">
+                        <span className="flex items-center gap-1.5">
+                          <AlertCircle size={15} /> CREDENCIAL VENCIDA
+                        </span>
+                        <span className="font-mono bg-white/20 px-2 py-0.5 rounded text-[10px]">
+                          VENCIDO HACE {Math.abs(days!)} DÍAS
+                        </span>
+                      </div>
+                    )}
+
+                    {isExpiringSoon && !isExpired && (
+                      <div className="w-full bg-amber-500 text-zinc-950 text-[11px] font-black uppercase px-6 py-2.5 flex items-center justify-between tracking-wider shadow-sm">
+                        <span className="flex items-center gap-1.5">
+                          <AlertTriangle size={15} /> POR VENCER PRÓXIMAMENTE
+                        </span>
+                        <span className="font-mono bg-black/10 px-2 py-0.5 rounded text-[10px]">
+                          VENCE EN {days} DÍAS
+                        </span>
+                      </div>
+                    )}
+
+                    {isMissingDoc && !isExpired && !isExpiringSoon && (
+                      <div className="w-full bg-orange-500 text-white text-[11px] font-black uppercase px-6 py-2.5 flex items-center justify-between tracking-wider shadow-sm">
+                        <span className="flex items-center gap-1.5">
+                          <AlertTriangle size={15} /> LEGAJO INCOMPLETO
+                        </span>
+                        <span className="font-mono bg-white/20 px-2 py-0.5 rounded text-[10px]">
+                          FALTA DOC / CREDENCIAL
+                        </span>
+                      </div>
                     )}
 
                     <div className="p-8 flex-1">
-                      <div className="flex items-start justify-between mb-8">
-                        <div className="w-20 h-20 rounded-3xl bg-zinc-50 border border-zinc-100 flex items-center justify-center overflow-hidden shadow-inner group-hover:border-[#0F4C5C]/50 transition-colors">
+                      <div className="flex items-start justify-between mb-6">
+                        <div className="w-20 h-20 rounded-3xl bg-white border-2 border-zinc-200 flex items-center justify-center overflow-hidden shadow-inner group-hover:border-[#0F4C5C]/50 transition-colors shrink-0">
                           {person.avatar_url
                             ? <img src={person.avatar_url} alt={person.name} className="w-full h-full object-cover" />
-                            : <User size={32} className="text-zinc-200 group-hover:text-[#0F4C5C] transition-colors" />
+                            : <User size={32} className="text-zinc-300 group-hover:text-[#0F4C5C] transition-colors" />
                           }
                         </div>
+
                         <div className="flex flex-col items-end gap-2">
                           <span className={cn(
-                            'text-xs font-medium px-2.5 py-1 rounded-lg border',
-                            person.status === 'active' || person.status === 'Activo'
-                              ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
-                              : 'bg-zinc-50 text-zinc-400 border-zinc-100'
+                            'text-xs font-black uppercase tracking-wider px-3 py-1 rounded-xl border shadow-sm',
+                            isExpired
+                              ? 'bg-red-600 text-white border-red-700'
+                              : isExpiringSoon
+                              ? 'bg-amber-500 text-zinc-950 border-amber-600'
+                              : person.status === 'active' || person.status === 'Activo'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : 'bg-zinc-100 text-zinc-500 border-zinc-200'
                           )}>
-                            {person.status === 'active' || person.status === 'Activo' ? 'Activo' : 'Inactivo'}
+                            {isExpired ? '🚨 ALERTA' : isExpiringSoon ? '⚠️ REVISAR' : person.status === 'active' || person.status === 'Activo' ? 'Activo' : 'Inactivo'}
                           </span>
                         </div>
                       </div>
 
                       <div className="mb-6">
-                        <h3 className="text-base font-semibold text-zinc-900 tracking-tight group-hover:text-[#0F4C5C] transition-colors truncate">
+                        <h3 className="text-lg font-black text-zinc-950 tracking-tight group-hover:text-[#0F4C5C] transition-colors truncate uppercase">
                           {person.name}
                         </h3>
-                        <p className="text-xs font-normal text-zinc-400 mt-0.5">
-                          {person.role || 'Operador de seguridad'}
+                        <p className="text-xs font-bold text-zinc-500 mt-0.5 uppercase tracking-wider">
+                          {person.role || 'Operador de Seguridad'}
                         </p>
                       </div>
 
-                      <div className="space-y-3 pt-6 border-t border-zinc-50">
-                        {person.dni && (
-                          <div className="flex items-center gap-2 text-xs text-zinc-500">
-                            <ShieldCheck size={14} className="text-zinc-400" />
+                      <div className="space-y-3 pt-6 border-t border-zinc-200/60">
+                        {person.dni ? (
+                          <div className="flex items-center gap-2 text-xs text-zinc-700 font-medium">
+                            <ShieldCheck size={15} className="text-zinc-500" />
                             <span>DNI {person.dni}</span>
                           </div>
+                        ) : (
+                          <div className="flex items-center gap-2 text-xs text-red-600 font-bold">
+                            <AlertCircle size={15} />
+                            <span>Sin número de DNI registrado</span>
+                          </div>
                         )}
-                        {objectiveName && (
-                          <div className="flex items-center gap-2 text-xs text-zinc-800">
-                            <div className="w-1.5 h-1.5 rounded-full bg-[#0F4C5C]" />
-                            <span className="truncate font-medium">{objectiveName}</span>
+
+                        {person.credential_number ? (
+                          <div className="flex items-center gap-2 text-xs text-zinc-700 font-medium">
+                            <ShieldAlert size={15} className={isExpired ? "text-red-600" : isExpiringSoon ? "text-amber-600" : "text-zinc-500"} />
+                            <span className="font-mono font-bold">CRED: {person.credential_number}</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 text-xs text-orange-600 font-bold">
+                            <AlertCircle size={15} />
+                            <span>Sin número de credencial Habilitada</span>
+                          </div>
+                        )}
+
+                        {objectiveName ? (
+                          <div className="flex items-center gap-2 text-xs text-zinc-900 font-bold">
+                            <div className="w-2 h-2 rounded-full bg-[#0F4C5C]" />
+                            <span className="truncate uppercase">{objectiveName}</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 text-xs text-zinc-400 font-medium italic">
+                            <span>Sin objetivo asignado actualmente</span>
                           </div>
                         )}
                       </div>
@@ -517,19 +680,19 @@ export default function PersonalPage() {
 
                     <div className="px-8 pb-8 flex items-center justify-between gap-3 mt-auto">
                       <Link href={`/gerente/personal/${person.id}`} className="flex-1">
-                        <button className="w-full h-9 bg-zinc-50 text-zinc-800 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 hover:bg-zinc-900 hover:text-white transition-all shadow-sm border border-zinc-200">
-                          Legajo <ChevronRight size={12} />
+                        <button className="w-full h-10 bg-zinc-900 text-white rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 hover:bg-black transition-all shadow-md">
+                          Legajo completo <ChevronRight size={14} />
                         </button>
                       </Link>
                       <button
                         onClick={() => handleEditClick(person)}
-                        className="flex-1 h-9 bg-[#0F4C5C]/5 text-[#0F4C5C] rounded-lg text-xs font-medium hover:bg-[#0F4C5C]/10 transition-all border border-[#0F4C5C]/10"
+                        className="h-10 px-4 bg-white/80 hover:bg-white text-zinc-900 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border border-zinc-300 shadow-sm"
                       >
                         Editar
                       </button>
                       <button
                         onClick={() => handleSoftDelete(person.id, person.name)}
-                        className="w-11 h-11 rounded-xl bg-zinc-50 text-zinc-300 hover:text-red-500 hover:bg-red-50 flex items-center justify-center transition-all border border-zinc-100"
+                        className="w-10 h-10 rounded-xl bg-white/80 text-zinc-400 hover:text-red-600 hover:bg-red-50 flex items-center justify-center transition-all border border-zinc-200 shrink-0"
                         title="Dar de baja"
                       >
                         <Trash2 size={16} />
@@ -546,7 +709,6 @@ export default function PersonalPage() {
       {/* TAB CONTENT: ACCESS */}
       {activeTab === 'access' && (
         <div className="space-y-6">
-          {/* Whitelist Search Bar */}
           <div className="flex bg-white border border-zinc-200 p-3 rounded-2xl items-center gap-3 shadow-sm">
             <Search size={18} className="text-zinc-400" />
             <input 
@@ -558,7 +720,6 @@ export default function PersonalPage() {
             />
           </div>
 
-          {/* List of Whitelisted Users */}
           <div className="bg-white border border-zinc-200 rounded-[2rem] overflow-hidden shadow-sm divide-y divide-zinc-100">
             {loading ? (
                <div className="p-20 flex flex-col items-center justify-center gap-4">
@@ -657,8 +818,6 @@ export default function PersonalPage() {
               </div>
 
               <form onSubmit={handleSaveStaff} className="p-8 space-y-8 overflow-y-auto custom-scrollbar">
-                
-                {/* PHOTO UPLOAD SECTION */}
                 <div className="flex flex-col items-center gap-4 py-4 bg-zinc-50 rounded-3xl border border-zinc-100 border-dashed">
                   <div className="relative group">
                     <div className="w-24 h-24 rounded-3xl bg-white border-2 border-zinc-200 overflow-hidden flex items-center justify-center shadow-md transition-all group-hover:border-[#0F4C5C]">
@@ -675,6 +834,7 @@ export default function PersonalPage() {
                   </div>
                   <p className="text-xs font-medium text-zinc-500">Foto de perfil (opcional)</p>
                 </div>
+                
                 <div className="space-y-5">
                   <div className="flex items-center gap-3">
                      <div className="w-6 h-6 bg-[#0F4C5C]/10 rounded flex items-center justify-center">
