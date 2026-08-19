@@ -459,16 +459,17 @@ export default function MobileLeaflet({
             key={dest.id} 
             latitude={dest.position[0]} 
             longitude={dest.position[1]}
+            anchor="bottom"
           >
-            <div className="flex flex-col items-center">
-              <div className="bg-zinc-950/90 backdrop-blur-sm px-2.5 py-1 rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.5)] border border-primary/45 mb-2">
-                <p className="text-[9px] font-black uppercase tracking-widest text-primary whitespace-nowrap">{dest.name}</p>
+            <div className="flex flex-col items-center pb-1">
+              <div className="bg-zinc-950/90 backdrop-blur-sm px-2.5 py-1 rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.5)] border border-[#0F4C5C]/50 mb-1.5 pointer-events-none select-none">
+                <p className="text-[9px] font-black uppercase tracking-widest text-[#0F4C5C] whitespace-nowrap">{dest.name}</p>
               </div>
               <div className="relative flex items-center justify-center">
                 {/* Ping animation mimicking Uber radar circles */}
-                <div className="absolute w-24 h-24 bg-primary/10 border border-primary/25 rounded-full animate-ping" style={{ animationDuration: '2.5s' }} />
-                <div className="absolute w-12 h-12 bg-primary/15 rounded-full" />
-                <MapPin className="relative z-10 w-7 h-7 text-primary fill-black" />
+                <div className="absolute w-20 h-20 bg-[#0F4C5C]/10 border border-[#0F4C5C]/25 rounded-full animate-ping" style={{ animationDuration: '2.5s' }} />
+                <div className="absolute w-10 h-10 bg-[#0F4C5C]/15 rounded-full" />
+                <MapPin className="relative z-10 w-7 h-7 text-[#0F4C5C] fill-black drop-shadow-md" />
               </div>
             </div>
           </Marker>

@@ -242,7 +242,8 @@ export class GPSTracker {
   private applyKalmanFilter(measuredLat: number, measuredLng: number, accuracyMeters: number, speedMs: number, timestampMs: number) {
     const measurementNoise = accuracyMeters * accuracyMeters;
 
-    if (this.kalmanVariance < 0) {
+    // High-precision satellite lock: snap immediately without smoothing lag
+    if (accuracyMeters <= 12 || this.kalmanVariance < 0) {
       this.kalmanLat = measuredLat;
       this.kalmanLng = measuredLng;
       this.kalmanVariance = measurementNoise;
