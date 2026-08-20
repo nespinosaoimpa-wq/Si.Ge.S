@@ -14,6 +14,7 @@ interface BottomSheetProps {
   title?: string;
   className?: string;
   nonBlocking?: boolean; // If true, does not block clicks on the map behind it
+  preventBackdropClose?: boolean; // If true, clicking backdrop does not close form
   theme?: 'light' | 'dark' | 'glass';
 }
 
@@ -26,6 +27,7 @@ export function BottomSheet({
   title,
   className,
   nonBlocking = false,
+  preventBackdropClose = true, // Defaults to TRUE for safety against accidental clicks
   theme = 'glass'
 }: BottomSheetProps) {
   const [currentHeight, setCurrentHeight] = useState(snapPoints[defaultSnapIndex]);
@@ -101,7 +103,7 @@ export function BottomSheet({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={onClose}
+              onClick={preventBackdropClose ? undefined : onClose}
               className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-[200]"
             />
           )}
