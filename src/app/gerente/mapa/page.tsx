@@ -27,9 +27,12 @@ import { Input } from '@/components/ui/Input';
 import { api } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
-import { useMediaQuery } from '@/hooks/use-media-query'; // Presumiendo que existe o lo simularemos
+import { reverseGeocode } from '@/lib/geocoding';
 
-const TacticalLeaflet = dynamic(() => import('@/components/gerente/TacticalLeaflet'), { ssr: false });
+const MapView = dynamic(() => import('@/components/MapView'), { 
+  ssr: false,
+  loading: () => <div className="w-full h-full bg-black flex items-center justify-center text-xs font-mono text-zinc-500">Cargando Mapbox GL JS v3...</div>
+});
 
 export default function MapaOperativoPage() {
   const [data, setData] = useState<any>({ objectives: [], resources: [] });
@@ -39,6 +42,10 @@ export default function MapaOperativoPage() {
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   
+  // Tactical Layer Control & Heatmap Engine
+  const [mapTileStyle, setMapTileStyle] = useState<'dark' | 'streets' | 'satellite' | 'hybrid'>('dark');
+  const [showHeatmap, setShowHeatmap] = useState(false);
+
   // Real-time critical alarm state & map center control
   const [activeAlert, setActiveAlert] = useState<any>(null);
   const [mapCenter, setMapCenter] = useState<[number, number]>([-31.6107, -60.6973]);
@@ -502,20 +509,70 @@ export default function MapaOperativoPage() {
         )}
 
         <div className="flex-1 relative z-0">
-          <TacticalLeaflet 
+          <MapView 
             objectives={data.objectives}
-            resources={data.resources}
+            guards={data.resources}
             incidents={data.recentIncidents}
             center={mapCenter}
             className="w-full h-full"
-            onPointSelect={(p) => setSelectedItem(p)}
-            onMapClick={(coords) => {
-               if (isAddingPoint) setLastClickedCoords(coords);
+            onObjectiveSelect={(p: any) => setSelectedItem(p)}
+            onMapClick={async (coords) => {
+               if (isAddingPoint) {
+                 setLastClickedCoords(coords);
+                 try {
+                   const rev = await reverseGeocode(coords.lat, coords.lng);
+                   if (rev?.displayName) {
+                     setNewObjective(prev => ({ ...prev, address: rev.displayName }));
+                   }
+                 } catch (e) {}
+               }
             }}
             isPickerMode={isAddingPoint}
             draftCoords={lastClickedCoords}
+            tileStyle={mapTileStyle}
+            showHeatmap={showHeatmap}
             onIncidentResolve={handleResolveIncident}
           />
+
+          {/* Tactical Layer Selector Bar */}
+          <div className="absolute top-8 right-8 z-[20] flex items-center gap-1.5 p-1.5 bg-black/80 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl">
+            <button
+              onClick={() => setMapTileStyle('dark')}
+              className={cn(
+                "px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all",
+                mapTileStyle === 'dark' ? "bg-[#D4AF37] text-black shadow-md" : "text-zinc-400 hover:text-white"
+              )}
+            >
+              🌒 Táctico
+            </button>
+            <button
+              onClick={() => setMapTileStyle('streets')}
+              className={cn(
+                "px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all",
+                mapTileStyle === 'streets' ? "bg-[#D4AF37] text-black shadow-md" : "text-zinc-400 hover:text-white"
+              )}
+            >
+              🗺️ Calles
+            </button>
+            <button
+              onClick={() => setMapTileStyle('satellite')}
+              className={cn(
+                "px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all",
+                mapTileStyle === 'satellite' ? "bg-[#D4AF37] text-black shadow-md" : "text-zinc-400 hover:text-white"
+              )}
+            >
+              🛰️ Satélite
+            </button>
+            <button
+              onClick={() => setShowHeatmap(!showHeatmap)}
+              className={cn(
+                "px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5",
+                showHeatmap ? "bg-red-600 text-white shadow-md animate-pulse" : "text-zinc-400 hover:text-white"
+              )}
+            >
+              🔥 Heatmap
+            </button>
+          </div>
         </div>
 
         {/* HUD - Conditional on Desktop */}
