@@ -302,43 +302,43 @@ const ObjectiveMarkerContent = React.memo(({
     <div className="relative flex flex-col items-center group cursor-pointer">
       {/* Visual indicator for relocation */}
       {isRelocating && isSelected && (
-        <div className="absolute -top-16 left-1/2 -translate-x-1/2 bg-black text-[#0F4C5C] text-[8px] font-black uppercase px-2.5 py-1.5 rounded-lg whitespace-nowrap animate-bounce border-2 border-[#0F4C5C] shadow-[0_0_20px_rgba(15, 76, 92,0.4)] z-[60]">
+        <div className="absolute -top-16 left-1/2 -translate-x-1/2 bg-black text-white text-[8px] font-black uppercase px-2.5 py-1.5 rounded-lg whitespace-nowrap animate-bounce border-2 border-[#0F4C5C] shadow-2xl z-[60]">
           MODO REUBICACIÓN: ARRASTRAR MARCADOR
         </div>
       )}
       {/* Objective Name Label */}
       <div className={cn(
-        "absolute -top-10 px-2.5 py-1 bg-zinc-900/90 backdrop-blur-md text-white text-[9px] font-black uppercase tracking-widest rounded-lg border border-white/10 shadow-2xl transition-all duration-300 pointer-events-none whitespace-nowrap z-50 flex items-center gap-1.5",
+        "absolute -top-10 px-2.5 py-1 bg-zinc-950 text-white text-[9px] font-black uppercase tracking-widest rounded-lg border border-white/20 shadow-2xl transition-all duration-300 pointer-events-none whitespace-nowrap z-50 flex items-center gap-1.5",
         isSelected ? "opacity-100 scale-100 -translate-y-1" : "opacity-0 scale-90 translate-y-2 group-hover:opacity-100 group-hover:scale-100 group-hover:translate-y-0"
       )}>
         <span className={cn(
           "w-2 h-2 rounded-full",
-          isCritical ? "bg-red-500 animate-ping" : isManned ? "bg-emerald-400" : "bg-amber-400"
+          isCritical ? "bg-red-400 animate-ping" : isManned ? "bg-emerald-400" : "bg-amber-400"
         )} />
         {obj.name}
-        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-zinc-900 rotate-45 border-r border-b border-white/10" />
+        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-zinc-950 rotate-45 border-r border-b border-white/20" />
       </div>
 
-      {/* Dynamic Status Marker Icon (Green: Manned OK, Amber: Vacant, Red: Critical SOS) */}
+      {/* Solid High-Visibility Status Badge (Green: Manned OK, Amber: Vacant/Pending, Red: SOS Incident) */}
       <div className={cn(
-        "w-10 h-10 rounded-xl flex items-center justify-center shadow-2xl cursor-pointer border transition-all duration-300 relative",
+        "w-11 h-11 rounded-full flex items-center justify-center shadow-xl cursor-pointer border-2 border-white transition-all duration-300 relative",
         isCritical 
-          ? "bg-red-600 border-white text-white scale-125 z-50 animate-bounce shadow-[0_0_25px_rgba(239,68,68,0.8)]" 
+          ? "bg-red-600 text-white scale-125 z-50 animate-bounce shadow-[0_0_25px_rgba(220,38,38,0.9)]" 
           : isManned
-          ? "bg-emerald-500/20 border-emerald-500/80 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.3)] group-hover:scale-110"
+          ? "bg-emerald-600 text-white shadow-[0_4px_15px_rgba(16,185,129,0.5)] group-hover:scale-110"
           : isSelected
-          ? "bg-primary border-white text-white scale-125 z-50"
-          : "bg-amber-500/20 border-amber-500/60 text-amber-400 group-hover:scale-110"
+          ? "bg-[#0F4C5C] text-white scale-125 z-50 shadow-2xl"
+          : "bg-[#D4AF37] text-zinc-950 shadow-[0_4px_15px_rgba(212,175,55,0.4)] group-hover:scale-110"
       )}>
         {isCritical ? (
-          <Zap className="w-5 h-5 text-amber-300 animate-pulse" />
+          <Zap className="w-5 h-5 text-amber-200 animate-pulse" />
         ) : (
           <Building2 className="w-5 h-5" />
         )}
         
-        {/* Live Guard Presence Dot */}
+        {/* Live Guard Presence Indicator */}
         {isManned && !isCritical && (
-          <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 border-2 border-zinc-950 rounded-full shadow-sm" />
+          <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-400 border-2 border-zinc-950 rounded-full shadow-md" />
         )}
       </div>
     </div>
