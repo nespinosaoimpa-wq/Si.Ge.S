@@ -829,24 +829,45 @@ export default function AdminDashboard() {
                   )}
                 </form>
 
-                <div className="flex items-center gap-1 ml-1 pl-2.5 pr-1 border-l border-zinc-100">
-                  <button onClick={() => setShowHeatmap(!showHeatmap)} className={cn("p-1.5 rounded-xl transition-all", showHeatmap ? "bg-[#0F4C5C]/10 text-[#0F4C5C] border border-[#0F4C5C]/20" : "hover:bg-zinc-50 border border-transparent text-zinc-500")} title="Mapa de Calor">
+                <div className="flex items-center gap-1.5 ml-1 pl-2.5 pr-1 border-l border-zinc-100">
+                  {/* 🔥 Botón Filtro Mapa de Calor */}
+                  <button 
+                    type="button"
+                    onClick={() => setShowHeatmap(!showHeatmap)} 
+                    className={cn(
+                      "p-2 rounded-xl transition-all flex items-center justify-center gap-1",
+                      showHeatmap ? "bg-amber-500/20 text-amber-600 font-bold border border-amber-500/30" : "text-zinc-400 hover:bg-zinc-100 border border-transparent"
+                    )}
+                    title="Activar / Desactivar Mapa de Calor (Heatmap)"
+                  >
                     <Layers size={18} />
                   </button>
-                  <button className="relative p-1.5 hover:bg-zinc-50 rounded-xl border border-transparent transition-colors">
-                    <Bell className="w-4 h-4 text-zinc-500" />
-                    <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-red-500 rounded-full" />
-                  </button>
+
+                  {/* 🔔 Campanita de Notificaciones / Alertas */}
                   <button 
+                    type="button"
+                    onClick={() => setIsAuditPanelOpen(true)} 
+                    className="relative p-2 text-zinc-400 hover:bg-zinc-100 rounded-xl transition-all border border-transparent"
+                    title="Centro de Alertas Tácticas y Notificaciones"
+                  >
+                    <Bell size={18} className={data.recentIncidents?.some((i: any) => i.urgency === 'critica' || i.status === 'activo') ? "text-red-500 animate-bounce" : "text-zinc-500"} />
+                    {data.recentIncidents?.some((i: any) => i.urgency === 'critica' || i.status === 'activo') && (
+                      <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-ping" />
+                    )}
+                  </button>
+
+                  <button 
+                    type="button"
                     onClick={() => setIsAuditPanelOpen(true)}
-                    className={cn("p-1.5 rounded-xl transition-all hover:bg-zinc-50 border border-transparent text-zinc-400")} 
+                    className="p-2 rounded-xl transition-all hover:bg-zinc-100 border border-transparent text-zinc-400" 
                     title="Auditoría de Geocercas"
                   >
                     <FileText size={18} />
                   </button>
                   <button 
+                    type="button"
                     onClick={toggleMonitorMode}
-                    className={cn("p-1.5 rounded-xl transition-all hover:bg-zinc-50 border border-transparent", isMonitorMode ? "bg-[#0F4C5C]/10 text-[#0F4C5C]" : "text-zinc-400")} 
+                    className={cn("p-2 rounded-xl transition-all hover:bg-zinc-100 border border-transparent", isMonitorMode ? "bg-[#0F4C5C]/10 text-[#0F4C5C]" : "text-zinc-400")} 
                     title="Modo TV / Pantalla Completa"
                   >
                     <Monitor size={18} />

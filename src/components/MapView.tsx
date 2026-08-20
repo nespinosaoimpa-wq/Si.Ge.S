@@ -784,8 +784,9 @@ export default function MapView({
           'horizon-blend': 0.1
         } : undefined}
       >
-        <NavigationControl position="bottom-left" />
-        <GeolocateControl position="bottom-left" />
+        <FullscreenControl position="bottom-right" />
+        <NavigationControl position="bottom-right" showCompass={true} />
+        <GeolocateControl position="bottom-right" />
 
         {activeStyle !== 'standard' && (
           <>
