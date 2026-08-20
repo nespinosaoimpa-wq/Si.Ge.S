@@ -300,12 +300,13 @@ const ObjectiveMarkerContent = React.memo(({
 
   return (
     <div className="relative flex flex-col items-center group cursor-pointer">
-      {/* Visual indicator for relocation */}
+      {/* Relocation visual hint */}
       {isRelocating && isSelected && (
-        <div className="absolute -top-16 left-1/2 -translate-x-1/2 bg-black text-white text-[8px] font-black uppercase px-2.5 py-1.5 rounded-lg whitespace-nowrap animate-bounce border-2 border-[#0F4C5C] shadow-2xl z-[60]">
+        <div className="absolute -top-16 left-1/2 -translate-x-1/2 bg-zinc-950 text-white text-[8px] font-black uppercase px-2.5 py-1.5 rounded-lg whitespace-nowrap animate-bounce border-2 border-[#0F4C5C] shadow-2xl z-[60]">
           MODO REUBICACIÓN: ARRASTRAR MARCADOR
         </div>
       )}
+
       {/* Objective Name Label */}
       <div className={cn(
         "absolute -top-10 px-2.5 py-1 bg-zinc-950 text-white text-[9px] font-black uppercase tracking-widest rounded-lg border border-white/20 shadow-2xl transition-all duration-300 pointer-events-none whitespace-nowrap z-50 flex items-center gap-1.5",
@@ -319,27 +320,32 @@ const ObjectiveMarkerContent = React.memo(({
         <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-zinc-950 rotate-45 border-r border-b border-white/20" />
       </div>
 
-      {/* Solid High-Visibility Status Badge (Green: Manned OK, Amber: Vacant/Pending, Red: SOS Incident) */}
+      {/* Sleek Tactical Dark Obsidian Card with Subtle Status Accent & Precision Dot */}
       <div className={cn(
-        "w-11 h-11 rounded-full flex items-center justify-center shadow-xl cursor-pointer border-2 border-white transition-all duration-300 relative",
-        isCritical 
-          ? "bg-red-600 text-white scale-125 z-50 animate-bounce shadow-[0_0_25px_rgba(220,38,38,0.9)]" 
+        "w-10 h-10 rounded-xl bg-zinc-950/95 backdrop-blur-md flex items-center justify-center shadow-[0_8px_25px_rgba(0,0,0,0.6)] cursor-pointer border-2 transition-all duration-300 relative",
+        isCritical
+          ? "border-red-500 bg-red-950/80 text-white scale-125 z-50 animate-bounce shadow-[0_0_25px_rgba(239,68,68,0.8)]"
           : isManned
-          ? "bg-emerald-600 text-white shadow-[0_4px_15px_rgba(16,185,129,0.5)] group-hover:scale-110"
+          ? "border-emerald-500/80 text-white shadow-[0_4px_20px_rgba(16,185,129,0.25)] group-hover:border-emerald-400 group-hover:scale-110"
           : isSelected
-          ? "bg-[#0F4C5C] text-white scale-125 z-50 shadow-2xl"
-          : "bg-[#D4AF37] text-zinc-950 shadow-[0_4px_15px_rgba(212,175,55,0.4)] group-hover:scale-110"
+          ? "border-[#0F4C5C] bg-[#0F4C5C]/30 text-white scale-125 z-50 shadow-2xl"
+          : "border-[#D4AF37]/60 text-zinc-200 shadow-[0_4px_20px_rgba(212,175,55,0.2)] group-hover:border-[#D4AF37] group-hover:scale-110"
       )}>
         {isCritical ? (
-          <Zap className="w-5 h-5 text-amber-200 animate-pulse" />
+          <Zap className="w-5 h-5 text-amber-300 animate-pulse" />
         ) : (
-          <Building2 className="w-5 h-5" />
+          <Building2 className={cn("w-5 h-5", isManned ? "text-emerald-400" : "text-[#D4AF37]")} />
         )}
-        
-        {/* Live Guard Presence Indicator */}
-        {isManned && !isCritical && (
-          <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-400 border-2 border-zinc-950 rounded-full shadow-md" />
-        )}
+
+        {/* Precision Status Dot (Subtle Accent, Top-Right Corner) */}
+        <span className={cn(
+          "absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-zinc-950 shadow-md",
+          isCritical
+            ? "bg-red-500 animate-ping"
+            : isManned
+            ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]"
+            : "bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.6)]"
+        )} />
       </div>
     </div>
   );
