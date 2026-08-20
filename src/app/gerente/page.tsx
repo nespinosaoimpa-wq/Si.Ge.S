@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { AnimatePresence, motion } from 'framer-motion';
 import { 
@@ -46,6 +46,7 @@ export default function AdminDashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [mapCenter, setMapCenter] = useState<[number, number] | undefined>(undefined);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
 
   // Status/Notifications
   const [liveFeed, setLiveFeed] = useState<any[]>([]);
@@ -769,7 +770,7 @@ export default function AdminDashboard() {
       )}
 
       {/* ====== MAP AREA ====== */}
-      <div className="flex-1 relative flex flex-col">
+      <div ref={mapContainerRef} id="map-fullscreen-container" className="flex-1 relative flex flex-col">
 
         {/* Picker mode instruction */}
         {isAddingPoint && !lastClickedCoords && (
@@ -907,6 +908,7 @@ export default function AdminDashboard() {
             guards={activeGuards}
             incidents={data.recentIncidents}
             className="w-full h-full"
+            fullscreenContainerRef={mapContainerRef}
             onObjectiveSelect={(obj) => setSelectedObjective(obj)}
             onMapClick={(coords) => { if (isAddingPoint) setLastClickedCoords(coords); }}
             onReverseGeocode={(address) => { if (isAddingPoint) setNewObjective(prev => ({ ...prev, address })); }}

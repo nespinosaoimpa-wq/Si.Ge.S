@@ -49,6 +49,7 @@ export default function MapaOperativoPage() {
   // Real-time critical alarm state & map center control
   const [activeAlert, setActiveAlert] = useState<any>(null);
   const [mapCenter, setMapCenter] = useState<[number, number]>([-31.6107, -60.6973]);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
 
   const alarmIntervalRef = useRef<any>(null);
 
@@ -397,7 +398,7 @@ export default function MapaOperativoPage() {
   };
 
   return (
-    <div className="flex bg-black h-[calc(100vh-4rem)] overflow-hidden relative font-sans">
+    <div ref={mapContainerRef} id="map-fullscreen-container" className="flex bg-black h-[calc(100vh-4rem)] overflow-hidden relative font-sans">
       
       {/* Dynamic Sidebar */}
       <motion.div 
@@ -515,6 +516,7 @@ export default function MapaOperativoPage() {
             incidents={data.recentIncidents}
             center={mapCenter}
             className="w-full h-full"
+            fullscreenContainerRef={mapContainerRef}
             onObjectiveSelect={(p: any) => setSelectedItem(p)}
             onMapClick={async (coords) => {
                if (isAddingPoint) {

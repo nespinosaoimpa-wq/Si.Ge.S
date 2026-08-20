@@ -91,6 +91,7 @@ interface MapViewProps {
   onDraftDragEnd?: (lat: number, lng: number) => void;
   onAddObjectiveAtCoords?: (lat: number, lng: number) => void;
   searchQuery?: string;
+  fullscreenContainerRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 const googleSatelliteStyle = {
@@ -429,6 +430,7 @@ export default function MapView({
   onDraftDragEnd,
   onAddObjectiveAtCoords,
   searchQuery = "",
+  fullscreenContainerRef
 }: MapViewProps) {
   const mapRef = useRef<MapRef>(null);
   const isValidCoords = (lat: any, lng: any) => lat !== undefined && lng !== undefined && !isNaN(Number(lat)) && !isNaN(Number(lng)) && Number(lat) !== 0 && Number(lng) !== 0;
@@ -449,6 +451,12 @@ export default function MapView({
 
   const [selectedObjective, setSelectedObjective] = useState<Objective | null>(null);
   const [selectedGuard, setSelectedGuard] = useState<Guard | null>(null);
+
+  const activeObjective = useMemo(() => {
+    if (selectedObjective) return selectedObjective;
+    if (selectedObjectiveId) return (objectives || []).find(o => o.id === selectedObjectiveId) || null;
+    return null;
+  }, [selectedObjective, selectedObjectiveId, objectives]);
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
   const [activeStyle, setActiveStyle] = useState<keyof typeof MAP_STYLES>(tileStyle as any || 'standard');
   const [nearbyPOIs, setNearbyPOIs] = useState<NearbyPOI[]>([]);
@@ -784,7 +792,7 @@ export default function MapView({
           'horizon-blend': 0.1
         } : undefined}
       >
-        <FullscreenControl position="bottom-right" />
+        <FullscreenControl position="bottom-right" containerId="map-fullscreen-container" />
         <NavigationControl position="bottom-right" showCompass={true} />
         <GeolocateControl position="bottom-right" />
 
@@ -1122,20 +1130,23 @@ export default function MapView({
           </>
         )}
 
-        {selectedObjective && (
+        {activeObjective && (
           <Popup
-            latitude={Number(selectedObjective.latitude)}
-            longitude={Number(selectedObjective.longitude)}
-            onClose={() => setSelectedObjective(null)}
+            latitude={Number(activeObjective.latitude)}
+            longitude={Number(activeObjective.longitude)}
+            onClose={() => {
+              setSelectedObjective(null);
+              if (onObjectiveSelect) onObjectiveSelect(null as any);
+            }}
             closeButton={false}
             offset={20}
           >
             <div className="p-3 min-w-[200px] bg-white text-zinc-900 rounded-xl border border-zinc-200 shadow-2xl">
-              <h3 className="font-black text-xs uppercase tracking-tight mb-1">{selectedObjective.name}</h3>
-              {selectedObjective.assigned_personnel && selectedObjective.assigned_personnel.length > 0 ? (
+              <h3 className="font-black text-xs uppercase tracking-tight mb-1">{activeObjective.name}</h3>
+              {activeObjective.assigned_personnel && activeObjective.assigned_personnel.length > 0 ? (
                 <div className="flex flex-col gap-2 mt-3 mb-3 border-t border-zinc-100 pt-3">
                   <p className="text-[8px] font-black text-zinc-400 uppercase tracking-widest">Fuerza Asignada</p>
-                  {selectedObjective.assigned_personnel.map((p: any) => (
+                  {activeObjective.assigned_personnel.map((p: any) => (
                     <div key={p.id} className="flex items-center gap-2">
                       <div className="w-6 h-6 rounded-lg bg-zinc-50 flex items-center justify-center overflow-hidden border border-zinc-200">
                         {getAvatarUrl(p) ? (
@@ -1148,15 +1159,15 @@ export default function MapView({
                     </div>
                   ))}
                 </div>
-              ) : selectedObjective.is_manned ? (
+              ) : activeObjective.is_manned ? (
                 <div className="flex items-center gap-2 mt-2 mb-2 bg-zinc-50 p-2 rounded-lg border border-zinc-100">
                   <div className="w-1.5 h-1.5 rounded-full bg-[#0F4C5C]" />
-                  <span className="text-[10px] font-black text-zinc-900 uppercase tracking-tighter">{selectedObjective.occupant_name}</span>
+                  <span className="text-[10px] font-black text-zinc-900 uppercase tracking-tighter">{activeObjective.occupant_name}</span>
                 </div>
               ) : (
                 <p className="text-[9px] font-black text-amber-600/80 uppercase mt-2 mb-2 tracking-widest">• Sin personal activo</p>
               )}
-              <p className="text-[10px] text-zinc-900 font-bold uppercase tracking-widest leading-relaxed mt-2 border-t border-zinc-100 pt-2">{selectedObjective.address}</p>
+              <p className="text-[10px] text-zinc-900 font-bold uppercase tracking-widest leading-relaxed mt-2 border-t border-zinc-100 pt-2">{activeObjective.address}</p>
             </div>
           </Popup>
         )}
