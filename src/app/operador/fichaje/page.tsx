@@ -79,17 +79,51 @@ export default function FichajePage() {
     panicTimerRef.current = setTimeout(async () => {
       clearInterval(panicIntervalRef.current!);
       setPanicProgress(100);
-      if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 500]);
+      // Discreet micro-vibration of 100ms
+      if (navigator.vibrate) navigator.vibrate(100);
       
       try {
+        const lat = location?.lat || 0;
+        const lng = location?.lng || 0;
+
+        // 1. Insert into alarms table (triggers Manager realtime overlay)
+        await supabase.from('alarms').insert({
+          operator_id: OPERATOR_ID,
+          objective_id: assignedObjective?.id || null,
+          alarm_type: 'sos_panic',
+          severity: 'critica',
+          message: '🚨 BOTÓN DE PÁNICO S.O.S ACTIVADO EN FICHAJE',
+          latitude: lat,
+          longitude: lng,
+          status: 'active',
+          created_at: new Date().toISOString()
+        });
+
+        // 2. Insert incident
         await supabase.from('incidents').insert({
-          objective_id: assignedObjective?.id,
+          objective_id: assignedObjective?.id || null,
           operator_id: OPERATOR_ID,
           entry_type: 'panic',
-          content: '🚨 BOTÓN DE PÁNICO ACTIVADO',
-          latitude: location?.lat || null,
-          longitude: location?.lng || null,
-          status: 'critica'
+          content: '🚨 BOTÓN DE PÁNICO S.O.S ACTIVADO EN FICHAJE',
+          latitude: lat,
+          longitude: lng,
+          status: 'critica',
+          created_at: new Date().toISOString()
+        });
+
+        // 3. Dispatch server push notification
+        fetch('/api/notifications/push', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'send',
+            notification: {
+              title: '🚨 ¡ALERTA DE PÁNICO S.O.S!',
+              body: 'Un operador disparó la alerta de emergencia en fichaje.',
+              url: '/gerente/mapa',
+              requireInteraction: true
+            }
+          })
         });
       } catch (e) {
         console.error("Error triggering panic:", e);

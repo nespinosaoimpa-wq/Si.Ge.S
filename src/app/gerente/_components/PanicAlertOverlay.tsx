@@ -21,6 +21,8 @@ import { cn } from '@/lib/utils';
 import dynamic from 'next/dynamic';
 import { fetchNearbyEmergencyServices, NearbyPOI } from '@/lib/nearby-services';
 
+import { startCrazyHombreVivoAlarm, stopCrazyHombreVivoAlarm, unlockAudioContext } from '@/lib/push-notifications';
+
 const MapView = dynamic(() => import('@/components/MapView'), { 
   ssr: false,
   loading: () => <div className="w-full h-full bg-zinc-900 animate-pulse" />
@@ -33,7 +35,6 @@ interface PanicAlertOverlayProps {
 }
 
 export default function PanicAlertOverlay({ alert, onDismiss, onResolve }: PanicAlertOverlayProps) {
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const [nearbyServices, setNearbyServices] = React.useState<NearbyPOI[]>([]);
   const [loadingServices, setLoadingServices] = React.useState(false);
 
@@ -47,17 +48,13 @@ export default function PanicAlertOverlay({ alert, onDismiss, onResolve }: Panic
   }, [alert?.id]);
 
   useEffect(() => {
-    // Attempt to play alert sound
+    // TACTICAL BLUEPRINT REQUIREMENT: Web Audio API Dual Siren Synthesizer on Manager Control Desk
     if (typeof window !== 'undefined' && alert) {
-      audioRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/951/951-preview.mp3');
-      audioRef.current.loop = true;
-      audioRef.current.play().catch(e => console.warn('Audio auto-play blocked:', e));
+      unlockAudioContext();
+      startCrazyHombreVivoAlarm();
     }
     return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
+      stopCrazyHombreVivoAlarm();
     };
   }, [alert?.id]);
 
@@ -170,18 +167,27 @@ export default function PanicAlertOverlay({ alert, onDismiss, onResolve }: Panic
             </div>
 
             <div className="mt-12 flex flex-col gap-4">
-              <div className="flex gap-4">
+              <div className="flex gap-3">
                 <Button 
-                  className="flex-1 h-20 rounded-2xl bg-white text-black hover:bg-gray-200 font-black uppercase text-sm tracking-widest shadow-xl flex items-center justify-center gap-3"
+                  className="flex-1 h-18 rounded-2xl bg-white text-black hover:bg-gray-200 font-black uppercase text-xs tracking-widest shadow-xl flex items-center justify-center gap-2"
                   onClick={() => window.open(`tel:${alert.phone || ''}`)}
                 >
-                  <Phone size={24} /> Llamar al Prestador
+                  <Phone size={20} /> Llamar
                 </Button>
                 <Button 
-                  className="flex-1 h-20 rounded-2xl bg-red-600 text-white hover:bg-red-700 font-black uppercase text-sm tracking-widest shadow-xl flex items-center justify-center gap-3 border-none"
+                  className="flex-1 h-18 rounded-2xl bg-emerald-600 text-white hover:bg-emerald-700 font-black uppercase text-xs tracking-widest shadow-xl flex items-center justify-center gap-2 border-none"
+                  onClick={() => {
+                    const clean = (alert.phone || '').replace(/[^0-9]/g, '');
+                    window.open(clean ? `https://wa.me/${clean}` : `https://wa.me/`);
+                  }}
+                >
+                  💬 WhatsApp
+                </Button>
+                <Button 
+                  className="flex-1 h-18 rounded-2xl bg-red-600 text-white hover:bg-red-700 font-black uppercase text-xs tracking-widest shadow-xl flex items-center justify-center gap-2 border-none"
                   onClick={() => window.open('tel:911')}
                 >
-                  <AlertOctagon size={24} /> Llamar al 911
+                  <AlertOctagon size={20} /> 911
                 </Button>
               </div>
               <div className="flex gap-4">

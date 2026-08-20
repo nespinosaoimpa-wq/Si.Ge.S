@@ -34,10 +34,10 @@ export default function PanicTriggerModal({
       return;
     }
 
-    // Play initial alert sound and vibrate
-    playAlertTone('emergency');
+    // TACTICAL BLUEPRINT REQUIREMENT: 100% SILENT ON OPERATOR PHONE
+    // Silent micro-vibration of 100ms for discreet tactile confirmation without alerting aggressors
     if (typeof navigator !== 'undefined' && navigator.vibrate) {
-      navigator.vibrate([300, 100, 300, 100, 500]);
+      navigator.vibrate(100);
     }
 
     setStatus('counting');
@@ -50,7 +50,6 @@ export default function PanicTriggerModal({
           dispatchPanicAlert();
           return 0;
         }
-        playAlertTone('emergency');
         return prev - 1;
       });
     }, 1000);
@@ -62,7 +61,11 @@ export default function PanicTriggerModal({
 
   const dispatchPanicAlert = async () => {
     setStatus('dispatched');
-    playAlertTone('emergency');
+    
+    // Discreet tactile confirmation
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate(100);
+    }
 
     try {
       let lat = location?.lat || 0;
@@ -73,11 +76,24 @@ export default function PanicTriggerModal({
           navigator.geolocation.getCurrentPosition((pos) => {
             lat = pos.coords.latitude;
             lng = pos.coords.longitude;
-          });
+          }, () => {}, { enableHighAccuracy: true, timeout: 5000 });
         }
       }
 
-      // 1. Insert incident into Supabase
+      // 1. Atomic insertion into central alarms table (triggers Manager realtime overlay)
+      await supabase.from('alarms').insert({
+        operator_id: operatorId || 'op_demo',
+        objective_id: objectiveId || null,
+        alarm_type: 'sos_panic',
+        severity: 'critica',
+        message: `🚨 ¡ALERTA DE PÁNICO S.O.S ACTIVADA! Operador en situación de emergencia en tiempo real.`,
+        latitude: lat,
+        longitude: lng,
+        status: 'active',
+        created_at: new Date().toISOString()
+      });
+
+      // 2. Insert incident into Supabase
       await supabase.from('incidents').insert({
         objective_id: objectiveId || null,
         operator_id: operatorId || 'op_demo',
@@ -89,18 +105,20 @@ export default function PanicTriggerModal({
         created_at: new Date().toISOString()
       });
 
-      // 2. Also log in guard book for immediate visibility
+      // 3. Log in guard book for audit trace
       if (objectiveId) {
         await supabase.from('guard_book_entries').insert({
           objective_id: objectiveId,
           operator_id: operatorId || 'op_demo',
           entry_type: 'incidente',
           content: `🚨 ALERTA DE PÁNICO SOS DESPACHADA DESDE APP OPERADOR`,
-          urgency: 'alta'
+          urgency: 'critica',
+          latitude: lat,
+          longitude: lng
         });
       }
 
-      // 3. Trigger Server Web Push Notification
+      // 4. Trigger Server Web Push Notification (requireInteraction: true)
       fetch('/api/notifications/push', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -109,7 +127,8 @@ export default function PanicTriggerModal({
           notification: {
             title: '🚨 ¡ALERTA DE PÁNICO S.O.S!',
             body: 'Un operador disparó la alerta de emergencia en pantalla.',
-            url: '/gerente/mapa'
+            url: '/gerente/mapa',
+            requireInteraction: true
           }
         })
       });
