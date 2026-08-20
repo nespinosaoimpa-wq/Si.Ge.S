@@ -320,21 +320,21 @@ const ObjectiveMarkerContent = React.memo(({
         <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-zinc-950 rotate-45 border-r border-b border-white/20" />
       </div>
 
-      {/* Sleek Tactical Dark Obsidian Card with Subtle Status Accent & Precision Dot */}
+      {/* Sleek Tactical Dark Obsidian Card with Original SIGPAD Icon & Subtle Status Border Accent */}
       <div className={cn(
-        "w-10 h-10 rounded-xl bg-zinc-950/95 backdrop-blur-md flex items-center justify-center shadow-[0_8px_25px_rgba(0,0,0,0.6)] cursor-pointer border-2 transition-all duration-300 relative",
+        "w-10 h-10 rounded-xl bg-zinc-950 backdrop-blur-md flex items-center justify-center shadow-[0_6px_20px_rgba(0,0,0,0.5)] cursor-pointer border-2 transition-all duration-300 relative",
         isCritical
-          ? "border-red-500 bg-red-950/80 text-white scale-125 z-50 animate-bounce shadow-[0_0_25px_rgba(239,68,68,0.8)]"
+          ? "border-red-500 text-white scale-125 z-50 animate-bounce shadow-[0_0_20px_rgba(239,68,68,0.6)]"
           : isManned
-          ? "border-emerald-500/80 text-white shadow-[0_4px_20px_rgba(16,185,129,0.25)] group-hover:border-emerald-400 group-hover:scale-110"
+          ? "border-emerald-500/80 shadow-[0_2px_12px_rgba(16,185,129,0.2)] group-hover:border-emerald-400 group-hover:scale-110"
           : isSelected
-          ? "border-[#0F4C5C] bg-[#0F4C5C]/30 text-white scale-125 z-50 shadow-2xl"
-          : "border-[#D4AF37]/60 text-zinc-200 shadow-[0_4px_20px_rgba(212,175,55,0.2)] group-hover:border-[#D4AF37] group-hover:scale-110"
+          ? "border-[#0F4C5C] scale-125 z-50 shadow-2xl ring-2 ring-[#0F4C5C]/30"
+          : "border-amber-400/60 shadow-[0_2px_12px_rgba(251,191,36,0.15)] group-hover:border-amber-400 group-hover:scale-110"
       )}>
         {isCritical ? (
           <Zap className="w-5 h-5 text-amber-300 animate-pulse" />
         ) : (
-          <Building2 className={cn("w-5 h-5", isManned ? "text-emerald-400" : "text-[#D4AF37]")} />
+          <Building2 className="w-5 h-5 text-[#0F4C5C]" />
         )}
 
         {/* Precision Status Dot (Subtle Accent, Top-Right Corner) */}
