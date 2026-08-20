@@ -295,6 +295,9 @@ const ObjectiveMarkerContent = React.memo(({
   isSelected: boolean;
   isRelocating: boolean;
 }) => {
+  const isManned = obj.is_manned || (obj.assigned_personnel && obj.assigned_personnel.length > 0) || Boolean(obj.occupant_name);
+  const isCritical = obj.status === 'critica' || obj.status === 'alerta' || obj.status === 'emergency';
+
   return (
     <div className="relative flex flex-col items-center group cursor-pointer">
       {/* Visual indicator for relocation */}
@@ -305,21 +308,38 @@ const ObjectiveMarkerContent = React.memo(({
       )}
       {/* Objective Name Label */}
       <div className={cn(
-        "absolute -top-10 px-2.5 py-1 bg-zinc-900/90 backdrop-blur-md text-white text-[9px] font-black uppercase tracking-widest rounded-lg border border-white/10 shadow-2xl transition-all duration-300 pointer-events-none whitespace-nowrap",
+        "absolute -top-10 px-2.5 py-1 bg-zinc-900/90 backdrop-blur-md text-white text-[9px] font-black uppercase tracking-widest rounded-lg border border-white/10 shadow-2xl transition-all duration-300 pointer-events-none whitespace-nowrap z-50 flex items-center gap-1.5",
         isSelected ? "opacity-100 scale-100 -translate-y-1" : "opacity-0 scale-90 translate-y-2 group-hover:opacity-100 group-hover:scale-100 group-hover:translate-y-0"
       )}>
+        <span className={cn(
+          "w-2 h-2 rounded-full",
+          isCritical ? "bg-red-500 animate-ping" : isManned ? "bg-emerald-400" : "bg-amber-400"
+        )} />
         {obj.name}
         <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-zinc-900 rotate-45 border-r border-b border-white/10" />
       </div>
 
-      {/* Main Marker Icon */}
+      {/* Dynamic Status Marker Icon (Green: Manned OK, Amber: Vacant, Red: Critical SOS) */}
       <div className={cn(
-        "w-10 h-10 rounded-xl flex items-center justify-center shadow-2xl cursor-pointer border transition-all duration-300",
-        isSelected 
-          ? "bg-[#0F4C5C] border-black scale-125 z-50" 
-          : "bg-zinc-950 border-white/10 group-hover:border-[#0F4C5C]/50 group-hover:scale-110"
+        "w-10 h-10 rounded-xl flex items-center justify-center shadow-2xl cursor-pointer border transition-all duration-300 relative",
+        isCritical 
+          ? "bg-red-600 border-white text-white scale-125 z-50 animate-bounce shadow-[0_0_25px_rgba(239,68,68,0.8)]" 
+          : isManned
+          ? "bg-emerald-500/20 border-emerald-500/80 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.3)] group-hover:scale-110"
+          : isSelected
+          ? "bg-primary border-white text-white scale-125 z-50"
+          : "bg-amber-500/20 border-amber-500/60 text-amber-400 group-hover:scale-110"
       )}>
-        <Building2 className={cn("w-5 h-5", isSelected ? "text-black" : "text-[#0F4C5C]")} />
+        {isCritical ? (
+          <Zap className="w-5 h-5 text-amber-300 animate-pulse" />
+        ) : (
+          <Building2 className="w-5 h-5" />
+        )}
+        
+        {/* Live Guard Presence Dot */}
+        {isManned && !isCritical && (
+          <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 border-2 border-zinc-950 rounded-full shadow-sm" />
+        )}
       </div>
     </div>
   );
