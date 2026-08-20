@@ -540,7 +540,7 @@ export default function MapaOperativoPage() {
               onClick={() => setMapTileStyle('dark')}
               className={cn(
                 "px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all",
-                mapTileStyle === 'dark' ? "bg-[#D4AF37] text-black shadow-md" : "text-zinc-400 hover:text-white"
+                mapTileStyle === 'dark' ? "bg-primary text-white shadow-md shadow-primary/30" : "text-zinc-400 hover:text-white"
               )}
             >
               🌒 Táctico
@@ -549,7 +549,7 @@ export default function MapaOperativoPage() {
               onClick={() => setMapTileStyle('streets')}
               className={cn(
                 "px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all",
-                mapTileStyle === 'streets' ? "bg-[#D4AF37] text-black shadow-md" : "text-zinc-400 hover:text-white"
+                mapTileStyle === 'streets' ? "bg-primary text-white shadow-md shadow-primary/30" : "text-zinc-400 hover:text-white"
               )}
             >
               🗺️ Calles
@@ -558,7 +558,7 @@ export default function MapaOperativoPage() {
               onClick={() => setMapTileStyle('satellite')}
               className={cn(
                 "px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all",
-                mapTileStyle === 'satellite' ? "bg-[#D4AF37] text-black shadow-md" : "text-zinc-400 hover:text-white"
+                mapTileStyle === 'satellite' ? "bg-primary text-white shadow-md shadow-primary/30" : "text-zinc-400 hover:text-white"
               )}
             >
               🛰️ Satélite
