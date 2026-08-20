@@ -1,4 +1,5 @@
 import { db, GPSPoint } from './db';
+import { supabase } from './supabase';
 
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
   const R = 6371e3; // meters
@@ -497,36 +498,86 @@ export class GPSTracker {
 
   private async handleReturn(data: any) {
     try {
-      await fetch('/api/tracking/alert', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          shift_id: this.shiftId,
-          operator_id: this.operatorId,
-          objective_id: this.objectiveId,
-          type: 'entry',
-          distance: data.distance
+      const opId = this.operatorId;
+      const objId = this.objectiveId;
+      const shiftId = this.shiftId;
+
+      await Promise.allSettled([
+        supabase.from('geofencing_incidents').update({
+          return_at: new Date().toISOString(),
+          max_distance_meters: data.distance || 0
+        }).eq('shift_id', shiftId).is('return_at', null),
+
+        supabase.from('guard_book_entries').insert({
+          objective_id: objId,
+          operator_id: opId,
+          entry_type: 'novedad',
+          content: `✅ REINGRESO AL PUESTO: El operador ha regresar a la zona autorizada.`,
+          latitude: data.latitude || 0,
+          longitude: data.longitude || 0,
+          urgency: 'normal'
         })
-      });
-    } catch (e) {}
+      ]);
+    } catch (e) {
+      try {
+        await fetch('/api/tracking/alert', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            shift_id: this.shiftId,
+            operator_id: this.operatorId,
+            objective_id: this.objectiveId,
+            type: 'entry',
+            distance: data.distance
+          })
+        });
+      } catch (err) {}
+    }
   }
 
   private async handleAbandonment(data: any) {
     try {
-      await fetch('/api/tracking/alert', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          shift_id: this.shiftId,
-          operator_id: this.operatorId,
-          objective_id: this.objectiveId,
-          type: 'exit',
-          latitude: data.latitude,
-          longitude: data.longitude,
-          distance: data.distance
+      const opId = this.operatorId;
+      const objId = this.objectiveId;
+      const shiftId = this.shiftId;
+
+      await Promise.allSettled([
+        supabase.from('geofencing_incidents').insert({
+          shift_id: shiftId,
+          operator_id: opId,
+          objective_id: objId,
+          exit_at: new Date().toISOString(),
+          max_distance_meters: data.distance || 0,
+          status: 'pendiente'
+        }),
+
+        supabase.from('guard_book_entries').insert({
+          objective_id: objId,
+          operator_id: opId,
+          entry_type: 'alerta',
+          content: `⚠️ ALERTA DE ABANDONO: El operador se alejó ${Math.round(data.distance || 0)}m del objetivo.`,
+          latitude: data.latitude || 0,
+          longitude: data.longitude || 0,
+          urgency: 'critica'
         })
-      });
-    } catch (e) {}
+      ]);
+    } catch (e) {
+      try {
+        await fetch('/api/tracking/alert', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            shift_id: this.shiftId,
+            operator_id: this.operatorId,
+            objective_id: this.objectiveId,
+            type: 'exit',
+            latitude: data.latitude,
+            longitude: data.longitude,
+            distance: data.distance
+          })
+        });
+      } catch (err) {}
+    }
   }
 
   private async handleLocationUpdate(data: any) {
@@ -557,23 +608,67 @@ export class GPSTracker {
 
   private async transmitToServer(point: GPSPoint): Promise<boolean> {
     try {
-      const response = await fetch('/api/tracking/update', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          shiftData: { id: point.shift_id, operator_id: point.operator_id },
-          objective_id: point.objective_id,
+      const opId = point.operator_id;
+      const tasks: Promise<any>[] = [];
+
+      const updatePayload: any = { 
+        latitude: point.latitude, 
+        longitude: point.longitude,
+        accuracy: point.accuracy,
+        speed: point.speed,
+        heading: point.heading,
+        last_gps_update: new Date().toISOString(),
+        status: 'activo' 
+      };
+
+      if (point.objective_id) {
+        updatePayload.current_objective_id = point.objective_id;
+      }
+
+      // Update position directly on Supabase resources table (0 Vercel function calls!)
+      tasks.push(
+        supabase.from('resources')
+          .update(updatePayload)
+          .or(`id.eq.${opId},assigned_to.eq.${opId}`)
+      );
+
+      // Log point in gps_tracking directly on Supabase
+      tasks.push(
+        supabase.from('gps_tracking').insert({
+          operator_id: opId,
           latitude: point.latitude,
           longitude: point.longitude,
           accuracy: point.accuracy,
-          speed: point.speed,
-          heading: point.heading,
-          timestamp: point.timestamp
+          objective_id: point.objective_id,
+          recorded_at: new Date().toISOString()
         })
-      });
-      return response.ok;
+      );
+
+      const results = await Promise.allSettled(tasks);
+      const isSuccess = results.some(r => r.status === 'fulfilled');
+      if (isSuccess) return true;
+      throw new Error("Direct Supabase update failed");
     } catch (e) {
-      return false;
+      // Fallback to Vercel API route if direct Supabase query fails
+      try {
+        const response = await fetch('/api/tracking/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            shiftData: { id: point.shift_id, operator_id: point.operator_id },
+            objective_id: point.objective_id,
+            latitude: point.latitude,
+            longitude: point.longitude,
+            accuracy: point.accuracy,
+            speed: point.speed,
+            heading: point.heading,
+            timestamp: point.timestamp
+          })
+        });
+        return response.ok;
+      } catch (err) {
+        return false;
+      }
     }
   }
 
