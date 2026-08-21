@@ -11,18 +11,7 @@ export async function POST(request: Request) {
 
     const supabase = createServiceClient();
 
-    // Verify operator is not assigned to a different objective
-    const { data: existingOperator } = await supabase
-      .from('resources')
-      .select('current_objective_id')
-      .eq('id', operator_id)
-      .single();
 
-    if (existingOperator?.current_objective_id && existingOperator.current_objective_id !== objective_id) {
-      return NextResponse.json({ 
-        error: 'Este operador ya está vinculado a otro objetivo. Desvincular primero.' 
-      }, { status: 409 });
-    }
 
     // 1. Create the programmed shift
     const { data: shift, error: shiftError } = await supabase
