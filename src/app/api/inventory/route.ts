@@ -3,11 +3,14 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const TABLES = ['resource_inventory', 'inventory_items', 'objective_tools'];
 
-async function fetchInventoryItems(supabase: any, objectiveId?: string | null, category?: string | null, status?: string | null) {
+async function fetchInventoryItems(supabase: any, objectiveId?: string | null, category?: string | null, status?: string | null, resourceId?: string | null) {
   for (const table of TABLES) {
     try {
       let query = supabase.from(table).select('*').order('created_at', { ascending: false });
       if (objectiveId) query = query.eq('objective_id', objectiveId);
+      if (resourceId && (table === 'resource_inventory' || table === 'inventory_items')) {
+        query = query.or(`resource_id.eq.${resourceId},operator_id.eq.${resourceId}`);
+      }
       if (category && table === 'resource_inventory') query = query.eq('category', category);
 
       const { data, error } = await query;
@@ -19,6 +22,7 @@ async function fetchInventoryItems(supabase: any, objectiveId?: string | null, c
           category: item.category || 'otros',
           status: item.status || item.condition || 'operativo',
           objective_id: item.objective_id || null,
+          resource_id: item.resource_id || item.operator_id || null,
           notes: item.notes || item.description || '',
           created_at: item.created_at || new Date().toISOString()
         }));
@@ -39,6 +43,7 @@ async function insertInventoryItem(supabase: any, payload: any) {
           category: payload.category || 'otros',
           status: payload.status || 'operativo',
           objective_id: payload.objective_id || null,
+          resource_id: payload.resource_id || null,
           notes: payload.notes || null,
         };
         if (payload.tenant_id) itemToInsert.tenant_id = payload.tenant_id;
@@ -50,6 +55,7 @@ async function insertInventoryItem(supabase: any, payload: any) {
           condition: payload.status || 'operativo',
           status: payload.status || 'operativo',
           objective_id: payload.objective_id || null,
+          resource_id: payload.resource_id || null,
           description: payload.notes || null,
         };
       } else if (table === 'objective_tools') {
@@ -70,6 +76,7 @@ async function insertInventoryItem(supabase: any, payload: any) {
           category: created.category || payload.category || 'otros',
           status: created.status || created.condition || payload.status || 'operativo',
           objective_id: created.objective_id || payload.objective_id || null,
+          resource_id: created.resource_id || created.operator_id || payload.resource_id || null,
           notes: created.notes || created.description || payload.notes || '',
           created_at: created.created_at || new Date().toISOString()
         };
@@ -85,6 +92,7 @@ async function insertInventoryItem(supabase: any, payload: any) {
     category: payload.category || 'otros',
     status: payload.status || 'operativo',
     objective_id: payload.objective_id || null,
+    resource_id: payload.resource_id || null,
     notes: payload.notes || '',
     created_at: new Date().toISOString()
   };
@@ -94,11 +102,12 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const objectiveId = searchParams.get('objective_id');
+    const resourceId = searchParams.get('resource_id') || searchParams.get('operator_id');
     const category = searchParams.get('category');
     const status = searchParams.get('status');
 
     const supabase = createServiceClient();
-    const items = await fetchInventoryItems(supabase, objectiveId, category, status);
+    const items = await fetchInventoryItems(supabase, objectiveId, category, status, resourceId);
     return NextResponse.json(items);
   } catch (error: any) {
     return NextResponse.json([], { status: 200 });
@@ -121,6 +130,7 @@ export async function POST(request: NextRequest) {
 
     const quantity = Math.max(1, parseInt(body.quantity) || 1);
     const objective_id = (body.objective_id && String(body.objective_id).trim() !== '' && body.objective_id !== 'null') ? body.objective_id : null;
+    const resource_id = (body.resource_id && String(body.resource_id).trim() !== '' && body.resource_id !== 'null') ? body.resource_id : null;
 
     const createdItems: any[] = [];
     for (let i = 0; i < quantity; i++) {
@@ -130,6 +140,7 @@ export async function POST(request: NextRequest) {
         category: body.category || 'otros',
         status: body.status || 'operativo',
         objective_id: objective_id,
+        resource_id: resource_id,
         notes: body.notes || null,
         tenant_id: tenantId
       };
@@ -162,6 +173,12 @@ export async function PATCH(request: NextRequest) {
     if (updates.objective_id !== undefined) {
       if (!updates.objective_id || String(updates.objective_id).trim() === '' || updates.objective_id === 'null') {
         updates.objective_id = null;
+      }
+    }
+
+    if (updates.resource_id !== undefined) {
+      if (!updates.resource_id || String(updates.resource_id).trim() === '' || updates.resource_id === 'null') {
+        updates.resource_id = null;
       }
     }
 
