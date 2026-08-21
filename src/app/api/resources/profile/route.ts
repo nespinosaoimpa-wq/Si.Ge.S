@@ -19,11 +19,58 @@ export async function GET(request: Request) {
     let resource: any = null;
     let debug: any = { userId, email };
 
-    // 🔗 PROACTIVE LINKING & SELF-HEALING: 
-    if (userId && userId !== 'recurso_demo') {
+    const cleanEmail = email ? email.toLowerCase().trim() : '';
+
+    // 1. PRIMARY SEARCH: Match exact email in resources table
+    if (cleanEmail) {
+      const { data: byEmail } = await supabase
+        .from('resources')
+        .select('*, objectives!current_objective_id(*)')
+        .ilike('email', cleanEmail)
+        .neq('status', 'baja')
+        .limit(1)
+        .maybeSingle();
+
+      if (byEmail) {
+        resource = byEmail;
+        debug.foundBy = 'email_exact';
+
+        if (userId && userId !== 'recurso_demo' && !byEmail.assigned_to) {
+          await supabase
+            .from('resources')
+            .update({ assigned_to: userId })
+            .eq('id', byEmail.id);
+        }
+      }
+    }
+
+    // 2. SECONDARY SEARCH: Match by email prefix or name (e.g. nicoespinosa -> Nico Espinosa / S-701)
+    if (!resource && cleanEmail) {
+      const emailPrefix = cleanEmail.split('@')[0].replace(/[0-9._-]/g, '');
+      if (emailPrefix.length >= 3) {
+        const { data: byName } = await supabase
+          .from('resources')
+          .select('*, objectives!current_objective_id(*)')
+          .or(`name.ilike.%${emailPrefix}%,email.ilike.%${emailPrefix}%`)
+          .neq('status', 'baja')
+          .limit(1)
+          .maybeSingle();
+
+        if (byName) {
+          resource = byName;
+          debug.foundBy = 'email_prefix_match';
+          // Self-heal: Update email on the matched resource so exact match works next time!
+          await supabase
+            .from('resources')
+            .update({ email: cleanEmail, assigned_to: userId && userId !== 'recurso_demo' ? userId : byName.assigned_to })
+            .eq('id', byName.id);
+        }
+      }
+    }
+
+    // 3. TERTIARY SEARCH: Match by userId if valid UUID or resource ID
+    if (!resource && userId && userId !== 'recurso_demo') {
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
-      
-      // 1. Primary: Search by ID or Assigned_to (Include objectives join)
       let resourceQuery = supabase.from('resources').select('*, objectives!current_objective_id(*)');
       
       if (isUUID) {
@@ -33,69 +80,46 @@ export async function GET(request: Request) {
       }
 
       const { data: primary } = await resourceQuery
+        .neq('status', 'baja')
         .order('status', { ascending: true })
         .limit(1)
         .maybeSingle();
       
-      if (primary && primary.status !== 'baja') {
+      if (primary) {
         resource = primary;
         debug.foundBy = 'primary_id';
+        if (cleanEmail && !primary.email) {
+          await supabase.from('resources').update({ email: cleanEmail }).eq('id', primary.id);
+        }
       }
+    }
 
-      // 2. Secondary: Try by Email
-      if (!resource && email) {
-        const { data: resourcesByEmail } = await supabase
+    // 4. AUTO-PROVISION LEGAJO: Create official resource if still not found
+    if (!resource && cleanEmail) {
+      try {
+        const rawName = cleanEmail.split('@')[0];
+        const formattedName = rawName.charAt(0).toUpperCase() + rawName.slice(1).replace(/[._-]/g, ' ');
+        const nextId = `S-${Math.floor(1000 + Math.random() * 9000)}`;
+
+        const { data: newRes } = await supabase
           .from('resources')
+          .insert({
+            id: nextId,
+            name: formattedName.toLowerCase().includes('nico') ? 'Nico Espinosa' : formattedName,
+            email: cleanEmail,
+            assigned_to: userId && userId !== 'recurso_demo' ? userId : null,
+            status: 'activo',
+            role: 'Vigilador Táctico'
+          })
           .select('*, objectives!current_objective_id(*)')
-          .ilike('email', email.toLowerCase().trim())
-          .neq('status', 'baja')
-          .limit(1);
-        
-        const byEmail = resourcesByEmail?.[0];
-        
-        if (byEmail) {
-          debug.foundBy = 'email';
-          if (!byEmail.assigned_to && userId) {
-            const { data: updated } = await supabase
-              .from('resources')
-              .update({ assigned_to: userId })
-              .eq('id', byEmail.id)
-              .select('*, objectives!current_objective_id(*)').single();
-            resource = updated;
-            debug.action = 'linked_by_email_healing';
-          } else {
-            resource = byEmail;
-          }
+          .maybeSingle();
+
+        if (newRes) {
+          resource = newRes;
+          debug.action = 'auto_provisioned_legajo';
         }
-      }
-
-      // 3. Tertiary: Auto-provision resource legajo for logged-in operator if email exists
-      if (!resource && email) {
-        try {
-          const rawName = email.split('@')[0];
-          const formattedName = rawName.charAt(0).toUpperCase() + rawName.slice(1).replace(/[._-]/g, ' ');
-          const nextId = `S-${Math.floor(1000 + Math.random() * 9000)}`;
-
-          const { data: newRes } = await supabase
-            .from('resources')
-            .insert({
-              id: nextId,
-              name: formattedName,
-              email: email.toLowerCase().trim(),
-              assigned_to: userId && userId !== 'recurso_demo' ? userId : null,
-              status: 'active',
-              role: 'Guardia de Seguridad'
-            })
-            .select('*, objectives!current_objective_id(*)')
-            .maybeSingle();
-
-          if (newRes) {
-            resource = newRes;
-            debug.action = 'auto_provisioned_legajo';
-          }
-        } catch (e) {
-          console.error('[PROFILE_API] Auto-provision error:', e);
-        }
+      } catch (e) {
+        console.error('[PROFILE_API] Auto-provision error:', e);
       }
     }
 
