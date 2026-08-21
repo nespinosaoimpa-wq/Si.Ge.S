@@ -20,7 +20,7 @@ import { useAuth } from '@/components/providers/AuthProvider';
 import PanicTriggerModal from '@/components/operador/PanicTriggerModal';
 
 export default function GuardiaDashboard() {
-  const { isShiftActive, shiftId, shiftData, startShift, theme, toggleTheme } = useShift();
+  const { isShiftActive, shiftId, shiftData, startShift, theme, toggleTheme, updateShiftData } = useShift();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [assignedObjective, setAssignedObjective] = useState<any>(null);
@@ -30,6 +30,30 @@ export default function GuardiaDashboard() {
   const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
   const [gpsSource, setGpsSource] = useState<'Satellite' | 'WiFi/Cell' | 'Searching'>('Searching');
   const [scheduledShift, setScheduledShift] = useState<any>(null);
+  const [isGeofencePaused, setIsGeofencePaused] = useState(false);
+  const [geofenceDistance, setGeofenceDistance] = useState(0);
+
+  useEffect(() => {
+    const handleGeofenceEvent = (e: any) => {
+      const { type, distance } = e.detail || {};
+      if (type === 'exit') {
+        setIsGeofencePaused(true);
+        setGeofenceDistance(Math.round(distance || 0));
+        if (updateShiftData) {
+          updateShiftData({ isOutside: true, is_paused: true, distanceToObjective: distance });
+        }
+      } else if (type === 'entry') {
+        setIsGeofencePaused(false);
+        setGeofenceDistance(0);
+        if (updateShiftData) {
+          updateShiftData({ isOutside: false, is_paused: false });
+        }
+      }
+    };
+
+    window.addEventListener('sigpad_geofence_alert', handleGeofenceEvent);
+    return () => window.removeEventListener('sigpad_geofence_alert', handleGeofenceEvent);
+  }, [updateShiftData]);
   
   const OPERATOR_ID = user?.id || 'recurso_demo';
 
@@ -270,7 +294,7 @@ export default function GuardiaDashboard() {
       <div className="max-w-5xl mx-auto px-6 -mt-12 relative z-20">
         
         {/* Geofence Abandonment Warning Banner */}
-        {isShiftActive && (shiftData?.isOutside || shiftData?.isAbandoned) && (
+        {isShiftActive && (isGeofencePaused || shiftData?.isOutside || shiftData?.isAbandoned || shiftData?.is_paused) && (
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="mb-6 p-6 rounded-3xl bg-red-950/90 border-2 border-red-500 shadow-[0_15px_40px_rgba(239,68,68,0.3)] backdrop-blur-xl flex items-center gap-5">
             <div className="w-14 h-14 bg-red-600 text-white rounded-2xl flex items-center justify-center shrink-0 animate-bounce shadow-lg shadow-red-600/50">
               <AlertTriangle size={32} />
@@ -278,10 +302,10 @@ export default function GuardiaDashboard() {
             <div className="flex-1">
               <p className="text-xs font-black uppercase tracking-[0.2em] text-red-400">🚨 ALERTA: FUERA DE TU OBJETIVO ASIGNADO</p>
               <h3 className="text-lg font-black text-white mt-0.5">
-                Te has alejado {Math.round(shiftData.distanceToObjective || 0)}m de tu puesto ({shiftData.objective_name || 'Objetivo'})
+                Te has alejado {geofenceDistance || Math.round(shiftData.distanceToObjective || 0)}m de tu puesto ({shiftData.objective_name || 'Objetivo'})
               </h3>
               <p className="text-xs text-red-200 font-semibold mt-1">
-                ⚠️ Por favor regresa inmediatamente a tu puesto de trabajo. El reloj de cómputo de horas ha sido <span className="underline font-black text-white">PAUSADO</span>.
+                ⚠️ Por favor regresa inmediatamente a tu puesto de trabajo. El reloj de cómputo de horas ha sido <span className="underline font-black text-white">DETENIDO / PAUSADO</span>.
               </p>
             </div>
           </motion.div>
@@ -404,9 +428,9 @@ export default function GuardiaDashboard() {
                 <div className="flex flex-col items-center">
                   <ElapsedTimer
                     startTime={shiftData?.startTime || shiftData?.time || new Date()}
-                    isPaused={Boolean(shiftData?.isOutside || shiftData?.isAbandoned)}
+                    isPaused={isGeofencePaused || shiftData?.isOutside || shiftData?.is_paused}
                     className={cn(
-                      "text-5xl lg:text-7xl font-mono font-black tracking-tighter",
+                      "font-mono text-5xl lg:text-7xl font-black tracking-tight",
                       theme === 'dark' ? "text-white" : "text-zinc-900"
                     )}
                   />

@@ -498,85 +498,48 @@ export class GPSTracker {
 
   private async handleReturn(data: any) {
     try {
-      const opId = this.operatorId;
-      const objId = this.objectiveId;
-      const shiftId = this.shiftId;
-
-      await Promise.allSettled([
-        supabase.from('geofencing_incidents').update({
-          return_at: new Date().toISOString(),
-          max_distance_meters: data.distance || 0
-        }).eq('shift_id', shiftId).is('return_at', null),
-
-        supabase.from('guard_book_entries').insert({
-          objective_id: objId,
-          operator_id: opId,
-          entry_type: 'novedad',
-          content: `✅ REINGRESO AL PUESTO: El operador ha regresar a la zona autorizada.`,
-          latitude: data.latitude || 0,
-          longitude: data.longitude || 0,
-          urgency: 'normal'
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('sigpad_geofence_alert', { detail: { type: 'entry', distance: data.distance } }));
+      }
+      await fetch('/api/tracking/alert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          shift_id: this.shiftId,
+          operator_id: this.operatorId,
+          objective_id: this.objectiveId,
+          type: 'entry',
+          distance: data.distance
         })
-      ]);
+      });
     } catch (e) {
-      try {
-        await fetch('/api/tracking/alert', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            shift_id: this.shiftId,
-            operator_id: this.operatorId,
-            objective_id: this.objectiveId,
-            type: 'entry',
-            distance: data.distance
-          })
-        });
-      } catch (err) {}
+      console.error('[GPS_TRACKER] Error en handleReturn:', e);
     }
   }
 
   private async handleAbandonment(data: any) {
     try {
-      const opId = this.operatorId;
-      const objId = this.objectiveId;
-      const shiftId = this.shiftId;
-
-      await Promise.allSettled([
-        supabase.from('geofencing_incidents').insert({
-          shift_id: shiftId,
-          operator_id: opId,
-          objective_id: objId,
-          exit_at: new Date().toISOString(),
-          max_distance_meters: data.distance || 0,
-          status: 'pendiente'
-        }),
-
-        supabase.from('guard_book_entries').insert({
-          objective_id: objId,
-          operator_id: opId,
-          entry_type: 'alerta',
-          content: `⚠️ ALERTA DE ABANDONO: El operador se alejó ${Math.round(data.distance || 0)}m del objetivo.`,
-          latitude: data.latitude || 0,
-          longitude: data.longitude || 0,
-          urgency: 'critica'
+      if ("vibrate" in navigator) {
+        navigator.vibrate([500, 200, 500, 200, 1000]);
+      }
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('sigpad_geofence_alert', { detail: { type: 'exit', distance: data.distance } }));
+      }
+      await fetch('/api/tracking/alert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          shift_id: this.shiftId,
+          operator_id: this.operatorId,
+          objective_id: this.objectiveId,
+          type: 'exit',
+          latitude: data.latitude,
+          longitude: data.longitude,
+          distance: data.distance
         })
-      ]);
+      });
     } catch (e) {
-      try {
-        await fetch('/api/tracking/alert', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            shift_id: this.shiftId,
-            operator_id: this.operatorId,
-            objective_id: this.objectiveId,
-            type: 'exit',
-            latitude: data.latitude,
-            longitude: data.longitude,
-            distance: data.distance
-          })
-        });
-      } catch (err) {}
+      console.error('[GPS_TRACKER] Error en handleAbandonment:', e);
     }
   }
 
