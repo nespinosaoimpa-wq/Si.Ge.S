@@ -182,7 +182,7 @@ export class GPSTracker {
     this.watchId = navigator.geolocation.watchPosition(
       (pos) => this.handlePosition(pos),
       (err) => this.onError(err.message),
-      { enableHighAccuracy: true, maximumAge: 1000, timeout: 15000 }
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
     );
 
     // 3. Start Sync Monitor
