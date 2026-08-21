@@ -258,17 +258,18 @@ export async function POST(request: NextRequest) {
     }
 
     let resource_id = rawResourceId;
-    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawResourceId);
-    
-    if (isUUID) {
-      const { data: res } = await supabase
-        .from('resources')
-        .select('id')
-        .or(`id.eq.${rawResourceId},assigned_to.eq.${rawResourceId}`)
-        .maybeSingle();
-      if (res?.id) resource_id = res.id;
+    if (rawResourceId === 'gerente_master' || rawResourceId === 'gerente' || !rawResourceId) {
+      resource_id = userId || 'gerente';
     } else {
-      resource_id = rawResourceId;
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawResourceId);
+      if (isUUID) {
+        const { data: res } = await supabase
+          .from('resources')
+          .select('id')
+          .or(`id.eq.${rawResourceId},assigned_to.eq.${rawResourceId}`)
+          .maybeSingle();
+        if (res?.id) resource_id = res.id;
+      }
     }
 
     const { data, error } = await supabase
@@ -319,20 +320,46 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    if (content?.startsWith('[GERENTE]') && objective_id) {
+    // ════ DISPARAR NOTIFICACIÓN INMEDIATA A LOS OPERADORES DEL OBJETIVO ════
+    if (objective_id && (content?.startsWith('[GERENTE]') || body.is_manager || isSuper)) {
       try {
-        const { data: activeGuards } = await supabase
+        const activeOperatorIds = new Set<string>();
+
+        // 1. Operadores con turno activo en este objetivo
+        const { data: activeShifts } = await supabase
+          .from('guard_shifts')
+          .select('operator_id')
+          .eq('objective_id', objective_id)
+          .in('status', ['activo', 'active']);
+
+        if (activeShifts) {
+          activeShifts.forEach(s => {
+            if (s.operator_id) activeOperatorIds.add(s.operator_id);
+          });
+        }
+
+        // 2. Operadores asignados directamente al objetivo
+        const { data: objectiveGuards } = await supabase
           .from('resources')
           .select('id, assigned_to')
-          .eq('current_objective_id', objective_id);
+          .or(`current_objective_id.eq.${objective_id}`);
 
-        if (activeGuards && activeGuards.length > 0) {
-          const notificationsToInsert = activeGuards.map(g => ({
-            resource_id: g.id,
-            title: '📢 Novedad de Gerencia en Bitácora',
-            body: content.replace('[GERENTE]', '').trim(),
+        if (objectiveGuards) {
+          objectiveGuards.forEach(g => {
+            if (g.id) activeOperatorIds.add(g.id);
+            if (g.assigned_to) activeOperatorIds.add(g.assigned_to);
+          });
+        }
+
+        if (activeOperatorIds.size > 0) {
+          const cleanBody = content.replace('[GERENTE]', '').trim();
+          const notificationsToInsert = Array.from(activeOperatorIds).map(opId => ({
+            resource_id: opId,
+            title: '📢 Novedad / Orden de Gerencia en Bitácora',
+            body: cleanBody,
             type: 'novedad',
-            tenant_id: targetTenantId
+            tenant_id: targetTenantId,
+            created_at: new Date().toISOString()
           }));
           await supabase.from('notifications').insert(notificationsToInsert);
         }

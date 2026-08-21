@@ -32,6 +32,7 @@ export default function GuardiaDashboard() {
   const [scheduledShift, setScheduledShift] = useState<any>(null);
   const [isGeofencePaused, setIsGeofencePaused] = useState(false);
   const [geofenceDistance, setGeofenceDistance] = useState(0);
+  const [recentBookEntries, setRecentBookEntries] = useState<any[]>([]);
 
   useEffect(() => {
     const handleGeofenceEvent = (e: any) => {
@@ -54,6 +55,45 @@ export default function GuardiaDashboard() {
     window.addEventListener('sigpad_geofence_alert', handleGeofenceEvent);
     return () => window.removeEventListener('sigpad_geofence_alert', handleGeofenceEvent);
   }, [updateShiftData]);
+
+  // Sincronización en Tiempo Real de Bitácora del Puesto para el Operador
+  useEffect(() => {
+    const currentObjId = shiftData?.objective_id || assignedObjective?.id;
+    if (!currentObjId) return;
+
+    const fetchRecentEntries = async () => {
+      try {
+        const { data } = await supabase
+          .from('guard_book_entries')
+          .select('*')
+          .eq('objective_id', currentObjId)
+          .order('created_at', { ascending: false })
+          .limit(5);
+
+        if (data) setRecentBookEntries(data);
+      } catch (e) {}
+    };
+
+    fetchRecentEntries();
+
+    const channel = supabase
+      .channel(`op-book-sync-${currentObjId}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'guard_book_entries',
+        filter: `objective_id=eq.${currentObjId}`
+      }, (payload) => {
+        const newE = payload.new as any;
+        setRecentBookEntries(prev => [newE, ...prev.filter(x => x.id !== newE.id).slice(0, 4)]);
+        if ("vibrate" in navigator) {
+          navigator.vibrate([200, 100, 200]);
+        }
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [shiftData?.objective_id, assignedObjective?.id]);
   
   const OPERATOR_ID = user?.id || 'recurso_demo';
 
@@ -632,6 +672,65 @@ export default function GuardiaDashboard() {
                       </div>
                   </div>
                 </div>
+            </Card>
+
+            {/* Widget: Bitácora & Consignas del Puesto */}
+            <Card className={cn(
+              "p-6 border-none shadow-2xl transition-colors relative overflow-hidden",
+              theme === 'dark' ? "bg-zinc-900 border border-white/5" : "bg-white"
+            )}>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Book size={18} className="text-emerald-500" />
+                  <p className="text-[11px] font-black text-zinc-400 uppercase tracking-widest">
+                    Bitácora del Puesto
+                  </p>
+                </div>
+                <Link href="/operador/libro">
+                  <span className="text-[10px] font-black text-primary hover:underline uppercase tracking-wider">
+                    Ver Todo →
+                  </span>
+                </Link>
+              </div>
+
+              {recentBookEntries.length > 0 ? (
+                <div className="space-y-3">
+                  {recentBookEntries.slice(0, 3).map((entry, idx) => {
+                    const isGerente = entry.content?.startsWith('[GERENTE]');
+                    const cleanText = entry.content?.replace('[GERENTE]', '').trim();
+                    return (
+                      <div 
+                        key={entry.id || idx}
+                        className={cn(
+                          "p-3.5 rounded-2xl border text-xs font-medium space-y-1 transition-all",
+                          isGerente
+                            ? "bg-amber-500/10 border-amber-500/30 text-amber-900 dark:text-amber-200"
+                            : (theme === 'dark' ? "bg-white/5 border-white/5 text-zinc-200" : "bg-zinc-50 border-zinc-100 text-zinc-800")
+                        )}
+                      >
+                        <div className="flex items-center justify-between text-[10px] font-black uppercase">
+                          <span className={cn(
+                            "px-2 py-0.5 rounded text-[9px]",
+                            isGerente ? "bg-amber-500 text-black font-black" : "bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
+                          )}>
+                            {isGerente ? '✍️ Gerencia' : (entry.entry_type || 'Novedad')}
+                          </span>
+                          <span className="font-mono text-zinc-400 text-[9px]">
+                            {new Date(entry.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} hs
+                          </span>
+                        </div>
+                        <p className="line-clamp-2 leading-relaxed pt-1">
+                          {cleanText}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-6">
+                  <p className="text-xs text-zinc-400 font-bold uppercase tracking-wider">Sin novedades recientes en la bitácora</p>
+                </div>
+              )}
             </Card>
 
             <Card className={cn(

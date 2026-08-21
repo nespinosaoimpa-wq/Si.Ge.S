@@ -140,6 +140,55 @@ export default function GuardBookPage() {
   const [objectives, setObjectives] = useState<any[]>([]);
   const [newEntryFlash, setNewEntryFlash] = useState<string | null>(null);
 
+  // New Manager Entry Modal State
+  const [showNewEntryModal, setShowNewEntryModal] = useState(false);
+  const [managerObjectiveId, setManagerObjectiveId] = useState('');
+  const [managerContent, setManagerContent] = useState('');
+  const [managerEntryType, setManagerEntryType] = useState('libro_guardia');
+  const [managerUrgency, setManagerUrgency] = useState('normal');
+  const [isPublishing, setIsPublishing] = useState(false);
+
+  const handleCreateManagerEntry = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!managerContent.trim()) return;
+    setIsPublishing(true);
+
+    try {
+      const targetObjId = managerObjectiveId || (objectives[0]?.id ?? '');
+      if (!targetObjId) {
+        alert('Debe seleccionar un objetivo válido.');
+        return;
+      }
+
+      const res = await fetch('/api/guard-book', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          objective_id: targetObjId,
+          resource_id: 'gerente_master',
+          entry_type: managerEntryType,
+          content: `[GERENTE] ${managerContent.trim()}`,
+          urgency: managerUrgency,
+          is_manager: true
+        })
+      });
+
+      if (!res.ok) {
+        const j = await res.json();
+        throw new Error(j.error || 'Error al guardar la novedad');
+      }
+
+      setManagerContent('');
+      setShowNewEntryModal(false);
+      fetchEntries();
+      alert('📢 ¡Novedad publicada y notificada exitosamente a los vigiladores!');
+    } catch (err: any) {
+      alert('Error: ' + err.message);
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
   const fetchEntries = async () => {
     try {
       setLoading(true);
@@ -257,6 +306,13 @@ export default function GuardBookPage() {
         </div>
 
         <div className="flex items-center gap-3 flex-wrap">
+          <button
+            onClick={() => setShowNewEntryModal(true)}
+            className="h-11 px-5 rounded-xl text-xs font-black gap-2 bg-emerald-600 hover:bg-emerald-700 text-white transition-all flex items-center justify-center shadow-lg uppercase tracking-widest"
+          >
+            <Zap size={16} />
+            ✍️ Publicar Novedad de Gerencia
+          </button>
           <button 
             onClick={fetchEntries} 
             className="h-11 px-4 flex items-center gap-2 rounded-xl border border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50 transition-all text-xs font-bold uppercase tracking-wider shadow-sm"
@@ -611,6 +667,113 @@ export default function GuardBookPage() {
           </AnimatePresence>
         )}
       </div>
+
+      {/* ─── MODAL: PUBLICAR NOVEDAD DE GERENCIA ─── */}
+      {showNewEntryModal && (
+        <div className="fixed inset-0 z-[150] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 lg:p-8 max-w-lg w-full shadow-2xl border border-zinc-200 animate-scale-up space-y-6">
+            <div className="flex items-center justify-between border-b border-zinc-100 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-emerald-500/10 text-emerald-600 rounded-xl flex items-center justify-center">
+                  <Zap size={20} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black uppercase text-zinc-900 tracking-tight">Publicar Novedad de Gerencia</h3>
+                  <p className="text-xs text-zinc-500 font-medium">Se transmitirá inmediatamente a los vigiladores del puesto</p>
+                </div>
+              </div>
+              <button 
+                type="button"
+                onClick={() => setShowNewEntryModal(false)}
+                className="w-8 h-8 rounded-full bg-zinc-100 text-zinc-500 hover:bg-zinc-200 flex items-center justify-center font-black"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateManagerEntry} className="space-y-4">
+              <div>
+                <label className="text-[11px] font-black uppercase tracking-wider text-zinc-600 block mb-1.5">
+                  1. Objetivo / Puesto Destino:
+                </label>
+                <select
+                  required
+                  value={managerObjectiveId}
+                  onChange={e => setManagerObjectiveId(e.target.value)}
+                  className="w-full h-11 px-3 bg-zinc-50 border border-zinc-200 rounded-xl text-xs font-bold text-zinc-900 uppercase"
+                >
+                  <option value="">-- Seleccione un Objetivo --</option>
+                  {objectives.map((o: any) => (
+                    <option key={o.id} value={o.id}>{o.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] font-black uppercase tracking-wider text-zinc-600 block mb-1.5">
+                    2. Categoría:
+                  </label>
+                  <select
+                    value={managerEntryType}
+                    onChange={e => setManagerEntryType(e.target.value)}
+                    className="w-full h-11 px-3 bg-zinc-50 border border-zinc-200 rounded-xl text-xs font-bold text-zinc-900 uppercase"
+                  >
+                    <option value="libro_guardia">Novedad General</option>
+                    <option value="incidente">Incidente / Aviso</option>
+                    <option value="emergencia">Emergencia / Directiva</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[11px] font-black uppercase tracking-wider text-zinc-600 block mb-1.5">
+                    3. Urgencia:
+                  </label>
+                  <select
+                    value={managerUrgency}
+                    onChange={e => setManagerUrgency(e.target.value)}
+                    className="w-full h-11 px-3 bg-zinc-50 border border-zinc-200 rounded-xl text-xs font-bold text-zinc-900 uppercase"
+                  >
+                    <option value="normal">⚪ Normal</option>
+                    <option value="alta">🟧 Alta</option>
+                    <option value="critica">🔴 Crítica</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-black uppercase tracking-wider text-zinc-600 block mb-1.5">
+                  4. Detalle de la Novedad / Consigna:
+                </label>
+                <textarea
+                  required
+                  rows={4}
+                  value={managerContent}
+                  onChange={e => setManagerContent(e.target.value)}
+                  placeholder="Ingrese las directivas u observaciones requeridas para el puesto..."
+                  className="w-full p-4 bg-zinc-50 border border-zinc-200 rounded-2xl text-xs font-medium text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 resize-none"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowNewEntryModal(false)}
+                  className="h-12 px-5 rounded-xl text-xs font-bold uppercase tracking-wider border border-zinc-200 text-zinc-600 hover:bg-zinc-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isPublishing || !managerContent.trim()}
+                  className="h-12 px-6 rounded-xl text-xs font-black uppercase tracking-widest bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20 disabled:opacity-50 flex items-center gap-2"
+                >
+                  {isPublishing ? 'Publicando...' : '📢 Publicar Novedad'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
     </div>
   );
