@@ -142,6 +142,9 @@ export async function GET(req: NextRequest) {
       .select('*')
       .neq('status', 'resolved')
       .neq('status', 'resuelto')
+      .neq('status', 'justificado')
+      .neq('status', 'sancionado')
+      .neq('status', 'atendido')
       .neq('entry_type', 'fichaje')
       .order('created_at', { ascending: false })
       .limit(10);
@@ -155,6 +158,17 @@ export async function GET(req: NextRequest) {
       .select('*')
       .neq('status', 'resolved')
       .neq('status', 'resuelto')
+      .neq('status', 'justificado')
+      .neq('status', 'sancionado')
+      .neq('status', 'atendido')
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    let alarmsQuery = supabase.from('alarms')
+      .select('*')
+      .neq('status', 'resolved')
+      .neq('status', 'resuelto')
+      .neq('status', 'acknowledged')
       .order('created_at', { ascending: false })
       .limit(10);
 
@@ -166,14 +180,16 @@ export async function GET(req: NextRequest) {
       guardBookQuery = guardBookQuery.or(tenantFilter);
       shiftsQuery = shiftsQuery.or(`tenant_id.eq.${tenantId},tenant_id.eq.a1b2c3d4-0001-0001-0001-000000000001`);
       incidentsQuery = incidentsQuery.or(tenantFilter);
+      alarmsQuery = alarmsQuery.or(tenantFilter);
     }
 
-    const [objectivesRes, resourcesRes, incidentsRes, shiftsRes, rawIncidentsRes] = await Promise.all([
+    const [objectivesRes, resourcesRes, incidentsRes, shiftsRes, rawIncidentsRes, alarmsRes] = await Promise.all([
       objectivesQuery,
       resourcesQuery,
       guardBookQuery,
       shiftsQuery,
-      incidentsQuery
+      incidentsQuery,
+      alarmsQuery
     ]);
 
     if (objectivesRes.error) console.error("❌ Objectives fetch error:", JSON.stringify(objectivesRes.error));
@@ -181,6 +197,7 @@ export async function GET(req: NextRequest) {
     if (incidentsRes.error) console.error("❌ Guard book incidents fetch error:", JSON.stringify(incidentsRes.error));
     if (shiftsRes.error) console.error("❌ Shifts fetch error:", JSON.stringify(shiftsRes.error));
     if (rawIncidentsRes.error) console.error("❌ Raw incidents fetch error:", JSON.stringify(rawIncidentsRes.error));
+    if (alarmsRes?.error) console.error("❌ Alarms fetch error:", JSON.stringify(alarmsRes.error));
 
     // Filter out inactive and deleted objectives
     const rawObjectives = (objectivesRes.data || []).filter((o: any) => 
@@ -216,7 +233,7 @@ export async function GET(req: NextRequest) {
       assigned_personnel: resourcesByObjective[obj.id] || []
     }));
 
-    // Consolidate entries from both tables
+    // Consolidate entries from all alert tables
     const recentIncidentsFromGuardBook = (incidentsRes.data || []).map((inc: any) => ({
       ...inc,
       resource_id: inc.operator_id || inc.resource_id
@@ -228,7 +245,25 @@ export async function GET(req: NextRequest) {
       urgency: inc.status === 'critica' || inc.status === 'crítica' ? 'critica' : 'normal'
     }));
 
-    const recentIncidents = [...recentIncidentsFromGuardBook, ...recentIncidentsFromRawIncidents]
+    const recentIncidentsFromAlarms = (alarmsRes?.data || []).map((alarm: any) => ({
+      id: alarm.id,
+      entry_type: 'emergencia',
+      content: `🚨 ALERTA: ${alarm.alarm_type || alarm.message || 'Pánico en puesto'}`,
+      latitude: alarm.latitude || alarm.operator_latitude,
+      longitude: alarm.longitude || alarm.operator_longitude,
+      created_at: alarm.created_at,
+      urgency: 'critica',
+      status: alarm.status,
+      resource_name: alarm.operator_name || 'Operador',
+      resource_id: alarm.operator_id || alarm.triggered_by
+    }));
+
+    const recentIncidents = [
+      ...recentIncidentsFromGuardBook, 
+      ...recentIncidentsFromRawIncidents,
+      ...recentIncidentsFromAlarms
+    ]
+      .filter((inc, index, self) => self.findIndex(t => t.id === inc.id) === index)
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, 15);
 
@@ -238,9 +273,6 @@ export async function GET(req: NextRequest) {
       recentIncidents,
       activeShifts: shiftsRes.data || []
     };
-
-    // Save to serverCache
-    serverCache.set(cacheKey, responseData);
 
     return NextResponse.json(responseData, {
       headers: {

@@ -202,7 +202,7 @@ export default function PanicAlertOverlay({ alert, onDismiss, onResolve }: Panic
                   className="flex-1 h-14 rounded-xl bg-green-500 text-black hover:bg-green-400 font-black uppercase text-[10px] tracking-widest shadow-xl shadow-green-500/20 border-none"
                   onClick={() => {
                     if (confirm('¿Confirmas que la emergencia ha sido controlada y deseas finalizar el protocolo de alerta?')) {
-                      onResolve('Alerta gestionada por gerencia');
+                      onResolve(alert.id);
                     }
                   }}
                 >

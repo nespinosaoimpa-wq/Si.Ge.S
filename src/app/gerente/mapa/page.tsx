@@ -68,9 +68,32 @@ export default function MapaOperativoPage() {
     }
   };
 
-  const handleAcknowledgeEmergency = () => {
+  const handleAcknowledgeEmergency = async () => {
+    if (activeAlert?.id) {
+      await handleResolveIncident(activeAlert.id);
+    }
     setActiveAlert(null);
     stopAlarm();
+  };
+
+  const handleResolveIncident = async (id: string) => {
+    if (!id) return;
+    try {
+      setActiveAlert((prev: any) => prev?.id === id ? null : prev);
+      stopAlarm();
+      const res = await fetch(`/api/tracking/incidents/${encodeURIComponent(id)}/resolve`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'resolved', comment: 'Resuelto por gerencia' })
+      });
+      if (!res.ok) {
+        console.error("Error al resolver alerta en servidor");
+      }
+      fetchData();
+    } catch (err: any) {
+      console.error("Error al resolver incidente:", err);
+      fetchData();
+    }
   };
 
   // Responsive check
@@ -322,70 +345,7 @@ export default function MapaOperativoPage() {
     }
   };
 
-  const handleResolveIncident = async (id: string) => {
-    try {
-      let resolved = false;
 
-      // 1. Try guard_book_entries
-      try {
-        await api.guardBook.update(id, { status: 'resolved' });
-        resolved = true;
-      } catch (err: any) {
-        if (!err.message || (!err.message.includes('JSON object') && !err.message.includes('results'))) {
-          throw err;
-        }
-      }
-
-      // 2. Try incidents
-      if (!resolved) {
-        try {
-          await api.incidents.update(id, { status: 'resolved' });
-          resolved = true;
-        } catch (err: any) {
-          if (!err.message || (!err.message.includes('JSON object') && !err.message.includes('results'))) {
-            throw err;
-          }
-        }
-      }
-
-      // 3. Try alarms (with resolved_at for audit trail)
-      if (!resolved) {
-        try {
-          const { data, error } = await supabase
-            .from('alarms')
-            .update({ status: 'resolved', resolved_at: new Date().toISOString() })
-            .eq('id', id)
-            .select();
-
-          if (!error && data && data.length > 0) {
-            resolved = true;
-          }
-        } catch (err) {}
-      }
-
-      // 4. Try geofencing_incidents
-      if (!resolved) {
-        try {
-          const res = await fetch(`/api/tracking/incidents/${id}/resolve`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: 'resuelto', comment: 'Resuelto por gerencia' })
-          });
-          if (res.ok) {
-            resolved = true;
-          }
-        } catch (err) {}
-      }
-
-      if (!resolved) {
-        throw new Error("No se pudo encontrar la alerta en ninguna tabla activa del sistema.");
-      }
-
-      fetchData(); // Refresh to hide from map
-    } catch (err: any) {
-      alert("Error al resolver incidente: " + err.message);
-    }
-  };
 
 
   const filteredItems = {

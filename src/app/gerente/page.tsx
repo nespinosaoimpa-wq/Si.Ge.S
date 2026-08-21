@@ -111,7 +111,10 @@ export default function AdminDashboard() {
     }
   }, []);
 
-  const handleAcknowledgeEmergency = () => {
+  const handleAcknowledgeEmergency = async () => {
+    if (activeEmergency?.id) {
+      await handleResolveIncident(activeEmergency.id);
+    }
     setActiveEmergency(null);
     if (audioRef.current) {
       audioRef.current.pause();
@@ -383,71 +386,31 @@ export default function AdminDashboard() {
   };
 
   const handleResolveIncident = async (id: string) => {
+    if (!id) return;
     try {
-      let resolved = false;
-
-      // 1. Try guard_book_entries
-      try {
-        await api.guardBook.update(id, { status: 'resolved' });
-        resolved = true;
-      } catch (err: any) {
-        if (!err.message || (!err.message.includes('JSON object') && !err.message.includes('results'))) {
-          throw err;
-        }
-      }
-
-      // 2. Try incidents
-      if (!resolved) {
-        try {
-          await api.incidents.update(id, { status: 'resolved' });
-          resolved = true;
-        } catch (err: any) {
-          if (!err.message || (!err.message.includes('JSON object') && !err.message.includes('results'))) {
-            throw err;
-          }
-        }
-      }
-
-      // 3. Try alarms (with resolved_at for audit trail)
-      if (!resolved) {
-        try {
-          const { data, error } = await supabase
-            .from('alarms')
-            .update({ status: 'resolved', resolved_at: new Date().toISOString() })
-            .eq('id', id)
-            .select();
-          
-          if (!error && data && data.length > 0) {
-            resolved = true;
-          }
-        } catch (err) {}
-      }
-
-      // 4. Try geofencing_incidents
-      if (!resolved) {
-        try {
-          const res = await fetch(`/api/tracking/incidents/${id}/resolve`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: 'resuelto', comment: 'Resuelto por gerencia' })
-          });
-          if (res.ok) {
-            resolved = true;
-          }
-        } catch (err) {}
-      }
-
-      if (!resolved) {
-        throw new Error("No se pudo encontrar la alerta en ninguna tabla activa del sistema.");
-      }
-
-      // Optimistic update for local state to hide from map immediately
+      // 1. Actualización optimista inmediata en interfaz (0ms)
       setData((prev: any) => ({
         ...prev,
         recentIncidents: (prev.recentIncidents || []).filter((inc: any) => inc.id !== id)
       }));
+
+      // 2. Llamada a la API universal del servidor que limpia la alerta de TODAS las tablas
+      const res = await fetch(`/api/tracking/incidents/${encodeURIComponent(id)}/resolve`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'resolved', comment: 'Resuelto por gerencia' })
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        console.error("Error resolviendo alerta en servidor:", errorData);
+      }
+
+      // 3. Refrescar estado para confirmar sincronización total
+      fetchData();
     } catch (err: any) {
-      alert("Error al resolver incidente: " + err.message);
+      console.error("Error al resolver incidente:", err);
+      fetchData();
     }
   };
 
