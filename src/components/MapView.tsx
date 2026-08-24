@@ -463,32 +463,59 @@ export default function MapView({
   const [showNearby, setShowNearby] = useState(false);
   const [loadingNearby, setLoadingNearby] = useState(false);
 
+  // Resolve coordinates for incidents: if lat/lng are missing/invalid on the incident object itself,
+  // resolve them from the associated objective in the objectives prop using objective_id.
+  const resolvedIncidents = useMemo(() => {
+    return (incidents || []).map(inc => {
+      let lat = inc.latitude;
+      let lng = inc.longitude;
+
+      if (!isValidCoords(lat, lng) && (inc as any).objective_id) {
+        const targetObj = (objectives || []).find(o => o.id === (inc as any).objective_id);
+        if (targetObj && isValidCoords(targetObj.latitude, targetObj.longitude)) {
+          lat = targetObj.latitude;
+          lng = targetObj.longitude;
+        }
+      }
+
+      return {
+        ...inc,
+        latitude: lat,
+        longitude: lng
+      };
+    });
+  }, [incidents, objectives]);
+
   // Separate incidents into panic and regular alerts
   const panicIncidents = useMemo(() => {
-    return (incidents || []).filter(inc => {
-      const isResolved = inc.status === 'resolved' || inc.status === 'resuelto' || (inc.content || '').includes('[RESUELTO]');
+    return resolvedIncidents.filter(inc => {
+      const isResolved = inc.status === 'resolved' || inc.status === 'resuelto' || inc.status === 'acknowledged' || (inc.content || '').includes('[RESUELTO]');
       if (isResolved) return false;
-      return inc.entry_type === 'panic' || inc.entry_type === 'panico' || inc.entry_type === 'emergencia' || (inc.content || '').toLowerCase().includes('pánico') || (inc.content || '').toLowerCase().includes('panic');
+      const type = (inc.entry_type || '').toLowerCase();
+      const content = (inc.content || '').toLowerCase();
+      return type === 'panic' || type === 'panico' || type === 'emergencia' || type === 'sos_panic' || type === 'sos' || content.includes('pánico') || content.includes('panico') || content.includes('sos');
     });
-  }, [incidents]);
+  }, [resolvedIncidents]);
 
   const regularIncidents = useMemo(() => {
-    return (incidents || []).filter(inc => {
-      const isResolved = inc.status === 'resolved' || inc.status === 'resuelto' || (inc.content || '').includes('[RESUELTO]');
+    return resolvedIncidents.filter(inc => {
+      const isResolved = inc.status === 'resolved' || inc.status === 'resuelto' || inc.status === 'acknowledged' || (inc.content || '').includes('[RESUELTO]');
       const isFichaje = (inc.entry_type || '').toLowerCase().includes('fichaje') || (inc.content || '').toUpperCase().includes('FICHAJE');
       if (isResolved || isFichaje) return false;
-      const isPanic = inc.entry_type === 'panic' || inc.entry_type === 'panico' || inc.entry_type === 'emergencia' || (inc.content || '').toLowerCase().includes('pánico') || (inc.content || '').toLowerCase().includes('panic');
+      const type = (inc.entry_type || '').toLowerCase();
+      const content = (inc.content || '').toLowerCase();
+      const isPanic = type === 'panic' || type === 'panico' || type === 'emergencia' || type === 'sos_panic' || type === 'sos' || content.includes('pánico') || content.includes('panico') || content.includes('sos');
       return !isPanic;
     });
-  }, [incidents]);
+  }, [resolvedIncidents]);
 
   const activeIncidents = useMemo(() => 
-    (incidents || []).filter(inc => {
-      const isResolved = inc.status === 'resolved' || inc.status === 'resuelto' || (inc.content || '').includes('[RESUELTO]');
+    resolvedIncidents.filter(inc => {
+      const isResolved = inc.status === 'resolved' || inc.status === 'resuelto' || inc.status === 'acknowledged' || (inc.content || '').includes('[RESUELTO]');
       const isFichaje = (inc.entry_type || '').toLowerCase().includes('fichaje') || (inc.content || '').toUpperCase().includes('FICHAJE');
       return !isResolved && !isFichaje;
     }),
-  [incidents]);
+  [resolvedIncidents]);
 
   const toggle3D = () => {
     const next3D = !is3D;
@@ -939,14 +966,49 @@ export default function MapView({
           );
         })}
 
-        {/* 🔥 PANIC ALERTS (REALTIME PULSING) 🔥 */}
+        {/* Objective Markers */}
+        {(objectives || []).filter(o => o.latitude && o.longitude && !isNaN(Number(o.latitude)) && !isNaN(Number(o.longitude))).map((obj) => {
+          if (!obj.latitude || !obj.longitude) return null;
+          const isSelected = selectedObjectiveId === obj.id || selectedObjective?.id === obj.id;
+          const hasIncident = activeIncidents.some(inc => (inc as any).objective_id === obj.id);
+          const enrichedObj = hasIncident ? { ...obj, status: 'critica' } : obj;
+          
+          return (
+            <Marker
+              key={`obj-${obj.id}`}
+              latitude={Number(obj.latitude)}
+              longitude={Number(obj.longitude)}
+              anchor="center"
+              rotationAlignment="viewport"
+              pitchAlignment="viewport"
+              draggable={isRelocating && isSelected}
+              onDragEnd={(e) => {
+                if (onRelocationEnd) onRelocationEnd(obj.id, e.lngLat.lat, e.lngLat.lng);
+              }}
+              onClick={e => {
+                e.originalEvent.stopPropagation();
+                if (onObjectiveSelect) onObjectiveSelect(obj);
+              }}
+            >
+              <ObjectiveMarkerContent
+                obj={enrichedObj}
+                isSelected={isSelected}
+                isRelocating={isRelocating}
+              />
+            </Marker>
+          );
+        })}
+
+        {/* 🔥 PANIC ALERTS (REALTIME PULSING) — Rendered AFTER objectives for top z-index visibility 🔥 */}
         {panicIncidents.filter(alert => isValidCoords(alert.latitude, alert.longitude)).map((alert, index) => {
           return (
             <Marker 
               key={`panic-${alert.id || index}`} 
               latitude={Number(alert.latitude)} 
               longitude={Number(alert.longitude)} 
-              anchor="center"
+              anchor="bottom-left"
+              rotationAlignment="viewport"
+              pitchAlignment="viewport"
               onClick={e => {
                 e.originalEvent.stopPropagation();
                 setSelectedIncident(alert);
@@ -982,12 +1044,14 @@ export default function MapView({
           </Source>
         )}
 
+        {/* Regular Incident Markers — Rendered AFTER objectives for top z-index visibility */}
         {regularIncidents.filter(inc => isValidCoords(inc.latitude, inc.longitude)).map((inc) => {
           return (
             <Marker
               key={`inc-${inc.id}`}
               latitude={Number(inc.latitude)}
               longitude={Number(inc.longitude)}
+              anchor="bottom-left"
               rotationAlignment="viewport"
               pitchAlignment="viewport"
               onClick={e => {
@@ -999,60 +1063,6 @@ export default function MapView({
                 entryType={inc.entry_type}
                 content={inc.content}
                 status={inc.status}
-              />
-            </Marker>
-          );
-        })}
-
-        {/* Checkpoint Markers */}
-        {(checkpoints || []).filter(cp => cp.latitude && cp.longitude && !isNaN(Number(cp.latitude)) && !isNaN(Number(cp.longitude))).map((cp) => (
-          <Marker
-            key={`cp-${cp.id}`}
-            latitude={Number(cp.latitude)}
-            longitude={Number(cp.longitude)}
-            anchor="center"
-            draggable={!!onCheckpointDragEnd}
-            onDragEnd={(e) => {
-              if (onCheckpointDragEnd) onCheckpointDragEnd(cp.id, e.lngLat.lat, e.lngLat.lng);
-            }}
-          >
-            <div className="relative flex flex-col items-center group cursor-pointer">
-              <div className="bg-amber-500 p-1.5 rounded-full border-2 border-white shadow-lg transition-transform group-hover:scale-110 flex items-center justify-center">
-                <Target size={12} className="text-zinc-950 font-bold" />
-              </div>
-              <div className="absolute top-full mt-1 opacity-0 group-hover:opacity-100 transition-opacity bg-zinc-950/90 text-white text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded shadow-xl pointer-events-none whitespace-nowrap border border-amber-500/20 z-[60]">
-                {cp.name}
-              </div>
-            </div>
-          </Marker>
-        ))}
-
-        {/* Objective Markers */}
-        {(objectives || []).filter(o => o.latitude && o.longitude && !isNaN(Number(o.latitude)) && !isNaN(Number(o.longitude))).map((obj) => {
-          if (!obj.latitude || !obj.longitude) return null;
-          const isSelected = selectedObjectiveId === obj.id || selectedObjective?.id === obj.id;
-          
-          return (
-            <Marker
-              key={`obj-${obj.id}`}
-              latitude={Number(obj.latitude)}
-              longitude={Number(obj.longitude)}
-              anchor="center"
-              rotationAlignment="viewport"
-              pitchAlignment="viewport"
-              draggable={isRelocating && isSelected}
-              onDragEnd={(e) => {
-                if (onRelocationEnd) onRelocationEnd(obj.id, e.lngLat.lat, e.lngLat.lng);
-              }}
-              onClick={e => {
-                e.originalEvent.stopPropagation();
-                if (onObjectiveSelect) onObjectiveSelect(obj);
-              }}
-            >
-              <ObjectiveMarkerContent
-                obj={obj}
-                isSelected={isSelected}
-                isRelocating={isRelocating}
               />
             </Marker>
           );

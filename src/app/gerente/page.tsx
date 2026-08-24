@@ -394,19 +394,22 @@ export default function AdminDashboard() {
         recentIncidents: (prev.recentIncidents || []).filter((inc: any) => inc.id !== id)
       }));
 
-      // 2. Llamada a la API universal del servidor que limpia la alerta de TODAS las tablas
-      const res = await fetch(`/api/tracking/incidents/${encodeURIComponent(id)}/resolve`, {
+      // 2. Actualización DIRECTA en Supabase (0 llamadas a Vercel)
+      await Promise.allSettled([
+        supabase.from('incidents').update({ status: 'resolved' }).eq('id', id),
+        supabase.from('alarms').update({ status: 'resolved', acknowledged_at: new Date().toISOString() }).eq('id', id),
+        supabase.from('guard_book_entries').update({ status: 'resolved' }).eq('id', id),
+        supabase.from('geofencing_incidents').update({ status: 'resolved' }).eq('id', id)
+      ]);
+
+      // 3. Fallback no bloqueante a la API
+      fetch(`/api/tracking/incidents/${encodeURIComponent(id)}/resolve`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'resolved', comment: 'Resuelto por gerencia' })
-      });
+      }).catch(() => {});
 
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        console.error("Error resolviendo alerta en servidor:", errorData);
-      }
-
-      // 3. Refrescar estado para confirmar sincronización total
+      // 4. Refrescar estado para confirmar sincronización total
       fetchData();
     } catch (err: any) {
       console.error("Error al resolver incidente:", err);
@@ -649,10 +652,7 @@ export default function AdminDashboard() {
           let latitude = newAlarm.latitude || newAlarm.operator_latitude;
           let longitude = newAlarm.longitude || newAlarm.operator_longitude;
 
-          if (newAlarm.triggered_by === 'system_scheduler' || newAlarm.alarm_type === 'cobertura_pendiente') {
-            resourceName = 'Sistema';
-            
-            // Try to find the objective coordinates in our local state data
+          if (!latitude || !longitude) {
             if (newAlarm.objective_id && data.objectives) {
               const obj = data.objectives.find((o: any) => o.id === newAlarm.objective_id);
               if (obj) {
@@ -664,7 +664,8 @@ export default function AdminDashboard() {
 
           const enrichedAlert = {
             ...newAlarm,
-            entry_type: newAlarm.alarm_type === 'panico' ? 'emergencia' : (newAlarm.alarm_type || 'alerta'),
+            objective_id: newAlarm.objective_id,
+            entry_type: newAlarm.alarm_type === 'panico' || newAlarm.alarm_type === 'sos_panic' ? 'panic' : (newAlarm.alarm_type || 'alerta'),
             content: newAlarm.message || 'Alerta activada por operador',
             resource_name: resourceName,
             resource_id: newAlarm.triggered_by,
@@ -675,12 +676,10 @@ export default function AdminDashboard() {
           };
 
           // Add to map incidents for immediate visual feedback
-          if (enrichedAlert.latitude && enrichedAlert.longitude) {
-            setData((prev: any) => ({
-              ...prev,
-              recentIncidents: [enrichedAlert, ...(prev.recentIncidents || [])].slice(0, 20)
-            }));
-          }
+          setData((prev: any) => ({
+            ...prev,
+            recentIncidents: [enrichedAlert, ...(prev.recentIncidents || [])].slice(0, 20)
+          }));
 
           // Trigger emergency overlay
           handleEmergencyTrigger(enrichedAlert);
