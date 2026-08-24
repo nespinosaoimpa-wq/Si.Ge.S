@@ -45,6 +45,8 @@ export default function FichajePage() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [loadingObjective, setLoadingObjective] = useState(true);
   const [gpsProgress, setGpsProgress] = useState<{accuracy: number | null, count: number}>({ accuracy: null, count: 0 });
+  const [gpsFixProgress, setGpsFixProgress] = useState<{sample: number, total: number, accuracy: number} | null>(null);
+  const [gpsFallbackWarning, setGpsFallbackWarning] = useState(false);
   const [canSkipGps, setCanSkipGps] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [geofenceError, setGeofenceError] = useState<{message: string, targetRadius: number} | null>(null);
@@ -250,8 +252,9 @@ export default function FichajePage() {
     if (typeof navigator !== 'undefined' && navigator.geolocation) {
       watchId = navigator.geolocation.watchPosition(
         (pos) => {
-          // Strict gate for initial UI to avoid "jumping" to cell towers
-          if (pos.coords.accuracy > 150 && location) return; 
+          // Gate: ignore readings coarser than 50m for initial map display
+          // (was 150m — too permissive, caused marker to jump to cell towers)
+          if (pos.coords.accuracy > 50 && location) return;
           
           setLocation({
             lat: pos.coords.latitude,
@@ -261,7 +264,7 @@ export default function FichajePage() {
           });
         },
         (err) => console.warn('[Fichaje] GPS Initial Watch Error:', err.message),
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
       );
     }
 
@@ -411,6 +414,8 @@ export default function FichajePage() {
     }
 
     setGpsProgress({ accuracy: null, count: 0 });
+    setGpsFixProgress(null);
+    setGpsFallbackWarning(false);
     setCanSkipGps(false);
 
     const skipTimer = setTimeout(() => {
@@ -441,13 +446,7 @@ export default function FichajePage() {
             count: prev.count + 1 
           }));
 
-          const isAccurateEnough = coords.accuracy < 100;
-          
-          if (!isShiftActiveRef.current && !isCheckingInRef.current && isAccurateEnough) {
-            performCheckin(coords);
-            clearTimeout(gpsTimeout);
-            clearTimeout(skipTimer);
-          } else if (isShiftActiveRef.current) {
+          if (isShiftActiveRef.current) {
             if (!isShiftActiveRef.current) return;
             setLocation(coords);
             setLocating(false); 
@@ -476,6 +475,37 @@ export default function FichajePage() {
 
       newTracker.start();
       setTracker(newTracker);
+
+      // ── HIGH-PRECISION CHECKIN ─────────────────────────────────────
+      // For checkin, we collect 5 GPS samples ≤20m and average them,
+      // discarding the worst outlier. This prevents a single noisy tower
+      // reading from placing the operator at the wrong coordinates.
+      // Zero Vercel invocations — all math runs in the browser.
+      if (!isShiftActiveRef.current) {
+        try {
+          const fix = await newTracker.getHighPrecisionFix(
+            (sample, total, accuracy) => {
+              setGpsFixProgress({ sample, total, accuracy: Math.round(accuracy) });
+            }
+          );
+
+          setGpsFixProgress(null);
+          clearTimeout(skipTimer);
+          clearTimeout(gpsTimeout);
+
+          if (fix.isFallback) {
+            setGpsFallbackWarning(true);
+          }
+
+          if (!isCheckingInRef.current) {
+            performCheckin({ lat: fix.lat, lng: fix.lng, accuracy: fix.accuracy });
+          }
+        } catch (e) {
+          // If getHighPrecisionFix fails (e.g. permission denied), fall back gracefully
+          console.warn('[Fichaje] getHighPrecisionFix failed, falling back to single-sample:', e);
+          setGpsFixProgress(null);
+        }
+      }
     } catch (e: any) {
       console.error("[Fichaje] Failed to initialize GPS Tracker:", e);
       alert("⚠️ Error de conexión al iniciar GPS. Por favor, refrescá el navegador e intentá de nuevo.");
@@ -723,10 +753,32 @@ export default function FichajePage() {
                         : isOutOfRange ? 'bg-zinc-200 text-zinc-400 cursor-not-allowed' : 'bg-zinc-900 text-white hover:bg-zinc-800'
                     )}
                   >
-                    {locating ? (
-                      <div className="flex items-center gap-3">
-                        <div className="w-5 h-5 border-[3px] border-white/30 border-t-white rounded-full animate-spin" />
-                        <span>Sincronizando</span>
+                  {locating ? (
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="flex items-center gap-3">
+                          <div className="w-5 h-5 border-[3px] border-white/30 border-t-white rounded-full animate-spin" />
+                          <span>
+                            {gpsFixProgress
+                              ? `Precisando GPS... (${gpsFixProgress.sample}/${gpsFixProgress.total})`
+                              : 'Sincronizando'}
+                          </span>
+                        </div>
+                        {gpsFixProgress && (
+                          <div className="flex items-center gap-2 text-[10px] text-white/70">
+                            <span>±{gpsFixProgress.accuracy}m</span>
+                            <div className="flex gap-0.5">
+                              {Array.from({ length: gpsFixProgress.total }).map((_, i) => (
+                                <div
+                                  key={i}
+                                  className={cn(
+                                    'w-4 h-1.5 rounded-full transition-all',
+                                    i < gpsFixProgress.sample ? 'bg-emerald-400' : 'bg-white/20'
+                                  )}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ) : isShiftActive ? (
                       <><LogOut size={22} /> Finalizar Turno</>
@@ -734,6 +786,12 @@ export default function FichajePage() {
                       <><LogIn size={22} /> Iniciar Turno</>
                     )}
                   </motion.button>
+                  
+                  {gpsFallbackWarning && (
+                    <p className="text-center text-[10px] font-bold text-amber-500 uppercase tracking-widest mt-1">
+                      ⚠️ GPS con precisión reducida — fichaje registrado igualmente
+                    </p>
+                  )}
                   
                   {isOutOfRange && (
                     <p className="text-center text-[10px] font-black text-amber-500 uppercase tracking-widest mt-2">

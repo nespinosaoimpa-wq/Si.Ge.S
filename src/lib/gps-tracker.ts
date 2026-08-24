@@ -22,6 +22,17 @@ const STATIONARY_TIME_THRESHOLD = 120000; // 2 minutes
 const NORMAL_INTERVAL = 5000; // 5s
 const STATIONARY_INTERVAL = 60000; // 60s
 
+// Precision gates (raised from original 50m/12m for stricter accuracy)
+const ACCURACY_GATE_TRACKING = 25;  // discard readings worse than 25m during tracking
+const ACCURACY_GATE_KALMAN_BYPASS = 8; // bypass Kalman smoothing only for excellent satellite lock
+const ACCURACY_GATE_COLD_START = 60; // allow up to 60m only when no prior fix exists (cold start)
+
+// Multi-sample high-precision fix config
+const HP_FIX_REQUIRED_SAMPLES = 5;  // number of good samples to average
+const HP_FIX_SAMPLE_ACCURACY = 20;  // each sample must be ≤20m
+const HP_FIX_FALLBACK_ACCURACY = 40; // fallback accept threshold if 20m not achieved in time
+const HP_FIX_TIMEOUT_MS = 30000;    // 30 seconds max to collect samples
+
 export class GPSTracker {
   private onUpdate: (pos: any) => void;
   private onError: (err: string) => void;
@@ -71,6 +82,10 @@ export class GPSTracker {
   private kalmanVariance = -1; // -1 = uninitialized
   private kalmanLastTimestamp = 0;
   private readonly Q_PROCESS_NOISE = 1.5; // Base process variance (meters^2 per second)
+
+  // Last raw accuracy for external consumers (e.g. UI progress)
+  private lastRawAccuracy = 999;
+  public getLastAccuracy() { return this.lastRawAccuracy; }
 
   constructor(
     shiftId: string,
@@ -182,7 +197,8 @@ export class GPSTracker {
     this.watchId = navigator.geolocation.watchPosition(
       (pos) => this.handlePosition(pos),
       (err) => this.onError(err.message),
-      { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+      // timeout increased to 20s: gives GPS chip more time to converge in indoor/obstructed environments
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 }
     );
 
     // 3. Start Sync Monitor
@@ -243,8 +259,9 @@ export class GPSTracker {
   private applyKalmanFilter(measuredLat: number, measuredLng: number, accuracyMeters: number, speedMs: number, timestampMs: number) {
     const measurementNoise = accuracyMeters * accuracyMeters;
 
-    // High-precision satellite lock: snap immediately without smoothing lag
-    if (accuracyMeters <= 12 || this.kalmanVariance < 0) {
+    // High-precision satellite lock (≤8m): snap immediately without smoothing lag
+    // Tightened from 12m → 8m: at 12m GPS can still oscillate visibly at building-level zoom
+    if (accuracyMeters <= ACCURACY_GATE_KALMAN_BYPASS || this.kalmanVariance < 0) {
       this.kalmanLat = measuredLat;
       this.kalmanLng = measuredLng;
       this.kalmanVariance = measurementNoise;
@@ -275,9 +292,15 @@ export class GPSTracker {
     const rawSpeed = pos.coords.speed || 0;
     const rawAccuracy = pos.coords.accuracy || 30;
 
-    // Discard extremely noisy measurements (>50 meters accuracy) to prevent jumps
-    if (rawAccuracy > 50 && this.kalmanVariance !== -1) {
-      console.warn(`[SIGPAD GPS] Descartando coordenada imprecisa (>50m): ±${Math.round(rawAccuracy)}m`);
+    // Track last raw accuracy for external UI consumers
+    this.lastRawAccuracy = rawAccuracy;
+
+    // Discard imprecise measurements to prevent GPS marker jumps.
+    // Cold start (kalmanVariance === -1): allow up to ACCURACY_GATE_COLD_START (60m) to get initial fix.
+    // After first fix: enforce strict ACCURACY_GATE_TRACKING (25m) gate.
+    const gate = this.kalmanVariance === -1 ? ACCURACY_GATE_COLD_START : ACCURACY_GATE_TRACKING;
+    if (rawAccuracy > gate) {
+      console.warn(`[SIGPAD GPS] Descartando coordenada imprecisa (>${gate}m): ±${Math.round(rawAccuracy)}m`);
       return;
     }
 
@@ -388,6 +411,8 @@ export class GPSTracker {
         accuracy: accuracy,
         speed: speed,
         heading: pos.coords.heading,
+        altitude: pos.coords.altitude,
+        altitudeAccuracy: pos.coords.altitudeAccuracy,
         timestamp: pos.timestamp,
         isStationary,
         isOutside: this.isCurrentlyOutside,
@@ -567,6 +592,84 @@ export class GPSTracker {
       }
       this.onUpdate(data);
     } catch (e) {}
+  }
+
+  /**
+   * High-Precision Fix: collects HP_FIX_REQUIRED_SAMPLES readings ≤ HP_FIX_SAMPLE_ACCURACY (20m),
+   * averages coordinates discarding the outlier furthest from the centroid,
+   * returns averaged position with real effective accuracy.
+   * Used for checkin to prevent a single noisy reading from placing operator at wrong location.
+   * Falls back to best reading if strict accuracy not achieved within timeout.
+   * Zero Vercel invocations — pure browser-side computation.
+   */
+  public getHighPrecisionFix(
+    onProgress: (sample: number, total: number, accuracy: number) => void
+  ): Promise<{ lat: number; lng: number; accuracy: number; isFallback: boolean }> {
+    return new Promise((resolve, reject) => {
+      const samples: { lat: number; lng: number; accuracy: number }[] = [];
+      let bestSoFar: { lat: number; lng: number; accuracy: number } | null = null;
+      let watchId: number | null = null;
+      let resolved = false;
+
+      const finish = (isFallback: boolean) => {
+        if (resolved) return;
+        resolved = true;
+        if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+
+        if (isFallback && bestSoFar) {
+          resolve({ ...bestSoFar, isFallback: true });
+          return;
+        }
+
+        // Average collected samples, dropping the outlier furthest from centroid
+        const centLat = samples.reduce((s, p) => s + p.lat, 0) / samples.length;
+        const centLng = samples.reduce((s, p) => s + p.lng, 0) / samples.length;
+        let worstIdx = 0, worstDist = 0;
+        samples.forEach((p, i) => {
+          const d = calculateDistance(p.lat, p.lng, centLat, centLng);
+          if (d > worstDist) { worstDist = d; worstIdx = i; }
+        });
+        const filtered = samples.filter((_, i) => i !== worstIdx);
+        const avgLat = filtered.reduce((s, p) => s + p.lat, 0) / filtered.length;
+        const avgLng = filtered.reduce((s, p) => s + p.lng, 0) / filtered.length;
+        const avgAcc = filtered.reduce((s, p) => s + p.accuracy, 0) / filtered.length;
+        resolve({ lat: avgLat, lng: avgLng, accuracy: avgAcc, isFallback: false });
+      };
+
+      const timeoutId = setTimeout(() => {
+        finish(true); // fallback to best reading
+      }, HP_FIX_TIMEOUT_MS);
+
+      watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          const acc = pos.coords.accuracy;
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+
+          // Track best reading regardless of threshold (used for fallback)
+          if (!bestSoFar || acc < bestSoFar.accuracy) {
+            bestSoFar = { lat, lng, accuracy: acc };
+          }
+
+          if (acc <= HP_FIX_SAMPLE_ACCURACY) {
+            samples.push({ lat, lng, accuracy: acc });
+            onProgress(samples.length, HP_FIX_REQUIRED_SAMPLES, acc);
+            if (samples.length >= HP_FIX_REQUIRED_SAMPLES) {
+              clearTimeout(timeoutId);
+              finish(false);
+            }
+          } else {
+            // Report progress even when sample doesn't qualify, so UI stays responsive
+            onProgress(samples.length, HP_FIX_REQUIRED_SAMPLES, acc);
+          }
+        },
+        (err) => {
+          clearTimeout(timeoutId);
+          if (!resolved) reject(err);
+        },
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 }
+      );
+    });
   }
 
   private async transmitToServer(point: GPSPoint): Promise<boolean> {
