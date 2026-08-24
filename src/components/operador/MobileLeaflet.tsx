@@ -34,8 +34,6 @@ interface MobileLeafletProps {
 }
 
 // ─── HIGH PERFORMANCE SUB-COMPONENT ───
-// This isolates the 60fps requestAnimationFrame state updates to ONLY re-render this group.
-// It prevents the entire Mapbox canvas and UI overlay from re-rendering, saving battery.
 interface OperatorLocationGroupProps {
   currentPosition?: [number, number];
   currentAccuracy?: number;
@@ -66,7 +64,7 @@ function OperatorLocationGroup({
   const smoothRecenter = useCallback((lat: number, lng: number) => {
     const map = mapRef.current;
     if (!map || !mapLoaded) return;
-    if (userInteractingRef.current) return; // User is manually panning map, pause auto-center
+    if (userInteractingRef.current) return;
 
     const now = Date.now();
     if (now - lastRecenterTime.current < RECENTER_COOLDOWN) return;
@@ -84,25 +82,23 @@ function OperatorLocationGroup({
         duration: 1800,
         essential: true,
         curve: 1.3,
-        easing: (t) => 1 - Math.pow(1 - t, 3), // cubic ease-out
+        easing: (t) => 1 - Math.pow(1 - t, 3),
       });
     } else {
       map.easeTo({
         center: [lng, lat],
         duration: 1200,
-        easing: (t) => t * (2 - t), // quad ease-out
+        easing: (t) => t * (2 - t),
       });
     }
   }, [mapLoaded, haversineDistance, mapRef, userInteractingRef]);
 
-  // Trigger camera adjustment when animated positions drift
   useEffect(() => {
     if (animLat && animLng && animLat !== 0) {
       smoothRecenter(animLat, animLng);
     }
   }, [animLat, animLng, smoothRecenter]);
 
-  // Trail GeoJSON computed from the animated trailing coords
   const trailData = useMemo(() => {
     if (trail.length < 2) return null;
     return {
@@ -183,25 +179,33 @@ function OperatorLocationGroup({
         </Source>
       )}
 
-      {/* Operator Marker */}
+      {/* Operator Marker - Fixed Anchor Precision */}
       {animLat !== 0 && (
-        <Marker latitude={animLat} longitude={animLng} anchor="center">
-          <div
-            className="relative flex items-center justify-center"
-            style={{
-              transform: `rotate(${animBearing}deg)`,
-              transition: 'transform 0.4s ease-out',
-            }}
-          >
+        <Marker 
+          latitude={animLat} 
+          longitude={animLng} 
+          anchor="center"
+          pitchAlignment="viewport"
+          rotationAlignment="viewport"
+        >
+          <div className="relative w-12 h-12 flex items-center justify-center pointer-events-none select-none">
             {/* Heading Chevron */}
-            <div className="absolute -top-3.5 w-0 h-0 border-l-[6px] border-r-[6px] border-b-[9px] border-l-transparent border-r-transparent border-b-blue-500 shadow-[0_2px_4px_rgba(59,130,246,0.5)]" />
+            <div 
+              className="absolute inset-0 flex items-center justify-center"
+              style={{
+                transform: `rotate(${animBearing}deg)`,
+                transition: 'transform 0.4s ease-out',
+              }}
+            >
+              <div className="absolute -top-1 w-0 h-0 border-l-[6px] border-r-[6px] border-b-[9px] border-l-transparent border-r-transparent border-b-blue-500 drop-shadow-[0_2px_4px_rgba(59,130,246,0.6)]" />
+            </div>
             
             {/* Pulsing halo */}
-            <div className="absolute w-12 h-12 bg-blue-500/20 rounded-full animate-ping" style={{ animationDuration: '2s' }} />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 bg-blue-500/20 rounded-full animate-ping" style={{ animationDuration: '2s' }} />
             
-            {/* Avatar */}
+            {/* Avatar Circle */}
             <div
-              className="w-10 h-10 bg-blue-600 border-[3.5px] border-white rounded-full shadow-[0_4px_16px_rgba(59,130,246,0.5)] flex items-center justify-center overflow-hidden"
+              className="w-10 h-10 bg-blue-600 border-[3.5px] border-white rounded-full shadow-[0_4px_16px_rgba(59,130,246,0.5)] flex items-center justify-center overflow-hidden relative z-10"
               style={{
                 transform: `rotate(${-animBearing}deg)`,
                 transition: 'transform 0.4s ease-out',
@@ -234,14 +238,11 @@ export default function MobileLeaflet({
   const [showStyles, setShowStyles] = useState(false);
   const [mapLoaded, setMapLoaded] = useState(false);
 
-  // Map interactions (Refs do not trigger React re-renders)
   const userInteracting = useRef(false);
   const interactionTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  // Dynamic Navigation routing using Mapbox Directions API
   const [navRoute, setNavRoute] = useState<[number, number][]>([]);
 
-  // Fetch walking routes from Directions API if a destination is assigned
   useEffect(() => {
     if (!currentPosition || destinations.length === 0) {
       setNavRoute([]);
@@ -254,7 +255,7 @@ export default function MobileLeaflet({
         const res = await fetch(url);
         const data = await res.json();
         if (data.routes && data.routes[0]) {
-          const coords = data.routes[0].geometry.coordinates.map((c: any) => [c[1], c[0]]); // [lat, lng]
+          const coords = data.routes[0].geometry.coordinates.map((c: any) => [c[1], c[0]]);
           setNavRoute(coords);
         }
       } catch (e) {
@@ -265,15 +266,14 @@ export default function MobileLeaflet({
     fetchDirections();
   }, [currentPosition, destinations]);
 
-  // GeoJSON circle for Objective Geofence Perimeter
   const destinationGeofenceData = useMemo(() => {
     if (!destinations || destinations.length === 0) return null;
     const dest = destinations[0];
     const radiusMeters = (dest as any).radius || 150;
-    const lat = dest.position[0];
-    const lng = dest.position[1];
+    const lat = Number(dest.position[0]);
+    const lng = Number(dest.position[1]);
 
-    if (!lat || !lng) return null;
+    if (!lat || !lng || isNaN(lat) || isNaN(lng)) return null;
 
     const points = 64;
     const coords: [number, number][] = [];
@@ -307,7 +307,7 @@ export default function MobileLeaflet({
     zoom: 16.5,
     pitch: 0,
     bearing: 0
-  }), []); // Empty deps: only initialize once on mount
+  }), []);
 
   const handleInteractionStart = useCallback(() => {
     userInteracting.current = true;
@@ -317,10 +317,9 @@ export default function MobileLeaflet({
   const handleInteractionEnd = useCallback(() => {
     interactionTimeout.current = setTimeout(() => {
       userInteracting.current = false;
-    }, 6000); // Wait 6 seconds after user stops interaction to resume auto-centering
+    }, 6000);
   }, []);
 
-  // planned route (either snapped navRoute, or direct straight lines)
   const activeRouteData = useMemo(() => {
     const coords = navRoute.length > 0 ? navRoute : routePoints;
     if (coords.length === 0) return null;
@@ -334,7 +333,6 @@ export default function MobileLeaflet({
     };
   }, [navRoute, routePoints]);
 
-  // walked trail
   const patrolPathData = useMemo(() => {
     if (patrolPath.length < 2) return null;
     return {
@@ -371,7 +369,7 @@ export default function MobileLeaflet({
         />
         <NavigationControl position="top-right" showCompass={true} />
 
-        {/* ─── NATIVE GEOJSON DESTINATION GEOFENCE CIRCLE ─── */}
+        {/* GEOFENCE PERIMETER */}
         {destinationGeofenceData && (
           <Source id="destination-geofence" type="geojson" data={destinationGeofenceData as any}>
             <Layer
@@ -394,7 +392,7 @@ export default function MobileLeaflet({
           </Source>
         )}
 
-        {/* ─── ISOLATED BREADCRUMB GROUP ─── */}
+        {/* OPERATOR BREADCRUMB GROUP */}
         <OperatorLocationGroup
           currentPosition={currentPosition}
           currentAccuracy={currentAccuracy}
@@ -404,7 +402,7 @@ export default function MobileLeaflet({
           userInteractingRef={userInteracting}
         />
 
-        {/* ─── ACTIVE NAVIGATION ROAD LAYER ─── */}
+        {/* ROUTE LAYER */}
         {activeRouteData && (
           <Source id="route" type="geojson" data={activeRouteData as any}>
             <Layer
@@ -442,7 +440,7 @@ export default function MobileLeaflet({
           </Source>
         )}
 
-        {/* ─── PATROL ROUTE (Actual walked coordinates) ─── */}
+        {/* PATROL ROUTE */}
         {patrolPathData && (
           <Source id="patrol-path" type="geojson" data={patrolPathData as any}>
             <Layer
@@ -469,30 +467,39 @@ export default function MobileLeaflet({
           </Source>
         )}
 
-        {/* ─── DESTINATIONS & RADAR PULSES ─── */}
-        {destinations.map(dest => (
-          <Marker 
-            key={dest.id} 
-            latitude={dest.position[0]} 
-            longitude={dest.position[1]}
-            anchor="bottom"
-          >
-            <div className="flex flex-col items-center pb-1">
-              <div className="bg-zinc-950/90 backdrop-blur-sm px-2.5 py-1 rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.5)] border border-[#0F4C5C]/50 mb-1.5 pointer-events-none select-none">
-                <p className="text-[9px] font-black uppercase tracking-widest text-[#0F4C5C] whitespace-nowrap">{dest.name}</p>
+        {/* DESTINATIONS (OBJETIVOS) - ROCK SOLID GEOGRAPHIC ANCHORING */}
+        {destinations.map(dest => {
+          const lat = Number(dest.position[0]);
+          const lng = Number(dest.position[1]);
+          if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) return null;
+
+          return (
+            <Marker 
+              key={dest.id} 
+              latitude={lat} 
+              longitude={lng}
+              anchor="bottom"
+              pitchAlignment="viewport"
+              rotationAlignment="viewport"
+            >
+              <div className="flex flex-col items-center pointer-events-none select-none">
+                {/* Objective Label */}
+                <div className="bg-zinc-950/90 backdrop-blur-sm px-2.5 py-1 rounded-xl shadow-lg border border-[#0F4C5C]/50 mb-1">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-[#0F4C5C] whitespace-nowrap">{dest.name}</p>
+                </div>
+                {/* Pin Tip Wrapper */}
+                <div className="relative w-8 h-8 flex items-center justify-center">
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 bg-[#0F4C5C]/10 border border-[#0F4C5C]/25 rounded-full animate-ping pointer-events-none" style={{ animationDuration: '2.5s' }} />
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-[#0F4C5C]/20 rounded-full pointer-events-none" />
+                  <MapPin className="relative z-10 w-7 h-7 text-[#0F4C5C] fill-black drop-shadow-md" />
+                </div>
               </div>
-              <div className="relative flex items-center justify-center">
-                {/* Ping animation mimicking Uber radar circles */}
-                <div className="absolute w-20 h-20 bg-[#0F4C5C]/10 border border-[#0F4C5C]/25 rounded-full animate-ping" style={{ animationDuration: '2.5s' }} />
-                <div className="absolute w-10 h-10 bg-[#0F4C5C]/15 rounded-full" />
-                <MapPin className="relative z-10 w-7 h-7 text-[#0F4C5C] fill-black drop-shadow-md" />
-              </div>
-            </div>
-          </Marker>
-        ))}
+            </Marker>
+          );
+        })}
       </Map>
 
-      {/* ─── MAP STYLE PANEL ─── */}
+      {/* MAP STYLE PANEL */}
       <div className="absolute top-24 right-4 z-10 flex flex-col items-end gap-2">
         <button
           onClick={() => setShowStyles(!showStyles)}
@@ -529,7 +536,7 @@ export default function MobileLeaflet({
         </AnimatePresence>
       </div>
 
-      {/* ─── FLOATING OVERLAY ─── */}
+      {/* FLOATING OVERLAY */}
       {showFloatingOverlay && (
         <div className="absolute bottom-10 left-0 right-0 px-6 pointer-events-none">
           <div className="bg-black/90 backdrop-blur-xl p-4 rounded-3xl shadow-volumetric border border-white/8 flex items-center justify-between">

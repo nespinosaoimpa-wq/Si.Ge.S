@@ -561,24 +561,27 @@ export default function FichajePage() {
     }
   };
 
-  const destinations = (assignedObjective && typeof assignedObjective.latitude === 'number' && typeof assignedObjective.longitude === 'number') 
+  const targetLat = assignedObjective ? Number(assignedObjective.latitude) : NaN;
+  const targetLng = assignedObjective ? Number(assignedObjective.longitude) : NaN;
+
+  const destinations = (assignedObjective && !isNaN(targetLat) && !isNaN(targetLng) && targetLat !== 0 && targetLng !== 0) 
     ? [{
         id: assignedObjective.id,
         name: assignedObjective.name,
-        position: [assignedObjective.latitude, assignedObjective.longitude] as [number, number],
-        radius: assignedObjective.geofence_radius_meters || 150
+        position: [targetLat, targetLng] as [number, number],
+        radius: Number(assignedObjective.geofence_radius_meters || assignedObjective.geofence_radius || 150)
       }] 
     : [];
 
   let currentDistance = telemetry.distanceToTarget;
-  let geofenceRadius = assignedObjective?.geofence_radius_meters || 150;
+  let geofenceRadius = Number(assignedObjective?.geofence_radius_meters || assignedObjective?.geofence_radius || 150);
   
-  if (currentDistance === null && location && assignedObjective?.latitude && assignedObjective?.longitude) {
+  if (currentDistance === null && location && !isNaN(targetLat) && !isNaN(targetLng) && targetLat !== 0) {
     const R = 6371e3; 
     const p1 = location.lat * Math.PI/180;
-    const p2 = assignedObjective.latitude * Math.PI/180;
-    const dp = (assignedObjective.latitude-location.lat) * Math.PI/180;
-    const dl = (assignedObjective.longitude-location.lng) * Math.PI/180;
+    const p2 = targetLat * Math.PI/180;
+    const dp = (targetLat-location.lat) * Math.PI/180;
+    const dl = (targetLng-location.lng) * Math.PI/180;
     const a = Math.sin(dp/2) * Math.sin(dp/2) + Math.cos(p1) * Math.cos(p2) * Math.sin(dl/2) * Math.sin(dl/2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     currentDistance = R * c;

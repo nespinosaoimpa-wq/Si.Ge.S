@@ -512,8 +512,8 @@ export default function RondinesPage() {
             routePoints={routePoints}
             patrolPath={patrolPath.map(p => [p.lat, p.lng])}
             avatarUrl={avatarUrl}
-            destinations={checkpoints.filter((cp: any) => cp.latitude).map((cp: any) => ({
-              id: cp.id, name: cp.name, position: [cp.latitude, cp.longitude] as [number, number]
+            destinations={checkpoints.filter((cp: any) => cp.latitude && cp.longitude && !isNaN(Number(cp.latitude)) && !isNaN(Number(cp.longitude))).map((cp: any) => ({
+              id: cp.id, name: cp.name, position: [Number(cp.latitude), Number(cp.longitude)] as [number, number]
             }))}
           />
         </div>
