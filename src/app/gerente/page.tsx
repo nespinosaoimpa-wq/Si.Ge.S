@@ -451,28 +451,46 @@ export default function AdminDashboard() {
           const entry = payload.new as any;
           
           // Fetch operator name for better UI
-          const { data: res } = await supabase.from('resources').select('name').eq('id', entry.resource_id).single();
+          const { data: res } = await supabase.from('resources').select('name, current_objective_id').eq('id', entry.resource_id).single();
           const enrichedEntry = { ...entry, resource_name: res?.name || 'Personal', type: 'event' };
+          
+          // Resolve missing coordinates from objective
+          let resolvedLat = entry.latitude;
+          let resolvedLng = entry.longitude;
+          const hasCoords = resolvedLat && resolvedLng && !isNaN(Number(resolvedLat)) && Number(resolvedLat) !== 0;
+          
+          if (!hasCoords) {
+            const objId = entry.objective_id || res?.current_objective_id;
+            if (objId) {
+              const targetObj = data.objectives?.find((o: any) => o.id === objId);
+              if (targetObj?.latitude && targetObj?.longitude) {
+                resolvedLat = targetObj.latitude;
+                resolvedLng = targetObj.longitude;
+              }
+            }
+          }
+          
+          const mapEntry = { ...enrichedEntry, latitude: resolvedLat, longitude: resolvedLng };
           
           setLiveFeed(prev => [enrichedEntry, ...prev].slice(0, 15));
 
           if (entry.entry_type === 'emergencia' || entry.urgency === 'critica' || (entry.content && entry.content.includes('PÁNICO'))) {
-            handleEmergencyTrigger(enrichedEntry);
-            // Also add critical entries as incidents on the map
-            if (entry.latitude && entry.longitude) {
+            handleEmergencyTrigger(mapEntry);
+            // Always add critical entries to map incidents (coordinates resolved above)
+            if (resolvedLat && resolvedLng) {
               setData((prev: any) => ({
                 ...prev,
-                recentIncidents: [enrichedEntry, ...(prev.recentIncidents || [])].slice(0, 20)
+                recentIncidents: [mapEntry, ...(prev.recentIncidents || [])].slice(0, 20)
               }));
             }
           } else if (entry.entry_type === 'incidente' || entry.entry_type === 'alerta' || (entry.content && entry.content.includes('ALERTA'))) {
-             setNewIncidentNotification(enrichedEntry);
+             setNewIncidentNotification(mapEntry);
              setTimeout(() => setNewIncidentNotification(null), 8000);
-             // Add alert-type entries to map incidents
-             if (entry.latitude && entry.longitude) {
+             // Always add alert-type entries to map incidents (coordinates resolved above)
+             if (resolvedLat && resolvedLng) {
                setData((prev: any) => ({
                  ...prev,
-                 recentIncidents: [enrichedEntry, ...(prev.recentIncidents || [])].slice(0, 20)
+                 recentIncidents: [mapEntry, ...(prev.recentIncidents || [])].slice(0, 20)
                }));
              }
           }
@@ -489,17 +507,35 @@ export default function AdminDashboard() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'incidents' }, async (payload) => {
         if (payload.eventType === 'INSERT') {
           const entry = payload.new as any;
-          const { data: res } = await supabase.from('resources').select('name').eq('id', entry.operator_id).single();
+          const { data: res } = await supabase.from('resources').select('name, current_objective_id').eq('id', entry.operator_id).single();
+          
+          // Resolve missing coordinates from objective
+          let resolvedLat = entry.latitude;
+          let resolvedLng = entry.longitude;
+          const hasCoords = resolvedLat && resolvedLng && !isNaN(Number(resolvedLat)) && Number(resolvedLat) !== 0;
+          if (!hasCoords) {
+            const objId = entry.objective_id || res?.current_objective_id;
+            if (objId) {
+              const targetObj = data.objectives?.find((o: any) => o.id === objId);
+              if (targetObj?.latitude && targetObj?.longitude) {
+                resolvedLat = targetObj.latitude;
+                resolvedLng = targetObj.longitude;
+              }
+            }
+          }
+
           const enrichedEntry = { 
             ...entry, 
             resource_name: res?.name || 'Personal',
             resource_id: entry.operator_id,
-            urgency: entry.status === 'critica' || entry.status === 'crítica' ? 'critica' : 'normal'
+            urgency: entry.status === 'critica' || entry.status === 'crítica' ? 'critica' : 'normal',
+            latitude: resolvedLat,
+            longitude: resolvedLng
           };
           
           setData((prev: any) => ({
             ...prev,
-            recentIncidents: [enrichedEntry, ...(prev.recentIncidents || [])].slice(0, 15)
+            recentIncidents: [enrichedEntry, ...(prev.recentIncidents || [])].slice(0, 20)
           }));
         } else if (payload.eventType === 'UPDATE') {
           const updated = payload.new as any;

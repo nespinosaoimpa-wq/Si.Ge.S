@@ -233,30 +233,96 @@ export async function GET(req: NextRequest) {
       assigned_personnel: resourcesByObjective[obj.id] || []
     }));
 
+    // Build lookup map for resolving missing coordinates from objectives
+    const objectiveCoordMap: Record<string, { latitude: number; longitude: number }> = {};
+    mappedObjectives.forEach((obj: any) => {
+      if (obj.id && obj.latitude && obj.longitude) {
+        objectiveCoordMap[obj.id] = { latitude: obj.latitude, longitude: obj.longitude };
+      }
+    });
+
+    // Also build a lookup from resources → their current objective, for resolving operator incidents
+    const resourceObjectiveMap: Record<string, string> = {};
+    rawResources.forEach((r: any) => {
+      if (r.id && r.current_objective_id) {
+        resourceObjectiveMap[r.id] = r.current_objective_id;
+      }
+    });
+
+    // Helper: resolve missing lat/lng from objective_id or operator's assigned objective
+    const resolveCoords = (inc: any) => {
+      let lat = inc.latitude;
+      let lng = inc.longitude;
+      const hasCoords = lat !== null && lat !== undefined && lng !== null && lng !== undefined && !isNaN(Number(lat)) && !isNaN(Number(lng)) && Number(lat) !== 0 && Number(lng) !== 0;
+
+      if (!hasCoords) {
+        // Try to resolve from objective_id
+        const objId = inc.objective_id;
+        if (objId && objectiveCoordMap[objId]) {
+          lat = objectiveCoordMap[objId].latitude;
+          lng = objectiveCoordMap[objId].longitude;
+        }
+      }
+
+      if (!hasCoords && !lat) {
+        // Try to resolve from the operator's assigned objective
+        const resId = inc.resource_id || inc.operator_id;
+        if (resId && resourceObjectiveMap[resId]) {
+          const objId = resourceObjectiveMap[resId];
+          if (objectiveCoordMap[objId]) {
+            lat = objectiveCoordMap[objId].latitude;
+            lng = objectiveCoordMap[objId].longitude;
+          }
+        }
+      }
+
+      return { latitude: lat, longitude: lng };
+    };
+
     // Consolidate entries from all alert tables
-    const recentIncidentsFromGuardBook = (incidentsRes.data || []).map((inc: any) => ({
-      ...inc,
-      resource_id: inc.operator_id || inc.resource_id
-    }));
+    const recentIncidentsFromGuardBook = (incidentsRes.data || []).map((inc: any) => {
+      const coords = resolveCoords(inc);
+      return {
+        ...inc,
+        resource_id: inc.operator_id || inc.resource_id,
+        latitude: coords.latitude,
+        longitude: coords.longitude
+      };
+    });
 
-    const recentIncidentsFromRawIncidents = (rawIncidentsRes.data || []).map((inc: any) => ({
-      ...inc,
-      resource_id: inc.operator_id || inc.resource_id,
-      urgency: inc.status === 'critica' || inc.status === 'crítica' ? 'critica' : 'normal'
-    }));
+    const recentIncidentsFromRawIncidents = (rawIncidentsRes.data || []).map((inc: any) => {
+      const coords = resolveCoords(inc);
+      return {
+        ...inc,
+        resource_id: inc.operator_id || inc.resource_id,
+        urgency: inc.status === 'critica' || inc.status === 'crítica' ? 'critica' : 'normal',
+        latitude: coords.latitude,
+        longitude: coords.longitude
+      };
+    });
 
-    const recentIncidentsFromAlarms = (alarmsRes?.data || []).map((alarm: any) => ({
-      id: alarm.id,
-      entry_type: 'emergencia',
-      content: `🚨 ALERTA: ${alarm.alarm_type || alarm.message || 'Pánico en puesto'}`,
-      latitude: alarm.latitude || alarm.operator_latitude,
-      longitude: alarm.longitude || alarm.operator_longitude,
-      created_at: alarm.created_at,
-      urgency: 'critica',
-      status: alarm.status,
-      resource_name: alarm.operator_name || 'Operador',
-      resource_id: alarm.operator_id || alarm.triggered_by
-    }));
+    const recentIncidentsFromAlarms = (alarmsRes?.data || []).map((alarm: any) => {
+      const rawInc = {
+        ...alarm,
+        latitude: alarm.latitude || alarm.operator_latitude,
+        longitude: alarm.longitude || alarm.operator_longitude,
+        resource_id: alarm.operator_id || alarm.triggered_by
+      };
+      const coords = resolveCoords(rawInc);
+      return {
+        id: alarm.id,
+        objective_id: alarm.objective_id,
+        entry_type: alarm.alarm_type === 'panico' || alarm.alarm_type === 'sos_panic' ? 'panic' : 'emergencia',
+        content: `🚨 ALERTA: ${alarm.message || alarm.alarm_type || 'Pánico en puesto'}`,
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+        created_at: alarm.created_at,
+        urgency: 'critica',
+        status: alarm.status,
+        resource_name: alarm.operator_name || 'Operador',
+        resource_id: alarm.operator_id || alarm.triggered_by
+      };
+    });
 
     const recentIncidents = [
       ...recentIncidentsFromGuardBook, 
@@ -265,7 +331,7 @@ export async function GET(req: NextRequest) {
     ]
       .filter((inc, index, self) => self.findIndex(t => t.id === inc.id) === index)
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      .slice(0, 15);
+      .slice(0, 20);
 
     const responseData = {
       objectives: mappedObjectives,
