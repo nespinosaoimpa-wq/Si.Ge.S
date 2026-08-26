@@ -761,7 +761,12 @@ export default function AdminDashboard() {
           handleMapboxSearch={handleMapboxSearch}
           filteredObjectives={filteredObjectives}
           selectedObjective={selectedObjective}
-          setSelectedObjective={setSelectedObjective}
+          setSelectedObjective={(obj: any) => {
+            setSelectedObjective(obj);
+            if (obj?.latitude && obj?.longitude && !isNaN(Number(obj.latitude)) && !isNaN(Number(obj.longitude))) {
+              setMapCenter([Number(obj.latitude), Number(obj.longitude)]);
+            }
+          }}
           activeGuards={activeGuards}
           mapboxSuggestions={mapboxSuggestions}
           isSearchingMapbox={isSearchingMapbox}

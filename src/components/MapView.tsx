@@ -540,12 +540,26 @@ export default function MapView({
         ...prev,
         latitude: Number(center[0]),
         longitude: Number(center[1]),
-        zoom: zoom || 13,
-        pitch: 35,
+        zoom: zoom || 16.5,
+        pitch: 45,
         transitionDuration: 1500
       }));
     }
   }, [center?.[0], center?.[1], zoom]);
+
+  // Fly to active/selected objective automatically at street level (zoom 16.5)
+  useEffect(() => {
+    if (activeObjective && isValidCoords(activeObjective.latitude, activeObjective.longitude)) {
+      setViewState(prev => ({
+        ...prev,
+        latitude: Number(activeObjective.latitude),
+        longitude: Number(activeObjective.longitude),
+        zoom: 16.5,
+        pitch: 45,
+        transitionDuration: 1200
+      }));
+    }
+  }, [activeObjective?.id, activeObjective?.latitude, activeObjective?.longitude]);
 
   // Auto-fit bounds on initial load to show all objectives of the tenant
   const fittedRef = useRef(false);
@@ -557,12 +571,12 @@ export default function MapView({
       if (validObjs.length > 0) {
         fittedRef.current = true;
         if (validObjs.length === 1) {
-          // Center on the single objective with moderate zoom
+          // Center on the single objective at street level (zoom 16.5)
           setViewState(prev => ({
             ...prev,
-            latitude: validObjs[0].latitude,
-            longitude: validObjs[0].longitude,
-            zoom: 14.5,
+            latitude: Number(validObjs[0].latitude),
+            longitude: Number(validObjs[0].longitude),
+            zoom: 16.5,
             pitch: 45,
             bearing: -10,
             transitionDuration: 1500
@@ -572,10 +586,10 @@ export default function MapView({
           let minLat = Infinity, maxLat = -Infinity;
           let minLng = Infinity, maxLng = -Infinity;
           validObjs.forEach(obj => {
-            if (obj.latitude < minLat) minLat = obj.latitude;
-            if (obj.latitude > maxLat) maxLat = obj.latitude;
-            if (obj.longitude < minLng) minLng = obj.longitude;
-            if (obj.longitude > maxLng) maxLng = obj.longitude;
+            if (Number(obj.latitude) < minLat) minLat = Number(obj.latitude);
+            if (Number(obj.latitude) > maxLat) maxLat = Number(obj.latitude);
+            if (Number(obj.longitude) < minLng) minLng = Number(obj.longitude);
+            if (Number(obj.longitude) > maxLng) maxLng = Number(obj.longitude);
           });
 
           try {
@@ -585,7 +599,7 @@ export default function MapView({
               { 
                 padding: isMobile 
                   ? { top: 120, bottom: 50, left: 50, right: 50 } 
-                  : { top: 120, bottom: 120, left: 380, right: 120 }, // Extra left padding for desktop sidebar
+                  : { top: 120, bottom: 120, left: 380, right: 120 },
                 duration: 1800 
               }
             );
@@ -594,14 +608,13 @@ export default function MapView({
           }
         }
       } else if (validGuards.length > 0) {
-        // No objectives, but we have guards! Center on them.
         fittedRef.current = true;
         if (validGuards.length === 1) {
           setViewState(prev => ({
             ...prev,
-            latitude: validGuards[0].latitude,
-            longitude: validGuards[0].longitude,
-            zoom: 14.5,
+            latitude: Number(validGuards[0].latitude),
+            longitude: Number(validGuards[0].longitude),
+            zoom: 16.5,
             pitch: 45,
             bearing: -10,
             transitionDuration: 1500
