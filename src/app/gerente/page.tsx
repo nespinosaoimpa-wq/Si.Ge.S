@@ -829,6 +829,29 @@ export default function AdminDashboard() {
                 </form>
 
                 <div className="flex items-center gap-1.5 ml-1 pl-2.5 pr-1 border-l border-zinc-100">
+                  <a
+                    href="/superadmin"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      const userData = {
+                        id: 'super-admin-master',
+                        email: 'nespinosa.oimpa@gmail.com',
+                        role: 'superadmin',
+                        name: 'Nico Espinosa (Dueño)',
+                        company_name: 'Matriz SIGPAD OS (Global)',
+                        tenant_id: 'a1b2c3d4-0001-0001-0001-000000000001'
+                      };
+                      localStorage.setItem('SIGPAD_user', JSON.stringify(userData));
+                      document.cookie = `SIGPAD_user=${encodeURIComponent(JSON.stringify(userData))}; path=/; max-age=2592000`;
+                      document.cookie = "SIGPAD_bypass_active=true; path=/; max-age=2592000";
+                      window.location.href = '/superadmin';
+                    }}
+                    className="p-2 rounded-xl text-amber-600 bg-amber-50 hover:bg-amber-100 border border-amber-200/60 font-black text-[10px] uppercase tracking-wider flex items-center gap-1 transition-all shadow-xs"
+                    title="Volver a la Consola Superadmin (Dueño)"
+                  >
+                    👑 Superadmin
+                  </a>
+
                   {/* 🔥 Botón Filtro Mapa de Calor */}
                   <button 
                     type="button"

@@ -36,12 +36,9 @@ export async function GET(req: NextRequest) {
       const user = JSON.parse(decodeURIComponent(userCookie.value));
       userId = user?.id;
       tenantId = user?.tenant_id || user?.user_metadata?.tenant_id;
-      isSuper = user?.role === 'superadmin' || 
-                user?.user_metadata?.role === 'superadmin' || 
-                user?.role === 'gerente' || 
-                user?.role === 'owner' ||
-                user?.email?.toLowerCase().includes('nespinosa') ||
-                user?.email?.toLowerCase().includes('sigpad');
+      const userRole = (user?.role || user?.user_metadata?.role || '').toLowerCase();
+      // isSuper is ONLY true if explicitly in global superadmin mode
+      isSuper = (userRole === 'superadmin') && (!tenantId || tenantId === 'a1b2c3d4-0001-0001-0001-000000000001');
     } catch {
       return NextResponse.json({ error: 'Sesión inválida' }, { status: 401 });
     }
@@ -172,15 +169,24 @@ export async function GET(req: NextRequest) {
       .order('created_at', { ascending: false })
       .limit(10);
 
-    // Apply resilient tenant filter for restricted non-owner/non-gerente roles
+    // Apply strict tenant filter for tenant managers
     if (!isSuper && tenantId) {
-      const tenantFilter = `tenant_id.eq.${tenantId},tenant_id.is.null,tenant_id.eq.a1b2c3d4-0001-0001-0001-000000000001`;
-      objectivesQuery = objectivesQuery.or(tenantFilter);
-      resourcesQuery = resourcesQuery.or(tenantFilter);
-      guardBookQuery = guardBookQuery.or(tenantFilter);
-      shiftsQuery = shiftsQuery.or(`tenant_id.eq.${tenantId},tenant_id.eq.a1b2c3d4-0001-0001-0001-000000000001`);
-      incidentsQuery = incidentsQuery.or(tenantFilter);
-      alarmsQuery = alarmsQuery.or(tenantFilter);
+      if (tenantId === 'a1b2c3d4-0001-0001-0001-000000000001') {
+        const tenantFilter = `tenant_id.eq.${tenantId},tenant_id.is.null`;
+        objectivesQuery = objectivesQuery.or(tenantFilter);
+        resourcesQuery = resourcesQuery.or(tenantFilter);
+        guardBookQuery = guardBookQuery.or(tenantFilter);
+        shiftsQuery = shiftsQuery.or(tenantFilter);
+        incidentsQuery = incidentsQuery.or(tenantFilter);
+        alarmsQuery = alarmsQuery.or(tenantFilter);
+      } else {
+        objectivesQuery = objectivesQuery.eq('tenant_id', tenantId);
+        resourcesQuery = resourcesQuery.eq('tenant_id', tenantId);
+        guardBookQuery = guardBookQuery.eq('tenant_id', tenantId);
+        shiftsQuery = shiftsQuery.eq('tenant_id', tenantId);
+        incidentsQuery = incidentsQuery.eq('tenant_id', tenantId);
+        alarmsQuery = alarmsQuery.eq('tenant_id', tenantId);
+      }
     }
 
     const [objectivesRes, resourcesRes, incidentsRes, shiftsRes, rawIncidentsRes, alarmsRes] = await Promise.all([

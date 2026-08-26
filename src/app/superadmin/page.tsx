@@ -125,7 +125,25 @@ export default function SuperAdminDashboard() {
   // Invitation Success States
   const [generatedInviteLink, setGeneratedInviteLink] = useState<string | null>(null);
   const [createdCompanyName, setCreatedCompanyName] = useState('');
+  const [createdTenantId, setCreatedTenantId] = useState<string | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
+
+  const enterTenantAsManager = (tenantId: string, tenantName: string) => {
+    const userData = {
+      id: 'super-admin-master',
+      email: 'nespinosa.oimpa@gmail.com',
+      role: 'gerente',
+      name: 'Nico Espinosa (Superadmin)',
+      company_name: tenantName,
+      tenant_id: tenantId,
+      is_superadmin_view: false,
+      user_metadata: { role: 'gerente', full_name: 'Nico Espinosa (Superadmin)', tenant_id: tenantId }
+    };
+    localStorage.setItem('SIGPAD_user', JSON.stringify(userData));
+    document.cookie = `SIGPAD_user=${encodeURIComponent(JSON.stringify(userData))}; path=/; max-age=2592000`;
+    document.cookie = "SIGPAD_bypass_active=true; path=/; max-age=2592000";
+    window.location.href = '/gerente';
+  };
 
   const handleCreateTenant = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -156,8 +174,9 @@ export default function SuperAdminDashboard() {
         });
       }
 
+      const newTenantId = data.tenantId || `tenant-${Date.now()}`;
       const newTenantMetric: TenantMetric = {
-        tenant_id: data.tenantId || `tenant-${Date.now()}`,
+        tenant_id: newTenantId,
         tenant_name: companyName,
         billing_status: planTier === 'trial' ? 'trial' : 'active',
         plan_tier: planTier,
@@ -175,6 +194,7 @@ export default function SuperAdminDashboard() {
       // Establecer estados de éxito de invitación
       setGeneratedInviteLink(data.inviteLink || `https://sigpad.com.ar/register?email=${encodeURIComponent(adminEmail.toLowerCase().trim())}`);
       setCreatedCompanyName(companyName);
+      setCreatedTenantId(newTenantId);
       setCopiedLink(false);
 
       // Reset form
@@ -495,6 +515,13 @@ export default function SuperAdminDashboard() {
                               </td>
                               <td className="px-5 py-4">
                                 <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={() => enterTenantAsManager(tenant.tenant_id, tenant.tenant_name)}
+                                    className="text-[10px] px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 hover:border-amber-500/30 transition-all font-black uppercase tracking-wider flex items-center gap-1.5 shadow-sm"
+                                    title="Ingresar al Panel de Gestión (Gerente) de esta Empresa"
+                                  >
+                                    <Play size={11} /> Entrar
+                                  </button>
                                   {tenant.billing_status !== 'suspended' ? (
                                     <button
                                       onClick={() => updateTenant(tenant.tenant_id, { billing_status: 'suspended' })}
@@ -741,15 +768,25 @@ export default function SuperAdminDashboard() {
                       </p>
                     </div>
 
-                    <button
-                      onClick={() => {
-                        setIsCreateModalOpen(false);
-                        setGeneratedInviteLink(null);
-                      }}
-                      className="w-full h-11 bg-zinc-900 hover:bg-zinc-850 text-white text-xs font-bold rounded-xl transition-all"
-                    >
-                      Cerrar Ventana
-                    </button>
+                    <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                      {createdTenantId && (
+                        <button
+                          onClick={() => enterTenantAsManager(createdTenantId, createdCompanyName)}
+                          className="flex-1 h-11 bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg"
+                        >
+                          <Play size={14} /> Entrar a esta Empresa (Panel Gerente)
+                        </button>
+                      )}
+                      <button
+                        onClick={() => {
+                          setIsCreateModalOpen(false);
+                          setGeneratedInviteLink(null);
+                        }}
+                        className="h-11 px-5 bg-zinc-900 hover:bg-zinc-850 text-white text-xs font-bold rounded-xl transition-all"
+                      >
+                        Cerrar
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <form onSubmit={handleCreateTenant} className="space-y-4">

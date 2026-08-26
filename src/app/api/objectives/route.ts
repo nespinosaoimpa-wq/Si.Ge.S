@@ -27,7 +27,8 @@ export async function GET(req: NextRequest) {
         const user = JSON.parse(decodeURIComponent(userCookie.value));
         userId = user?.id;
         tenantId = user?.tenant_id || user?.user_metadata?.tenant_id;
-        isSuper = user?.role === 'superadmin' || user?.user_metadata?.role === 'superadmin' || user?.role === 'gerente';
+        const userRole = (user?.role || user?.user_metadata?.role || '').toLowerCase();
+        isSuper = (userRole === 'superadmin') && (!tenantId || tenantId === 'a1b2c3d4-0001-0001-0001-000000000001');
       } catch (e) {
         console.warn('[GET_OBJECTIVES] Cookie parse warning:', e);
       }
@@ -55,7 +56,11 @@ export async function GET(req: NextRequest) {
         .eq('is_active', true);
 
       if (!isSuper && tenantId) {
-        query = query.or(`tenant_id.eq.${tenantId},tenant_id.is.null,tenant_id.eq.a1b2c3d4-0001-0001-0001-000000000001`);
+        if (tenantId === 'a1b2c3d4-0001-0001-0001-000000000001') {
+          query = query.or(`tenant_id.eq.${tenantId},tenant_id.is.null`);
+        } else {
+          query = query.eq('tenant_id', tenantId);
+        }
       }
 
       const { data, error } = await query.order('name');
@@ -95,7 +100,8 @@ export async function POST(req: NextRequest) {
         const user = JSON.parse(decodeURIComponent(userCookie.value));
         userId = user?.id;
         tenantId = user?.tenant_id || user?.user_metadata?.tenant_id;
-        isSuper = user?.role === 'superadmin' || user?.user_metadata?.role === 'superadmin' || user?.role === 'gerente';
+        const userRole = (user?.role || user?.user_metadata?.role || '').toLowerCase();
+        isSuper = (userRole === 'superadmin') && (!tenantId || tenantId === 'a1b2c3d4-0001-0001-0001-000000000001');
         console.log(`[POST_OBJECTIVE] Cookie: userId=${userId}, tenantId=${tenantId}, isSuper=${isSuper}`);
       } catch (e) {
         console.warn('[POST_OBJECTIVE] Cookie parse warning:', e);
