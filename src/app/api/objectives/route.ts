@@ -20,12 +20,14 @@ export async function GET(req: NextRequest) {
     let tenantId: string | null = null;
     let isSuper = false;
     let userId: string | null = null;
+    let userEmail: string | null = null;
 
     const userCookie = req.cookies.get('SIGPAD_user');
     if (userCookie) {
       try {
         const user = JSON.parse(decodeURIComponent(userCookie.value));
         userId = user?.id;
+        userEmail = user?.email;
         tenantId = user?.tenant_id || user?.user_metadata?.tenant_id;
         const userRole = (user?.role || user?.user_metadata?.role || '').toLowerCase();
         isSuper = (userRole === 'superadmin') && (!tenantId || tenantId === 'a1b2c3d4-0001-0001-0001-000000000001');
@@ -34,16 +36,24 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    if (!tenantId && !isSuper && userId) {
+    if (!tenantId && !isSuper && (userId || userEmail)) {
       try {
         const supabase = createServiceClient();
-        const { data: dbUser } = await supabase
-          .from('users')
-          .select('tenant_id')
-          .eq('id', userId)
-          .maybeSingle();
-        if (dbUser?.tenant_id) {
-          tenantId = dbUser.tenant_id;
+        if (userId) {
+          const { data: dbUser } = await supabase.from('users').select('tenant_id').eq('id', userId).maybeSingle();
+          if (dbUser?.tenant_id) tenantId = dbUser.tenant_id;
+        }
+        if (!tenantId && userEmail) {
+          const { data: authU } = await supabase.from('authorized_users').select('tenant_id').ilike('email', userEmail).maybeSingle();
+          if (authU?.tenant_id) tenantId = authU.tenant_id;
+        }
+        if (!tenantId && userEmail) {
+          const { data: res } = await supabase.from('resources').select('tenant_id').ilike('email', userEmail).maybeSingle();
+          if (res?.tenant_id) tenantId = res.tenant_id;
+        }
+        if (!tenantId && userEmail) {
+          const { data: t } = await supabase.from('tenants').select('id').ilike('admin_email', userEmail).order('created_at', { ascending: false }).limit(1).maybeSingle();
+          if (t?.id) tenantId = t.id;
         }
       } catch {}
     }
@@ -93,39 +103,40 @@ export async function POST(req: NextRequest) {
     let tenantId: string | null = null;
     let isSuper = false;
     let userId: string | null = null;
+    let userEmail: string | null = null;
 
     const userCookie = req.cookies.get('SIGPAD_user');
     if (userCookie) {
       try {
         const user = JSON.parse(decodeURIComponent(userCookie.value));
         userId = user?.id;
+        userEmail = user?.email;
         tenantId = user?.tenant_id || user?.user_metadata?.tenant_id;
         const userRole = (user?.role || user?.user_metadata?.role || '').toLowerCase();
         isSuper = (userRole === 'superadmin') && (!tenantId || tenantId === 'a1b2c3d4-0001-0001-0001-000000000001');
-        console.log(`[POST_OBJECTIVE] Cookie: userId=${userId}, tenantId=${tenantId}, isSuper=${isSuper}`);
       } catch (e) {
         console.warn('[POST_OBJECTIVE] Cookie parse warning:', e);
       }
-    } else {
-      console.warn('[POST_OBJECTIVE] ⚠️ No se encontró cookie SIGPAD_user');
     }
 
-    if (!tenantId && !isSuper && userId) {
+    if (!tenantId && !isSuper && (userId || userEmail)) {
       try {
         const supabase = createServiceClient();
-        const { data: dbUser, error: userErr } = await supabase
-          .from('users')
-          .select('tenant_id')
-          .eq('id', userId)
-          .maybeSingle();
-
-        if (userErr) {
-          console.warn('[POST_OBJECTIVE] Error buscando tenant en DB:', userErr.message);
-        } else if (dbUser?.tenant_id) {
-          tenantId = dbUser.tenant_id;
-          console.log(`[POST_OBJECTIVE] tenant_id recuperado de DB: ${tenantId}`);
-        } else {
-          console.warn('[POST_OBJECTIVE] ⚠️ Usuario en DB sin tenant_id');
+        if (userId) {
+          const { data: dbUser } = await supabase.from('users').select('tenant_id').eq('id', userId).maybeSingle();
+          if (dbUser?.tenant_id) tenantId = dbUser.tenant_id;
+        }
+        if (!tenantId && userEmail) {
+          const { data: authU } = await supabase.from('authorized_users').select('tenant_id').ilike('email', userEmail).maybeSingle();
+          if (authU?.tenant_id) tenantId = authU.tenant_id;
+        }
+        if (!tenantId && userEmail) {
+          const { data: res } = await supabase.from('resources').select('tenant_id').ilike('email', userEmail).maybeSingle();
+          if (res?.tenant_id) tenantId = res.tenant_id;
+        }
+        if (!tenantId && userEmail) {
+          const { data: t } = await supabase.from('tenants').select('id').ilike('admin_email', userEmail).order('created_at', { ascending: false }).limit(1).maybeSingle();
+          if (t?.id) tenantId = t.id;
         }
       } catch (err: any) {
         console.warn('[POST_OBJECTIVE] Excepción al buscar tenant en DB:', err?.message);
@@ -149,21 +160,17 @@ export async function POST(req: NextRequest) {
     if (!targetTenantId) {
       try {
         const supabaseAdmin = createServiceClient();
-        const { data: firstTenant, error: tenantErr } = await supabaseAdmin
+        const { data: latestTenant } = await supabaseAdmin
           .from('tenants')
           .select('id')
           .eq('is_active', true)
-          .order('created_at', { ascending: true })
+          .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle();
 
-        if (tenantErr) {
-          console.warn('[POST_OBJECTIVE] Error buscando primer tenant:', tenantErr.message);
-        }
-        targetTenantId = firstTenant?.id || null;
-        console.log(`[POST_OBJECTIVE] tenant_id fallback (primer tenant activo): ${targetTenantId}`);
+        targetTenantId = latestTenant?.id || null;
       } catch (err: any) {
-        console.warn('[POST_OBJECTIVE] Excepción al buscar primer tenant:', err?.message);
+        console.warn('[POST_OBJECTIVE] Excepción al buscar tenant fallback:', err?.message);
         targetTenantId = null;
       }
     } else {

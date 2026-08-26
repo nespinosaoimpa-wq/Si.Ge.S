@@ -32,9 +32,11 @@ export async function GET(req: NextRequest) {
     let isSuper = false;
     let userId: string | null = null;
 
+    let userEmail: string | null = null;
     try {
       const user = JSON.parse(decodeURIComponent(userCookie.value));
       userId = user?.id;
+      userEmail = user?.email;
       tenantId = user?.tenant_id || user?.user_metadata?.tenant_id;
       const userRole = (user?.role || user?.user_metadata?.role || '').toLowerCase();
       // isSuper is ONLY true if explicitly in global superadmin mode
@@ -43,23 +45,26 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Sesión inválida' }, { status: 401 });
     }
 
-    if (!tenantId && !isSuper && userId) {
+    if (!tenantId && !isSuper && (userId || userEmail)) {
       try {
         const supabase = createServiceClient();
-        const { data: dbUser } = await supabase
-          .from('users')
-          .select('tenant_id')
-          .eq('id', userId)
-          .maybeSingle();
-        if (dbUser?.tenant_id) {
-          tenantId = dbUser.tenant_id;
+        if (userId) {
+          const { data: dbUser } = await supabase.from('users').select('tenant_id').eq('id', userId).maybeSingle();
+          if (dbUser?.tenant_id) tenantId = dbUser.tenant_id;
+        }
+        if (!tenantId && userEmail) {
+          const { data: authU } = await supabase.from('authorized_users').select('tenant_id').ilike('email', userEmail).maybeSingle();
+          if (authU?.tenant_id) tenantId = authU.tenant_id;
+        }
+        if (!tenantId && userEmail) {
+          const { data: res } = await supabase.from('resources').select('tenant_id').ilike('email', userEmail).maybeSingle();
+          if (res?.tenant_id) tenantId = res.tenant_id;
+        }
+        if (!tenantId && userEmail) {
+          const { data: t } = await supabase.from('tenants').select('id').ilike('admin_email', userEmail).order('created_at', { ascending: false }).limit(1).maybeSingle();
+          if (t?.id) tenantId = t.id;
         }
       } catch {}
-    }
-
-    // Default tenant fallback for robust map rendering
-    if (!tenantId && !isSuper) {
-      tenantId = 'a1b2c3d4-0001-0001-0001-000000000001';
     }
 
     // 🚀 CACHE CHECK: Prevent DB hit if requested within 4 seconds
