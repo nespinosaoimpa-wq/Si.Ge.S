@@ -96,10 +96,27 @@ export async function POST(request: Request) {
       determinedRole = requestedRole.toLowerCase();
     }
 
+    // Resolve exact company name from tenants table
+    let tenantId = dbUser?.tenant_id || 'a1b2c3d4-0001-0001-0001-000000000001';
+    let companyName = dbUser?.company_name || 'Empresa de Seguridad';
+
+    if (tenantId) {
+      try {
+        const { data: tenantObj } = await adminSupabase
+          .from('tenants')
+          .select('name')
+          .eq('id', tenantId)
+          .maybeSingle();
+
+        if (tenantObj?.name) {
+          companyName = tenantObj.name;
+        }
+      } catch (e) {}
+    }
+
     // 3. MASTER PIN BYPASS ('SIGPAD2026')
     if (password === 'SIGPAD2026') {
       let name = dbUser?.name || dbUser?.full_name || lowerEmail.split('@')[0].toUpperCase();
-      let tenantId = dbUser?.tenant_id || 'a1b2c3d4-0001-0001-0001-000000000001';
 
       return NextResponse.json({
         user: { 
@@ -108,7 +125,7 @@ export async function POST(request: Request) {
           id: dbUser?.id || 'user-' + Date.now(), 
           name, 
           tenant_id: tenantId, 
-          company_name: 'Empresa de Seguridad' 
+          company_name: companyName 
         },
         session: { access_token: 'master-pin-token-704' }
       });
@@ -138,8 +155,8 @@ export async function POST(request: Request) {
             email: lowerEmail,
             role: finalRole,
             name: data.user.user_metadata?.full_name || dbUser?.name || lowerEmail.split('@')[0],
-            tenant_id: data.user.user_metadata?.tenant_id || dbUser?.tenant_id || 'a1b2c3d4-0001-0001-0001-000000000001',
-            company_name: 'Empresa de Seguridad'
+            tenant_id: data.user.user_metadata?.tenant_id || tenantId,
+            company_name: companyName
           },
           session: data.session
         });
@@ -154,7 +171,6 @@ export async function POST(request: Request) {
     if (isAuthorized) {
       const finalRole = determinedRole;
       const finalName = dbUser?.name || dbUser?.full_name || lowerEmail.split('@')[0].toUpperCase();
-      const tenantId = dbUser?.tenant_id || 'a1b2c3d4-0001-0001-0001-000000000001';
 
       // Auto-sync into authorized_users & resources with exact role
       try {
@@ -173,7 +189,7 @@ export async function POST(request: Request) {
           role: finalRole,
           name: finalName,
           tenant_id: tenantId,
-          company_name: 'Empresa de Seguridad'
+          company_name: companyName
         },
         session: { access_token: 'direct-db-token-704' }
       });
