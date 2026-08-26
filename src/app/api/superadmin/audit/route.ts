@@ -22,10 +22,8 @@ function isAuthorized(user: any): boolean {
   const email = (user.email || '').toLowerCase().trim();
   return (
     role === 'superadmin' ||
-    role === 'gerente' ||
-    email === 'nespinosa.oimpa@gmail.com' ||
-    user.id === 'super-admin-master' ||
-    user.id === 'demo-user'
+    email === 'sigpad.info@gmail.com' ||
+    user.id === 'super-admin-master'
   );
 }
 

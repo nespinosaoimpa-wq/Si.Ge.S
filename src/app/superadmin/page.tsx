@@ -131,13 +131,13 @@ export default function SuperAdminDashboard() {
   const enterTenantAsManager = (tenantId: string, tenantName: string) => {
     const userData = {
       id: 'super-admin-master',
-      email: 'nespinosa.oimpa@gmail.com',
+      email: 'sigpad.info@gmail.com',
       role: 'gerente',
-      name: 'Nico Espinosa (Superadmin)',
+      name: 'SuperAdmin (Modo Gerente)',
       company_name: tenantName,
       tenant_id: tenantId,
       is_superadmin_view: false,
-      user_metadata: { role: 'gerente', full_name: 'Nico Espinosa (Superadmin)', tenant_id: tenantId }
+      user_metadata: { role: 'gerente', full_name: 'SuperAdmin (Modo Gerente)', tenant_id: tenantId }
     };
     localStorage.setItem('SIGPAD_user', JSON.stringify(userData));
     document.cookie = `SIGPAD_user=${encodeURIComponent(JSON.stringify(userData))}; path=/; max-age=2592000`;
