@@ -1,5 +1,6 @@
 import { createServiceClient } from '@/lib/supabase-server';
 import { NextResponse } from 'next/server';
+import { MASTER_TENANT_ID } from '@/lib/resolve-tenant';
 
 export async function POST(request: Request) {
   try {
@@ -13,10 +14,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Email requerido' }, { status: 400 });
     }
 
-    // Resolve tenant
-    let targetTenantId = 'a1b2c3d4-0001-0001-0001-000000000001';
-    const { data: firstTenant } = await supabase.from('tenants').select('id').limit(1).maybeSingle();
-    if (firstTenant?.id) targetTenantId = firstTenant.id;
+    // Resolve tenant: usar el que venga en el body (enviado por el SuperAdmin), o buscar por email del manager
+    let targetTenantId: string | null = body.tenant_id && body.tenant_id !== MASTER_TENANT_ID ? body.tenant_id : null;
+    if (!targetTenantId) {
+      try {
+        const { data: tenantByEmail } = await supabase
+          .from('tenants')
+          .select('id')
+          .ilike('admin_email', managerEmail)
+          .eq('is_active', true)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (tenantByEmail?.id) targetTenantId = tenantByEmail.id;
+      } catch (e) {}
+    }
 
     // Add to authorized_users with status approved
     await supabase.from('authorized_users').upsert({

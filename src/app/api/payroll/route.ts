@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase-server'
+import { resolveTenantFromRequest } from '@/lib/resolve-tenant'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,43 +20,9 @@ export async function GET(request: NextRequest) {
     const operatorId = searchParams.get('operator_id')
     const view = searchParams.get('view') ?? 'nomina' // 'nomina' | 'facturacion' | 'ambos'
 
-    let tenantId: string | null = null;
-    let isSuper = false;
-    let userId: string | null = null;
-    let userEmail: string | null = null;
-
-    const userCookie = request.cookies.get('SIGPAD_user');
-    if (userCookie) {
-      try {
-        const user = JSON.parse(decodeURIComponent(userCookie.value));
-        userId = user?.id;
-        userEmail = user?.email;
-        tenantId = user?.tenant_id || user?.user_metadata?.tenant_id;
-        const userRole = (user?.role || user?.user_metadata?.role || '').toLowerCase();
-        isSuper = (userRole === 'superadmin') && (!tenantId || tenantId === 'a1b2c3d4-0001-0001-0001-000000000001');
-      } catch (e) {}
-    }
-
-    if (!tenantId && !isSuper && (userId || userEmail)) {
-      try {
-        if (userId) {
-          const { data: dbUser } = await supabase.from('users').select('tenant_id').eq('id', userId).maybeSingle();
-          if (dbUser?.tenant_id) tenantId = dbUser.tenant_id;
-        }
-        if (!tenantId && userEmail) {
-          const { data: authU } = await supabase.from('authorized_users').select('tenant_id').ilike('email', userEmail).maybeSingle();
-          if (authU?.tenant_id) tenantId = authU.tenant_id;
-        }
-        if (!tenantId && userEmail) {
-          const { data: res } = await supabase.from('resources').select('tenant_id').ilike('email', userEmail).maybeSingle();
-          if (res?.tenant_id) tenantId = res.tenant_id;
-        }
-        if (!tenantId && userEmail) {
-          const { data: t } = await supabase.from('tenants').select('id').ilike('admin_email', userEmail).order('created_at', { ascending: false }).limit(1).maybeSingle();
-          if (t?.id) tenantId = t.id;
-        }
-      } catch {}
-    }
+    const ctx = await resolveTenantFromRequest(request);
+    if (!ctx) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    const { tenantId, isSuper } = ctx;
 
     let query = supabase
       .from('guard_shifts')
@@ -66,15 +33,11 @@ export async function GET(request: NextRequest) {
         objectives!objective_id ( * )
       `
       )
-      .not('checkout_time', 'is', null)          // ← FIXED: was check_out
-      .order('checkin_time', { ascending: true }) // ← FIXED: was check_in
+      .not('checkout_time', 'is', null)
+      .order('checkin_time', { ascending: true })
 
     if (!isSuper && tenantId) {
-      if (tenantId === 'a1b2c3d4-0001-0001-0001-000000000001') {
-        query = query.or(`tenant_id.eq.${tenantId},tenant_id.is.null`);
-      } else {
-        query = query.eq('tenant_id', tenantId);
-      }
+      query = query.eq('tenant_id', tenantId);
     }
 
     if (operatorId) query = query.eq('operator_id', operatorId)

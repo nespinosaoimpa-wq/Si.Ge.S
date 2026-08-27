@@ -1,5 +1,6 @@
 import { createServiceClient } from '@/lib/supabase-server';
 import { NextResponse } from 'next/server';
+import { MASTER_TENANT_ID } from '@/lib/resolve-tenant';
 
 /**
  * POST /api/auth/register
@@ -57,13 +58,22 @@ export async function POST(request: Request) {
 
     // 2. AUTO-WHITELIST FOR GERENTE REGISTRATIONS
     // Si no está en el whitelist previo, pero seleccionó rol GERENTE:
-    // El Gerente es quien administra su cuenta/empresa, por lo que se auto-autoriza inmediatamente.
+    // El Gerente es quien administra su cuenta/empresa, por lo que se auto-autoriza,
+    // pero NO se le asigna el tenant maestro. Quedará sin empresa hasta que el SuperAdmin la asigne.
     if (!resourceData) {
       if (requestedRole === 'gerente') {
-        let targetTenantId = 'a1b2c3d4-0001-0001-0001-000000000001';
+        // Buscar si hay un tenant registrado con este admin_email
+        let targetTenantId: string | null = null;
         try {
-          const { data: firstTenant } = await supabase.from('tenants').select('id').limit(1).maybeSingle();
-          if (firstTenant?.id) targetTenantId = firstTenant.id;
+          const { data: tenantByEmail } = await supabase
+            .from('tenants')
+            .select('id')
+            .ilike('admin_email', normalizedEmail)
+            .eq('is_active', true)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (tenantByEmail?.id) targetTenantId = tenantByEmail.id;
         } catch (e) {}
 
         // Auto-crear en authorized_users
@@ -71,7 +81,7 @@ export async function POST(request: Request) {
           email: normalizedEmail,
           role: 'gerente',
           status: 'approved',
-          tenant_id: targetTenantId
+          ...(targetTenantId ? { tenant_id: targetTenantId } : {})
         }, { onConflict: 'email' });
 
         // Auto-crear en resources
@@ -82,7 +92,7 @@ export async function POST(request: Request) {
             email: normalizedEmail,
             role: 'Gerente',
             status: 'active',
-            tenant_id: targetTenantId
+            ...(targetTenantId ? { tenant_id: targetTenantId } : {})
           })
           .select('id, name, role, email, tenant_id')
           .single();
@@ -117,7 +127,10 @@ export async function POST(request: Request) {
     // 4. CREATE USER — Try Admin API, fallback to signUp, fallback to DB direct provisioning
     const finalRole = requestedRole === 'gerente' ? 'gerente' : (resourceData.role?.toLowerCase() || 'operador');
     const finalName = fullName || resourceData.name || 'Usuario SIGPAD';
-    const targetTenantId = resourceData.tenant_id || 'a1b2c3d4-0001-0001-0001-000000000001';
+    // Usar tenant_id del recurso encontrado; null si no tiene empresa asignada todavía
+    const targetTenantId: string | null = (resourceData.tenant_id && resourceData.tenant_id !== MASTER_TENANT_ID)
+      ? resourceData.tenant_id
+      : null;
 
     let userId = 'user-' + Date.now();
     let authCreated = false;

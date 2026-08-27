@@ -116,22 +116,12 @@ export async function POST(req: NextRequest) {
     // Enforce tenant_id injection. Non-superadmins must use their own tenantId.
     let targetTenantId = isSuper ? (body.tenant_id || tenantId) : tenantId;
 
-    // Resilient fallback for SuperAdmin when tenant_id is not explicitly passed
+    // Si no se pudo resolver el tenant, rechazar la operación
     if (!targetTenantId) {
-      try {
-        const supabaseAdmin = createServiceClient();
-        const { data: firstTenant } = await supabaseAdmin
-          .from('tenants')
-          .select('id')
-          .eq('is_active', true)
-          .order('created_at', { ascending: true })
-          .limit(1)
-          .maybeSingle();
-        
-        targetTenantId = firstTenant?.id || 'a1b2c3d4-0001-0001-0001-000000000001';
-      } catch {
-        targetTenantId = 'a1b2c3d4-0001-0001-0001-000000000001';
-      }
+      return NextResponse.json(
+        { error: 'No se puede crear el empleado: no hay empresa asignada en la sesión.' },
+        { status: 400 }
+      );
     }
 
     // Clean up body: Convert empty strings to null for database compatibility,

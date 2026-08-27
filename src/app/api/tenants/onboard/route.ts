@@ -54,6 +54,7 @@ export async function POST(req: NextRequest) {
     const supabaseAdmin = getAdminClient();
     let tenantId = `tenant-${Date.now().toString(36)}`;
     let userId: string | null = null;
+    let consolidatedExistingRecords = false;
 
     if (supabaseAdmin) {
       try {
@@ -78,6 +79,16 @@ export async function POST(req: NextRequest) {
           tenantId = tenantData.id;
         } else {
           console.warn('[Onboard] Supabase tenant insert warning:', tenantError?.message);
+        }
+
+        // --- CONSOLIDATION STEP BEFORE CREATING TENANT/USER ---
+        try {
+          await supabaseAdmin.from('authorized_users').update({ tenant_id: tenantId, role: 'gerente', status: 'approved' }).ilike('email', lowerEmail);
+          await supabaseAdmin.from('resources').update({ tenant_id: tenantId, role: 'Gerente', status: 'active' }).ilike('email', lowerEmail);
+          await supabaseAdmin.from('users').update({ tenant_id: tenantId, role: 'gerente' }).ilike('email', lowerEmail);
+          consolidatedExistingRecords = true;
+        } catch (e: any) {
+          console.warn('[Onboard] Error en paso de consolidación:', e?.message);
         }
 
         // 2. CREACIÓN O VINCULACIÓN DEL USUARIO ADMINISTRADOR
@@ -113,11 +124,6 @@ export async function POST(req: NextRequest) {
             });
           }
         }
-
-        // Actualizar cualquier fila existente con este email para re-vincularlo al nuevo tenantId
-        try {
-          await supabaseAdmin.from('users').update({ tenant_id: tenantId, role: 'gerente' }).ilike('email', lowerEmail);
-        } catch (e) {}
 
         // 3. REGISTRAR EN LISTA BLANCA (authorized_users)
         await supabaseAdmin.from('authorized_users').upsert({
@@ -172,6 +178,7 @@ export async function POST(req: NextRequest) {
       companyName,
       userId,
       user: createdUser,
+      consolidatedExistingRecords,
       inviteLink: `https://sigpad.com.ar/register?email=${encodeURIComponent(lowerEmail)}`,
       message: `¡Empresa "${companyName}" pre-registrada con éxito!`,
     });

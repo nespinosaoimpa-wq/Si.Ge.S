@@ -73,7 +73,7 @@ export async function POST(request: Request) {
     if (isUUID) {
       const { data: byId } = await supabase
         .from('resources')
-        .select('id, assigned_to, email, name, role, status, current_objective_id')
+        .select('id, assigned_to, email, name, role, status, current_objective_id, tenant_id')
         .or(`id.eq.${operator_id},assigned_to.eq.${operator_id}`)
         .order('status', { ascending: true })
         .limit(1)
@@ -89,7 +89,7 @@ export async function POST(request: Request) {
       // First try to find an active resource with this email
       const { data: activeByEmail } = await supabase
         .from('resources')
-        .select('id, assigned_to, email, name, role, status, current_objective_id')
+        .select('id, assigned_to, email, name, role, status, current_objective_id, tenant_id')
         .ilike('email', email.trim())
         .neq('status', 'baja')
         .limit(1)
@@ -102,7 +102,7 @@ export async function POST(request: Request) {
         // so we can deny access instead of creating a new active profile.
         const { data: inactiveByEmail } = await supabase
           .from('resources')
-          .select('id, assigned_to, email, name, role, status, current_objective_id')
+          .select('id, assigned_to, email, name, role, status, current_objective_id, tenant_id')
           .ilike('email', email.trim())
           .limit(1)
           .maybeSingle();
@@ -172,6 +172,8 @@ export async function POST(request: Request) {
     }
 
     // 4. Create the shift record
+    // IMPORTANT: Inject tenant_id explicitly — Service Role client cannot use auth.uid() for the trigger
+    const operatorTenantId = resourceRecord?.tenant_id || null;
     const { data: shift, error: shiftError } = await supabase
       .from('guard_shifts')
       .insert({
@@ -182,6 +184,7 @@ export async function POST(request: Request) {
         checkin_longitude: longitude,
         status: 'activo',
         checkin_within_geofence: isWithinGeofence,
+        ...(operatorTenantId ? { tenant_id: operatorTenantId } : {}),
       })
       .select()
       .single();
@@ -215,7 +218,7 @@ export async function POST(request: Request) {
         .eq('id', objective_id);
     }
 
-    // 7. Auto-insert check-in log in guard book
+    // 7. Auto-insert check-in log in guard book (con tenant_id explícito)
     if (finalResourceId && objective_id && objective_id !== 'null') {
       await supabase.from('guard_book_entries').insert({
         objective_id: objective_id,
@@ -225,6 +228,7 @@ export async function POST(request: Request) {
         latitude,
         longitude,
         urgency: isWithinGeofence ? 'normal' : 'alta',
+        ...(operatorTenantId ? { tenant_id: operatorTenantId } : {}),
       });
     }
 

@@ -2,70 +2,17 @@ import { isConfigured } from '@/lib/supabase';
 import { createServiceClient } from '@/lib/supabase-server';
 import { NextRequest, NextResponse } from 'next/server';
 import { serverCache } from '@/lib/cache';
+import { resolveTenantFromRequest, MASTER_TENANT_ID } from '@/lib/resolve-tenant';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {
-    if (!isConfigured) {
-      return NextResponse.json({
-        objectives: [
-          { id: 'OBJ-001', name: 'Puerto SIGPAD', address: 'Dique 1', latitude: -31.6450, longitude: -60.6950, status: 'Activo', is_manned: true },
-          { id: 'OBJ-002', name: 'Consorcio Portofino', address: 'Costanera Este', latitude: -31.6280, longitude: -60.6750, status: 'Activo', is_manned: false },
-        ],
-        resources: [
-          { id: 'S-701', name: 'NICO ESPINOSA', role: 'Gerente', current_objective_id: 'OBJ-001', status: 'activo', latitude: -31.640, longitude: -60.700 },
-        ],
-        recentIncidents: [],
-        activeShifts: []
-      }, {
-        headers: { 'Cache-Control': 's-maxage=10, stale-while-revalidate' }
-      });
-    }
-
-    const userCookie = req.cookies.get('SIGPAD_user');
-    if (!userCookie) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
-
-    let tenantId: string | null = null;
-    let isSuper = false;
-    let userId: string | null = null;
-
-    let userEmail: string | null = null;
-    try {
-      const user = JSON.parse(decodeURIComponent(userCookie.value));
-      userId = user?.id;
-      userEmail = user?.email;
-      tenantId = user?.tenant_id || user?.user_metadata?.tenant_id;
-      const userRole = (user?.role || user?.user_metadata?.role || '').toLowerCase();
-      // isSuper is ONLY true if explicitly in global superadmin mode
-      isSuper = (userRole === 'superadmin') && (!tenantId || tenantId === 'a1b2c3d4-0001-0001-0001-000000000001');
-    } catch {
-      return NextResponse.json({ error: 'Sesión inválida' }, { status: 401 });
-    }
-
-    if (!tenantId && !isSuper && (userId || userEmail)) {
-      try {
-        const supabase = createServiceClient();
-        if (userId) {
-          const { data: dbUser } = await supabase.from('users').select('tenant_id').eq('id', userId).maybeSingle();
-          if (dbUser?.tenant_id) tenantId = dbUser.tenant_id;
-        }
-        if (!tenantId && userEmail) {
-          const { data: authU } = await supabase.from('authorized_users').select('tenant_id').ilike('email', userEmail).maybeSingle();
-          if (authU?.tenant_id) tenantId = authU.tenant_id;
-        }
-        if (!tenantId && userEmail) {
-          const { data: res } = await supabase.from('resources').select('tenant_id').ilike('email', userEmail).maybeSingle();
-          if (res?.tenant_id) tenantId = res.tenant_id;
-        }
-        if (!tenantId && userEmail) {
-          const { data: t } = await supabase.from('tenants').select('id').ilike('admin_email', userEmail).order('created_at', { ascending: false }).limit(1).maybeSingle();
-          if (t?.id) tenantId = t.id;
-        }
-      } catch {}
-    }
+    const ctx = await resolveTenantFromRequest(req);
+    if (!ctx) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    const { tenantId, isSuper, userId } = ctx;
+    
+    if (!isSuper && !tenantId) return NextResponse.json({ error: 'Tu sesión no tiene empresa asignada.' }, { status: 403 });
 
     // 🚀 CACHE CHECK: Prevent DB hit if requested within 4 seconds
     const cacheKey = `dashboard-map-${isSuper ? 'super' : tenantId}`;
@@ -176,22 +123,12 @@ export async function GET(req: NextRequest) {
 
     // Apply strict tenant filter for tenant managers
     if (!isSuper && tenantId) {
-      if (tenantId === 'a1b2c3d4-0001-0001-0001-000000000001') {
-        const tenantFilter = `tenant_id.eq.${tenantId},tenant_id.is.null`;
-        objectivesQuery = objectivesQuery.or(tenantFilter);
-        resourcesQuery = resourcesQuery.or(tenantFilter);
-        guardBookQuery = guardBookQuery.or(tenantFilter);
-        shiftsQuery = shiftsQuery.or(tenantFilter);
-        incidentsQuery = incidentsQuery.or(tenantFilter);
-        alarmsQuery = alarmsQuery.or(tenantFilter);
-      } else {
-        objectivesQuery = objectivesQuery.eq('tenant_id', tenantId);
-        resourcesQuery = resourcesQuery.eq('tenant_id', tenantId);
-        guardBookQuery = guardBookQuery.eq('tenant_id', tenantId);
-        shiftsQuery = shiftsQuery.eq('tenant_id', tenantId);
-        incidentsQuery = incidentsQuery.eq('tenant_id', tenantId);
-        alarmsQuery = alarmsQuery.eq('tenant_id', tenantId);
-      }
+      objectivesQuery = objectivesQuery.eq('tenant_id', tenantId);
+      resourcesQuery = resourcesQuery.eq('tenant_id', tenantId);
+      guardBookQuery = guardBookQuery.eq('tenant_id', tenantId);
+      shiftsQuery = shiftsQuery.eq('tenant_id', tenantId);
+      incidentsQuery = incidentsQuery.eq('tenant_id', tenantId);
+      alarmsQuery = alarmsQuery.eq('tenant_id', tenantId);
     }
 
     const [objectivesRes, resourcesRes, incidentsRes, shiftsRes, rawIncidentsRes, alarmsRes] = await Promise.all([
