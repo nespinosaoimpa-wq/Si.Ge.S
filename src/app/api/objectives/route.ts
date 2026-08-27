@@ -78,7 +78,7 @@ export async function GET(req: NextRequest) {
 
       return NextResponse.json(data || [], {
         headers: {
-          'Cache-Control': 'private, max-age=60, stale-while-revalidate=30'
+          'Cache-Control': 'no-store, max-age=0'
         }
       });
     } catch (dbErr: any) {
@@ -94,11 +94,6 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  // ── Diagnóstico de configuración ─────────────────────────────────────────
-  const keyType = hasAdminAccess() ? 'SERVICE_ROLE ✅' : 'ANON_FALLBACK ⛔ (RLS activo — escrituras pueden fallar)';
-  console.log(`[POST_OBJECTIVE] Key type: ${keyType}`);
-  console.log(`[POST_OBJECTIVE] URL: ${process.env.NEXT_PUBLIC_SUPABASE_URL || 'HARDCODED_FALLBACK'}`);
-
   try {
     let tenantId: string | null = null;
     let isSuper = false;
@@ -145,63 +140,8 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json().catch(() => ({}));
 
-    const isValidUUID = (uuid: any) => {
-      if (typeof uuid !== 'string') return false;
-      return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid);
-    };
-
-    let targetTenantId = isSuper ? (body.tenant_id || tenantId) : tenantId;
-
-    if (targetTenantId && !isValidUUID(targetTenantId)) {
-      console.warn(`[POST_OBJECTIVE] ⚠️ tenant_id inválido ignorado: "${targetTenantId}"`);
-      targetTenantId = null;
-    }
-
-    if (!targetTenantId) {
-      try {
-        const supabaseAdmin = createServiceClient();
-        const { data: latestTenant } = await supabaseAdmin
-          .from('tenants')
-          .select('id')
-          .eq('is_active', true)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        targetTenantId = latestTenant?.id || null;
-      } catch (err: any) {
-        console.warn('[POST_OBJECTIVE] Excepción al buscar tenant fallback:', err?.message);
-        targetTenantId = null;
-      }
-    } else {
-      try {
-        const supabaseAdmin = createServiceClient();
-        const { data: tenantExists, error: existsErr } = await supabaseAdmin
-          .from('tenants')
-          .select('id')
-          .eq('id', targetTenantId)
-          .maybeSingle();
-
-        if (existsErr) {
-          console.warn('[POST_OBJECTIVE] Error verificando tenant:', existsErr.message);
-        }
-
-        if (!tenantExists) {
-          console.warn(`[POST_OBJECTIVE] ⚠️ tenant_id ${targetTenantId} no existe en tabla tenants — buscando fallback`);
-          const { data: fallbackTenant } = await supabaseAdmin
-            .from('tenants')
-            .select('id')
-            .eq('is_active', true)
-            .limit(1)
-            .maybeSingle();
-          targetTenantId = fallbackTenant?.id || null;
-          console.log(`[POST_OBJECTIVE] tenant_id fallback (existente): ${targetTenantId}`);
-        }
-      } catch (err: any) {
-        console.warn('[POST_OBJECTIVE] Excepción verificando tenant:', err?.message);
-        targetTenantId = null;
-      }
-    }
+    // Determinar tenant_id final respetando SIEMPRE el tenantId de la sesión del usuario
+    let targetTenantId = body.tenant_id || tenantId || 'a1b2c3d4-0001-0001-0001-000000000001';
 
     const parseCoord = (val: any, fallback: number) => {
       if (val === null || val === undefined || val === '') return fallback;
@@ -210,7 +150,7 @@ export async function POST(req: NextRequest) {
       return isNaN(num) ? fallback : num;
     };
 
-    const payload = {
+    const payload: any = {
       id: body.id || `OBJ-${Math.floor(Math.random() * 90000) + 10000}`,
       name: body.name || 'Nuevo Objetivo',
       address: body.address || 'Sin dirección registrada',
@@ -224,74 +164,30 @@ export async function POST(req: NextRequest) {
       tenant_id: targetTenantId,
     };
 
-    // ── Log del payload completo antes del insert ────────────────────────────
     console.log('[POST_OBJECTIVE] Payload final para INSERT:', JSON.stringify(payload, null, 2));
 
-    try {
-      const supabase = createServiceClient();
-      const { data, error } = await supabase
-        .from('objectives')
-        .insert([payload])
-        .select()
-        .single();
+    const supabase = createServiceClient();
+    const { data, error } = await supabase
+      .from('objectives')
+      .insert([payload])
+      .select()
+      .single();
 
-      if (error) {
-        // ── Diagnóstico detallado del error de inserción ─────────────────────
-        console.error('[POST_OBJECTIVE] ⛔ INSERT falló:', {
-          message: error.message,
-          code: error.code,
-          details: error.details,
-          hint: error.hint,
-          keyType,
-          tenant_id: targetTenantId,
-        });
-
-        // ── Intento de retry con tenant_id: null ─────────────────────────────
-        console.log('[POST_OBJECTIVE] Intentando retry con tenant_id: null...');
-        const retryPayload = { ...payload, tenant_id: null };
-
-        const { data: retryData, error: retryError } = await supabase
-          .from('objectives')
-          .insert([retryPayload])
-          .select()
-          .single();
-
-        if (retryError) {
-          console.error('[POST_OBJECTIVE] ⛔ Retry con tenant_id: null también falló:', {
-            message: retryError.message,
-            code: retryError.code,
-            details: retryError.details,
-            hint: retryError.hint,
-          });
-          return NextResponse.json(
-            {
-              error: `Error de base de datos: ${retryError.message}`,
-              code: retryError.code,
-              hint: retryError.hint || 'Verificar /api/diagnostics/supabase para diagnóstico completo',
-              keyType,
-            },
-            { status: 500 }
-          );
-        }
-
-        console.log('[POST_OBJECTIVE] ✅ Retry exitoso con tenant_id: null, id:', retryData?.id);
-
-        invalidarCache('objectives');
-        serverCache.invalidatePattern('dashboard-map');
-        return NextResponse.json(retryData);
-      }
-
-      console.log('[POST_OBJECTIVE] ✅ INSERT exitoso, id:', data?.id);
-      invalidarCache('objectives');
-      serverCache.invalidatePattern('dashboard-map');
-      return NextResponse.json(data);
-    } catch (dbError: any) {
-      console.error('[POST_OBJECTIVE] ⛔ Excepción en ejecución Supabase:', dbError?.message);
+    if (error) {
+      console.error('[POST_OBJECTIVE] ⛔ INSERT falló:', error.message);
       return NextResponse.json(
-        { error: `Excepción de base de datos: ${dbError?.message}` },
+        { error: `Error de base de datos: ${error.message}` },
         { status: 500 }
       );
     }
+
+    console.log('[POST_OBJECTIVE] ✅ INSERT exitoso, id:', data?.id);
+
+    // Invalidador de caché en memoria para refresco instantáneo en /gerente y mapa
+    invalidarCache('objectives');
+    serverCache.invalidatePattern('dashboard-map');
+
+    return NextResponse.json(data);
   } catch (error: any) {
     console.error('[POST_OBJECTIVE_ERROR]', error);
     return NextResponse.json(
