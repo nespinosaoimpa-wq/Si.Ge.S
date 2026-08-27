@@ -47,7 +47,7 @@ export function AppHeader() {
               {(user as any)?.company_name || user?.user_metadata?.company_name || (role === 'superadmin' ? 'Matriz SIGPAD OS' : 'Empresa de Seguridad')}
             </span>
           </div>
-          {(role === 'superadmin' || (user as any)?.role === 'superadmin' || user?.email === 'nespinosa.oimpa@gmail.com') && (
+          {(role === 'superadmin' || (user as any)?.role === 'superadmin' || user?.email === 'sigpad.info@gmail.com') && (
             <a
               href="/superadmin"
               className="text-[11px] font-black text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2.5 py-1 rounded-lg hover:bg-amber-500/20 transition-all flex items-center gap-1"
