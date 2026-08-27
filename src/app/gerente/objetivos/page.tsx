@@ -102,11 +102,14 @@ export default function ObjetivosPage() {
   const handleCreateObjective = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      // Remove manual id and coordinate fetch
       const { id, ...objectiveData } = newObjective;
-      
-      // Automatic Geocoding
-      let coords = { latitude: -31.6107, longitude: -60.6973 }; // Default SIGPAD
+
+      // Auto-generar un nombre limpio si el usuario no lo ingresó explícitamente
+      const finalName = objectiveData.name.trim() || `Objetivo - ${objectiveData.address.split(',')[0]}`;
+      const finalClient = objectiveData.client_name.trim() || 'Cliente Particular';
+
+      // Geocodificación Automática
+      let coords = { latitude: -31.6107, longitude: -60.6973 }; // Default Santa Fe
       if (selectedCoords) {
         coords.latitude = selectedCoords.lat;
         coords.longitude = selectedCoords.lng;
@@ -124,6 +127,8 @@ export default function ObjetivosPage() {
 
       const createdObj = await api.objectives.create({
         ...objectiveData,
+        name: finalName,
+        client_name: finalClient,
         ...coords
       });
 
@@ -134,9 +139,12 @@ export default function ObjetivosPage() {
       setIsModalOpen(false);
       setNewObjective({ id: '', name: '', address: '', client_name: '', contact_phone: '', status: 'Activo' });
       setSelectedCoords(null);
+
+      // Refresco inmediato desde servidor
+      fetchObjectives();
     } catch (err: any) {
-      console.warn("Objective creation notice:", err);
-      setIsModalOpen(false);
+      console.error("Error al crear objetivo:", err);
+      alert("No se pudo guardar el objetivo: " + (err.message || 'Error desconocido'));
     }
   };
 
@@ -313,13 +321,13 @@ export default function ObjetivosPage() {
         <form onSubmit={handleCreateObjective} className="space-y-4 pb-8">
            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-zinc-500 ml-0.5">Nombre del lugar</label>
-                <Input required placeholder="Ej: Edificio Central" value={newObjective.name}
+                <label className="text-xs font-medium text-zinc-500 ml-0.5">Nombre del lugar (Opcional)</label>
+                <Input placeholder="Ej: Edificio Central (Se auto-completa si queda vacío)" value={newObjective.name}
                   onChange={e => setNewObjective({...newObjective, name: e.target.value})} />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-zinc-500 ml-0.5">Cliente / Cuenta</label>
-                <Input required placeholder="Ej: Banco Galicia" value={newObjective.client_name}
+                <label className="text-xs font-medium text-zinc-500 ml-0.5">Cliente / Cuenta (Opcional)</label>
+                <Input placeholder="Ej: Banco Galicia (Se auto-completa si queda vacío)" value={newObjective.client_name}
                   onChange={e => setNewObjective({...newObjective, client_name: e.target.value})} />
               </div>
               <div className="space-y-1.5 sm:col-span-2 relative">

@@ -150,8 +150,12 @@ export async function POST(req: NextRequest) {
       return isNaN(num) ? fallback : num;
     };
 
+    const isValidUUID = (uuid: any) => {
+      if (typeof uuid !== 'string') return false;
+      return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid);
+    };
+
     const payload: any = {
-      id: body.id || `OBJ-${Math.floor(Math.random() * 90000) + 10000}`,
       name: body.name || 'Nuevo Objetivo',
       address: body.address || 'Sin dirección registrada',
       client_name: body.client_name || 'Cliente Particular',
@@ -163,6 +167,12 @@ export async function POST(req: NextRequest) {
       is_active: true,
       tenant_id: targetTenantId,
     };
+
+    if (body.id && isValidUUID(body.id)) {
+      payload.id = body.id;
+    } else {
+      payload.id = crypto.randomUUID();
+    }
 
     console.log('[POST_OBJECTIVE] Payload final para INSERT:', JSON.stringify(payload, null, 2));
 
