@@ -1,5 +1,4 @@
-import type { Metadata, Viewport } from "next";
-import { Inter, Plus_Jakarta_Sans, Space_Grotesk } from "next/font/google";
+import { Inter, Plus_Jakarta_Sans, Space_Grotesk, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import PWARegistration from "@/components/PWARegistration";
 import CookieBanner from "@/components/legal/CookieBanner";
@@ -9,13 +8,13 @@ import { AuthProvider } from "@/components/providers/AuthProvider";
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
-  display: "swap", // Evita FOIT: muestra texto con fuente fallback mientras carga
+  display: "swap",
 });
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
   variable: "--font-plus-jakarta-sans",
-  weight: ["500", "700", "800"],
+  weight: ["500", "600", "700", "800"],
   display: "swap",
 });
 
@@ -25,6 +24,15 @@ const spaceGrotesk = Space_Grotesk({
   weight: ["400", "500", "700"],
   display: "swap",
 });
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-jetbrains-mono",
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+});
+
+import type { Metadata, Viewport } from "next";
 
 export const metadata: Metadata = {
   title: "SIGPAD",
@@ -62,7 +70,6 @@ export default function RootLayout({
   return (
     <html lang="es" className="h-full">
       <head>
-        {/* El viewport ya está gestionado por export const viewport de Next.js — NO duplicar aquí */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <link rel="manifest" href="/manifest.json" />
@@ -70,7 +77,7 @@ export default function RootLayout({
         <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192x192.png" />
       </head>
       <body
-        className={`${inter.variable} ${plusJakartaSans.variable} ${spaceGrotesk.variable} font-sans bg-zinc-50 text-zinc-900 h-full overflow-x-hidden antialiased`}
+        className={`${inter.variable} ${plusJakartaSans.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable} font-sans bg-zinc-50 text-zinc-900 h-full overflow-x-hidden antialiased`}
       >
         <AuthProvider>
           <ShiftProvider>

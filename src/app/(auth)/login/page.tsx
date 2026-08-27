@@ -178,28 +178,28 @@ export default function LoginPage() {
             </div>
 
             <form onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-xs text-zinc-400 font-medium ml-1">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider ml-1">
                   Identificación
                 </label>
                 <Input
                   type="email"
                   placeholder="ejemplo@correo.com"
-                  className="rounded-2xl h-14 border-zinc-800 bg-zinc-950/60 text-white placeholder-zinc-500 focus:border-zinc-700"
+                  className="rounded-2xl h-12 border-zinc-800 bg-zinc-950/60 text-white text-xs placeholder-zinc-500 focus:border-zinc-700"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
                 />
               </div>
 
-              <div className="space-y-2">
-                <label className="text-xs text-zinc-400 font-medium ml-1">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider ml-1">
                   Código de Acceso
                 </label>
                 <Input
                   type="password"
                   placeholder="••••••••••••"
-                  className="rounded-2xl h-14 border-zinc-800 bg-zinc-950/60 text-white placeholder-zinc-500 focus:border-zinc-700"
+                  className="rounded-2xl h-12 border-zinc-800 bg-zinc-950/60 text-white text-xs placeholder-zinc-500 focus:border-zinc-700 font-mono"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -211,7 +211,7 @@ export default function LoginPage() {
                   type="button"
                   onClick={() => setRole('operador')}
                   className={cn(
-                    "h-12 rounded-xl text-xs font-semibold border transition-all",
+                    "h-11 rounded-xl text-xs font-semibold uppercase tracking-wider border transition-all",
                     role === 'operador' 
                       ? "bg-white border-white text-zinc-950 shadow-lg shadow-white/5" 
                       : "bg-zinc-950 border-zinc-800 text-zinc-400 hover:bg-zinc-900"
@@ -223,7 +223,7 @@ export default function LoginPage() {
                   type="button"
                   onClick={() => setRole('gerente')}
                   className={cn(
-                    "h-12 rounded-xl text-xs font-semibold border transition-all",
+                    "h-11 rounded-xl text-xs font-semibold uppercase tracking-wider border transition-all",
                     role === 'gerente' 
                       ? "bg-white border-white text-zinc-950 shadow-lg shadow-white/5" 
                       : "bg-zinc-950 border-zinc-800 text-zinc-400 hover:bg-zinc-900"
@@ -235,14 +235,14 @@ export default function LoginPage() {
 
               <Button 
                 type="submit" 
-                className="w-full h-16 rounded-2xl text-base font-bold mt-4 shadow-xl bg-white hover:bg-zinc-200 text-zinc-950 border-none group"
+                className="w-full h-14 rounded-2xl text-xs font-bold uppercase tracking-widest mt-4 shadow-xl bg-white hover:bg-zinc-100 text-zinc-950 border-none group"
                 disabled={loading}
               >
                 {loading ? (
-                  <div className="w-6 h-6 border-2 border-zinc-900/20 border-t-zinc-900 rounded-full animate-spin" />
+                  <div className="w-5 h-5 border-2 border-zinc-900/20 border-t-zinc-900 rounded-full animate-spin" />
                 ) : (
                   <>
-                    INGRESAR <ChevronRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                    INGRESAR <ChevronRight className="ml-1 w-4 h-4 group-hover:translate-x-1 transition-transform" />
                   </>
                 )}
               </Button>

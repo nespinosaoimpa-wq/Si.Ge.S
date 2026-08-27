@@ -78,15 +78,15 @@ export function AuditReportPanel({ isOpen, onClose }: { isOpen: boolean, onClose
           {/* Header */}
           <div className="p-8 border-b border-white/5 flex items-center justify-between bg-black/40 text-white">
             <div>
-              <h2 className="text-2xl font-black uppercase tracking-tighter flex items-center gap-3">
+              <h2 className="text-xl font-bold uppercase tracking-tight flex items-center gap-3">
                 <FileText className="text-primary" />
                 Auditoría de Geocercas
               </h2>
-              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Control de Abandono de Puesto</p>
+              <p className="text-xs text-zinc-400 font-medium tracking-wide mt-0.5">Control de Abandono de Puesto</p>
             </div>
             <div className="flex items-center gap-4">
               <Link href="/gerente/trazabilidad" onClick={onClose}>
-                <Button variant="ghost" className="h-10 px-4 bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-widest text-primary hover:bg-white/10 gap-2">
+                <Button variant="ghost" className="h-10 px-4 bg-white/5 border border-white/10 text-xs font-semibold uppercase tracking-wider text-primary hover:bg-white/10 gap-2">
                   <History size={14} />
                   Trazabilidad
                 </Button>
@@ -100,13 +100,13 @@ export function AuditReportPanel({ isOpen, onClose }: { isOpen: boolean, onClose
           {/* List */}
           <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-black">
             {loading ? (
-              <div className="h-full flex items-center justify-center text-gray-400 uppercase text-[10px] font-black tracking-widest animate-pulse">
+              <div className="h-full flex items-center justify-center text-zinc-500 text-xs font-mono tracking-wider animate-pulse">
                 Analizando telemetría...
               </div>
             ) : incidents.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-gray-400 space-y-4">
+              <div className="h-full flex flex-col items-center justify-center text-zinc-500 space-y-4">
                 <CheckCircle2 size={48} className="opacity-20" />
-                <p className="uppercase text-[10px] font-black tracking-widest">Sin incidencias registradas</p>
+                <p className="text-xs font-semibold tracking-wider uppercase">Sin incidencias registradas</p>
               </div>
             ) : (
               incidents.map((inc) => (
@@ -128,19 +128,19 @@ export function AuditReportPanel({ isOpen, onClose }: { isOpen: boolean, onClose
                         <User size={14} className="text-zinc-400" />
                       </div>
                       <div>
-                        <p className="text-xs font-black uppercase text-white">{inc.operator?.name || 'Operador'}</p>
-                        <p className="text-[10px] text-zinc-500">{inc.objective?.name}</p>
+                        <p className="text-xs font-bold uppercase text-white">{inc.operator?.name || 'Operador'}</p>
+                        <p className="text-xs text-zinc-400 font-medium">{inc.objective?.name}</p>
                       </div>
                     </div>
                     <div className={cn(
-                      "px-2 py-1 rounded text-[9px] font-black uppercase tracking-widest",
-                      inc.status === 'pendiente' ? "bg-red-100 text-red-600" : "bg-gray-100 text-gray-600"
+                      "px-2 py-1 rounded text-[10px] font-semibold uppercase tracking-wider",
+                      inc.status === 'pendiente' ? "bg-red-500/20 text-red-400 border border-red-500/30" : "bg-zinc-800 text-zinc-400"
                     )}>
                       {inc.status}
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4 text-[10px] text-gray-500 font-medium">
+                  <div className="grid grid-cols-2 gap-4 text-xs font-mono text-zinc-400">
                     <div className="flex items-center gap-2">
                       <Clock size={12} />
                       Salida: {new Date(inc.exit_at).toLocaleTimeString()}
@@ -165,7 +165,7 @@ export function AuditReportPanel({ isOpen, onClose }: { isOpen: boolean, onClose
                 className="absolute inset-0 bg-zinc-950/95 backdrop-blur-3xl z-[160] flex flex-col"
               >
                 <div className="p-8 border-b border-white/5 flex items-center justify-between">
-                  <h3 className="text-xl font-black uppercase tracking-tighter text-white">Detalle de Incidencia</h3>
+                  <h3 className="text-lg font-bold uppercase tracking-tight text-white">Detalle de Incidencia</h3>
                   <button onClick={() => setSelectedIncident(null)} className="p-2 hover:bg-white/5 rounded-full transition-colors text-zinc-400">
                     <X size={20} />
                   </button>
@@ -180,35 +180,35 @@ export function AuditReportPanel({ isOpen, onClose }: { isOpen: boolean, onClose
                       </div>
                     </div>
                   ) : (
-                    <div className="w-full h-48 bg-white/5 rounded-[2rem] flex flex-col items-center justify-center text-zinc-600 gap-2 border border-dashed border-white/10">
+                    <div className="w-full h-48 bg-white/5 rounded-[2rem] flex flex-col items-center justify-center text-zinc-500 gap-2 border border-dashed border-white/10">
                       <MapIcon size={32} />
-                      <span className="text-[10px] font-black uppercase tracking-widest">Mapa no disponible</span>
+                      <span className="text-xs font-medium uppercase tracking-wider">Mapa no disponible</span>
                     </div>
                   )}
 
                   {/* Info Grid */}
                   <div className="grid grid-cols-2 gap-6">
                     <div className="space-y-1">
-                      <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Operador</p>
+                      <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">Operador</p>
                       <p className="text-sm font-bold text-white">{selectedIncident.operator?.name}</p>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Objetivo</p>
+                      <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">Objetivo</p>
                       <p className="text-sm font-bold text-white">{selectedIncident.objective?.name}</p>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Inicio Desvío</p>
-                      <p className="text-sm font-bold text-white">{new Date(selectedIncident.exit_at).toLocaleString()}</p>
+                      <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">Inicio Desvío</p>
+                      <p className="text-xs font-mono text-white">{new Date(selectedIncident.exit_at).toLocaleString()}</p>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Retorno</p>
-                      <p className="text-sm font-bold text-white">{selectedIncident.return_at ? new Date(selectedIncident.return_at).toLocaleString() : 'En curso...'}</p>
+                      <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">Retorno</p>
+                      <p className="text-xs font-mono text-white">{selectedIncident.return_at ? new Date(selectedIncident.return_at).toLocaleString() : 'En curso...'}</p>
                     </div>
                   </div>
 
                   {/* Validation Form */}
                   <div className="space-y-4">
-                    <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+                    <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
                       <MessageSquare size={12} />
                       Validación de Supervisión
                     </p>
@@ -221,13 +221,13 @@ export function AuditReportPanel({ isOpen, onClose }: { isOpen: boolean, onClose
                     
                     <div className="flex gap-3">
                       <Button 
-                        className="flex-1 h-14 bg-green-500 hover:bg-green-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest border-none"
+                        className="flex-1 h-12 bg-green-600 hover:bg-green-700 text-white rounded-xl text-xs font-semibold uppercase tracking-wider border-none"
                         onClick={() => resolveIncident(selectedIncident.id, 'justificado')}
                       >
                         Justificar
                       </Button>
                       <Button 
-                        className="flex-1 h-14 bg-white/10 hover:bg-white/20 text-white rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/10"
+                        className="flex-1 h-12 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-semibold uppercase tracking-wider border border-white/10"
                         onClick={() => resolveIncident(selectedIncident.id, 'sancionado')}
                       >
                         Sancionar
@@ -237,7 +237,7 @@ export function AuditReportPanel({ isOpen, onClose }: { isOpen: boolean, onClose
                 </div>
 
                 <div className="p-6 border-t border-white/5 flex justify-center">
-                   <Button variant="ghost" className="text-[10px] font-black uppercase tracking-widest text-zinc-500 gap-2 hover:text-white">
+                   <Button variant="ghost" className="text-xs font-semibold uppercase tracking-wider text-zinc-400 gap-2 hover:text-white">
                      <Download size={14} />
                      Descargar Reporte PDF (Próximamente)
                    </Button>

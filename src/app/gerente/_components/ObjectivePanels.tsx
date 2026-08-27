@@ -71,9 +71,9 @@ export function ObjectiveDetailPanel({
                 <MapPin size={22} className="text-[#0F4C5C]" />
               </div>
               <div className="flex-1 min-w-0 overflow-hidden">
-                <h3 className="text-xl font-black text-zinc-900 uppercase tracking-tight truncate leading-tight">{selectedObjective.name}</h3>
+                <h3 className="text-xl font-bold text-zinc-900 tracking-tight truncate leading-tight">{selectedObjective.name}</h3>
                 {selectedObjective.address && (
-                  <p className="text-[11px] text-zinc-600 font-semibold uppercase mt-1 truncate">{selectedObjective.address}</p>
+                  <p className="text-xs text-zinc-500 font-medium mt-0.5 truncate">{selectedObjective.address}</p>
                 )}
               </div>
             </div>
@@ -86,19 +86,19 @@ export function ObjectiveDetailPanel({
           <div className="flex flex-wrap gap-2 mb-5">
             {selectedObjective.client_name && (
               <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-50 border border-zinc-200 rounded-xl max-w-full overflow-hidden">
-                <Building2 size={12} className="text-zinc-600 shrink-0" />
-                <span className="text-[10px] font-black uppercase tracking-wider text-zinc-600 truncate">{selectedObjective.client_name}</span>
+                <Building2 size={12} className="text-zinc-500 shrink-0" />
+                <span className="text-xs font-medium text-zinc-700 truncate">{selectedObjective.client_name}</span>
               </div>
             )}
             {selectedObjective.contact_phone && (
               <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-50 border border-zinc-200 rounded-xl max-w-full overflow-hidden">
-                <Phone size={12} className="text-zinc-600 shrink-0" />
-                <span className="text-[10px] font-black uppercase tracking-wider text-zinc-600 truncate">{selectedObjective.contact_phone}</span>
+                <Phone size={12} className="text-zinc-500 shrink-0" />
+                <span className="text-xs font-mono text-zinc-700 truncate">{selectedObjective.contact_phone}</span>
               </div>
             )}
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-50 border border-[#0F4C5C]/20 rounded-xl shrink-0">
-              <div className="w-1.5 h-1.5 rounded-full bg-[#0F4C5C]" />
-              <span className="text-[10px] font-black uppercase tracking-wider text-[#0F4C5C]">{selectedObjective.status || 'Activo'}</span>
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-teal-500/10 border border-teal-500/20 rounded-xl shrink-0">
+              <div className="w-1.5 h-1.5 rounded-full bg-teal-600" />
+              <span className="text-xs font-semibold uppercase tracking-wider text-teal-700">{selectedObjective.status || 'Activo'}</span>
             </div>
           </div>
 
@@ -131,18 +131,18 @@ export function ObjectiveDetailPanel({
  
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                         <p className="text-sm font-black text-zinc-900 uppercase tracking-tight">{assignedGuard.name}</p>
+                         <p className="text-sm font-bold text-zinc-900 tracking-tight">{assignedGuard.name}</p>
                          {activeShift && (
-                           <div className="w-2 h-2 rounded-full bg-[#0F4C5C]" title="En servicio activo" />
+                           <div className="w-2 h-2 rounded-full bg-teal-500" title="En servicio activo" />
                          )}
                       </div>
-                      <p className="text-[9px] text-zinc-600 font-black uppercase tracking-widest mt-1">
+                      <p className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider mt-0.5">
                         {activeShift ? 'Puesto Cubierto' : 'Asignación Pendiente'}
                       </p>
                     </div>
                     {onAssignOperator && (
                       <button 
-                        className="text-[9px] font-black uppercase tracking-widest text-zinc-300 hover:text-red-500 transition-colors" 
+                        className="text-xs font-semibold text-zinc-400 hover:text-red-500 transition-colors" 
                         onClick={() => onAssignOperator(selectedObjective.id, '')}
                       >
                         Liberar
@@ -154,18 +154,18 @@ export function ObjectiveDetailPanel({
 
               return (
                 <div className="space-y-4">
-                  <div className="flex items-center gap-3 text-zinc-300">
-                    <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center border border-zinc-100 shadow-sm">
-                      <User size={18} className="text-zinc-200" />
+                  <div className="flex items-center gap-3 text-zinc-400">
+                    <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center border border-zinc-200 shadow-sm">
+                      <User size={18} className="text-zinc-400" />
                     </div>
                     <div>
-                      <p className="text-xs font-black text-zinc-900 uppercase tracking-tight">Sin personal activo</p>
-                      <p className="text-[9px] font-black text-zinc-300 uppercase tracking-widest mt-0.5">Asignar para iniciar monitoreo</p>
+                      <p className="text-xs font-bold text-zinc-900 tracking-tight">Sin personal activo</p>
+                      <p className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider mt-0.5">Asignar para iniciar monitoreo</p>
                     </div>
                   </div>
                   {onAssignOperator && (
                     <select 
-                      className="w-full h-11 text-xs font-black uppercase tracking-widest border border-zinc-200 rounded-xl px-4 bg-white text-zinc-900 focus:ring-1 focus:ring-[#0F4C5C]/50 appearance-none shadow-sm cursor-pointer"
+                      className="w-full h-11 text-xs font-medium border border-zinc-200 rounded-xl px-4 bg-white text-zinc-900 focus:ring-1 focus:ring-[#0F4C5C]/50 appearance-none shadow-sm cursor-pointer"
                       onChange={(e) => {
                         if (e.target.value) onAssignOperator(selectedObjective.id, e.target.value);
                       }}
@@ -177,7 +177,7 @@ export function ObjectiveDetailPanel({
                           : 'No hay operadores libres (Seleccionar para reasignar)...'}
                       </option>
                       {activeGuards.filter(g => !g.current_objective_id).map(g => (
-                        <option key={g.id} value={g.id} className="bg-white font-bold">
+                        <option key={g.id} value={g.id} className="bg-white font-medium">
                           🟢 {g.name} {g.role ? `• ${g.role}` : ''}
                         </option>
                       ))}
@@ -201,7 +201,7 @@ export function ObjectiveDetailPanel({
           <div className="flex gap-3 mt-auto">
             <div className="flex-1 flex gap-2">
               <Link href={`/gerente/objetivos/${selectedObjective.id}`} className="flex-1 min-w-0">
-                <button className="w-full h-12 text-[11px] font-black uppercase tracking-wider bg-[#0F4C5C] text-white rounded-xl hover:bg-[#0a333e] transition-all flex items-center justify-center gap-1.5 shadow-md px-3 truncate">
+                <button className="w-full h-12 text-xs font-semibold uppercase tracking-wider bg-[#0F4C5C] text-white rounded-xl hover:bg-[#0a333e] transition-all flex items-center justify-center gap-1.5 shadow-md px-3 truncate">
                   AUDITAR SERVICIO
                   <ChevronRight size={15} className="shrink-0" />
                 </button>
@@ -217,7 +217,7 @@ export function ObjectiveDetailPanel({
                   }}
                   type="button"
                   className={cn(
-                    "px-4 h-12 text-[10px] font-black uppercase tracking-widest rounded-xl border transition-all flex items-center justify-center gap-2",
+                    "px-4 h-12 text-xs font-semibold uppercase tracking-wider rounded-xl border transition-all flex items-center justify-center gap-2",
                     isRelocating 
                       ? "bg-black text-[#0F4C5C] border-black animate-pulse" 
                       : "bg-white text-zinc-900 border-zinc-200 hover:bg-zinc-50"
@@ -238,7 +238,7 @@ export function ObjectiveDetailPanel({
             {activeGuards.find(g => g.current_objective_id === selectedObjective.id) && (
               <button 
                 type="button"
-                className="h-12 w-12 shrink-0 border border-white/10 text-zinc-100 hover:bg-white/5 rounded-xl transition-all flex items-center justify-center"
+                className="h-12 w-12 shrink-0 border border-zinc-200 text-zinc-700 hover:bg-zinc-100 rounded-xl transition-all flex items-center justify-center"
                 onClick={async () => {
                   const msg = prompt('Enviar mensaje al operador:');
                   if (!msg) return;
@@ -306,41 +306,41 @@ export function NewObjectiveForm({
               : "absolute bottom-6 left-1/2 -translate-x-1/2 w-[520px] rounded-[2rem] p-8"
           )}
         >
-          <div className="flex justify-between items-center mb-8">
+          <div className="flex justify-between items-center mb-6">
             <div className="flex-1 min-w-0">
-              <h3 className="text-2xl font-black text-zinc-900 uppercase tracking-tighter truncate">Nuevo Objetivo</h3>
-              <p className="text-[10px] text-zinc-600 font-black uppercase tracking-[0.2em] mt-2">Registrar punto de vigilancia estratégica</p>
+              <h3 className="text-xl font-bold text-zinc-900 tracking-tight truncate">Nuevo Objetivo</h3>
+              <p className="text-xs text-zinc-500 font-medium mt-1">Registrar punto de vigilancia estratégica</p>
             </div>
             <button onClick={() => setLastClickedCoords(null)} className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
-              <X size={20} className="text-zinc-300" />
+              <X size={18} className="text-zinc-400" />
             </button>
           </div>
 
           <form onSubmit={handleAddObjective} className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Nombre Operativo</label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-semibold text-zinc-600 uppercase tracking-wider ml-1">Nombre Operativo</label>
                 <Input required placeholder="Ej: Edificio Central" value={newObjective.name}
-                  className="h-12 bg-zinc-50 border-zinc-200 text-zinc-900 rounded-xl placeholder:text-zinc-500"
+                  className="h-11 bg-zinc-50 border-zinc-200 text-zinc-900 text-xs rounded-xl placeholder:text-zinc-400"
                   onChange={e => setNewObjective({...newObjective, name: e.target.value})} />
               </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-zinc-300 uppercase tracking-widest ml-1">Cliente Corporativo</label>
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-semibold text-zinc-600 uppercase tracking-wider ml-1">Cliente Corporativo</label>
                 <Input required placeholder="Ej: Banco Galicia" value={newObjective.client_name}
-                  className="h-12 bg-zinc-50 border-zinc-200 text-zinc-900 rounded-xl placeholder:text-zinc-300"
+                  className="h-11 bg-zinc-50 border-zinc-200 text-zinc-900 text-xs rounded-xl placeholder:text-zinc-400"
                   onChange={e => setNewObjective({...newObjective, client_name: e.target.value})} />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-zinc-300 uppercase tracking-widest ml-1">Dirección de Despliegue</label>
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-semibold text-zinc-600 uppercase tracking-wider ml-1">Dirección de Despliegue</label>
               <div className="flex gap-2">
                 <div className="flex-1 relative">
                   <Input 
                     required 
                     placeholder="Ej: San Martín 1500" 
                     className={cn(
-                      "h-12 bg-zinc-50 border-zinc-200 text-zinc-900 rounded-xl placeholder:text-zinc-300",
+                      "h-11 bg-zinc-50 border-zinc-200 text-zinc-900 text-xs rounded-xl placeholder:text-zinc-400",
                       lastClickedCoords ? "border-[#0F4C5C]/30 bg-[#0F4C5C]/5" : ""
                     )}
                     value={newObjective.address}
@@ -361,7 +361,7 @@ export function NewObjectiveForm({
                         <button
                           key={i}
                           type="button"
-                          className="w-full text-left px-5 py-4 hover:bg-zinc-50 transition-colors border-b last:border-0 border-zinc-100"
+                          className="w-full text-left px-4 py-3 hover:bg-zinc-50 transition-colors border-b last:border-0 border-zinc-100"
                           onClick={async () => {
                             let lat = s.lat;
                             let lng = s.lng;
@@ -379,8 +379,8 @@ export function NewObjectiveForm({
                             setAddressSuggestions([]);
                           }}
                         >
-                          <p className="text-xs font-black text-zinc-900 line-clamp-1">{s.displayName}</p>
-                          <p className="text-[9px] text-zinc-400 font-black uppercase tracking-widest mt-1">{s.type}</p>
+                          <p className="text-xs font-semibold text-zinc-900 line-clamp-1">{s.displayName}</p>
+                          <p className="text-[10px] text-zinc-500 font-mono mt-0.5">{s.type}</p>
                         </button>
                       ))}
                     </div>
@@ -390,7 +390,7 @@ export function NewObjectiveForm({
                   type="button" 
                   variant="outline" 
                   size="sm"
-                  className="shrink-0 h-12 px-4 border-zinc-200 bg-zinc-50 text-[#0F4C5C] hover:bg-zinc-100 shadow-sm"
+                  className="shrink-0 h-11 px-3.5 border-zinc-200 bg-zinc-50 text-[#0F4C5C] hover:bg-zinc-100 shadow-sm"
                   disabled={isSearchingAddress}
                   onClick={async () => {
                     if (!newObjective.address) return;
@@ -408,13 +408,13 @@ export function NewObjectiveForm({
                     }
                   }}
                 >
-                   <Search size={18} />
+                   <Search size={16} />
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="shrink-0 h-12 px-4 border-[#0F4C5C]/20 bg-[#0F4C5C]/5 text-[#0F4C5C] hover:bg-[#0F4C5C]/10 shadow-sm"
+                  className="shrink-0 h-11 px-3.5 border-[#0F4C5C]/20 bg-[#0F4C5C]/5 text-[#0F4C5C] hover:bg-[#0F4C5C]/10 shadow-sm"
                   title="Usar mi ubicación actual"
                   onClick={() => {
                     if (!navigator.geolocation) return alert("Geolocalización no soportada en este navegador.");
@@ -436,31 +436,31 @@ export function NewObjectiveForm({
                     );
                   }}
                 >
-                  <MapPin size={18} />
+                  <MapPin size={16} />
                 </Button>
               </div>
             </div>
-            <div className="space-y-2 pb-2">
-              <label className="text-[10px] font-black text-zinc-300 uppercase tracking-widest ml-1">Teléfono de Enlace</label>
+            <div className="space-y-1.5 pb-2">
+              <label className="text-[11px] font-semibold text-zinc-600 uppercase tracking-wider ml-1">Teléfono de Enlace</label>
               <Input placeholder="Ej: 342 555-0123" value={newObjective.contact_phone}
                 onChange={e => setNewObjective({...newObjective, contact_phone: e.target.value})} 
-                className="h-12 bg-zinc-50 border-zinc-200 text-zinc-900 rounded-xl placeholder:text-zinc-300 shadow-sm"
+                className="h-11 bg-zinc-50 border-zinc-200 text-zinc-900 text-xs font-mono rounded-xl placeholder:text-zinc-400 shadow-sm"
               />
             </div>
 
             {/* Coords indicator & Precision Control */}
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div className="flex items-center justify-between px-1">
-                <label className="text-[10px] font-black text-zinc-300 uppercase tracking-widest">Localización Geográfica</label>
-                <div className="flex items-center gap-1.5 px-3 py-1 bg-[#0F4C5C]/5 border border-[#0F4C5C]/20 rounded-full shadow-sm">
-                  <div className="w-1 h-1 rounded-full bg-[#0F4C5C]" />
-                  <span className="text-[8px] font-black uppercase tracking-widest text-[#0F4C5C]">U-TRACK HD READY</span>
+                <label className="text-[11px] font-semibold text-zinc-600 uppercase tracking-wider">Localización Geográfica</label>
+                <div className="flex items-center gap-1.5 px-2.5 py-0.5 bg-teal-500/10 border border-teal-500/20 rounded-full">
+                  <div className="w-1.5 h-1.5 rounded-full bg-teal-600" />
+                  <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-teal-700">U-TRACK HD</span>
                 </div>
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <span className="text-[10px] font-black text-zinc-200 uppercase ml-1 tracking-widest">LAT</span>
+                  <span className="text-[10px] font-semibold text-zinc-500 uppercase ml-1 tracking-wider">LATITUD</span>
                   <Input 
                     type="text" 
                     placeholder="-31.6..."
@@ -470,11 +470,11 @@ export function NewObjectiveForm({
                       const parsed = parseFloat(str.replace(',', '.'));
                       setLastClickedCoords((prev: any) => ({ ...(prev || {}), lat: isNaN(parsed) ? str : parsed }));
                     }}
-                    className="h-12 bg-zinc-50 border-zinc-200 text-zinc-900 rounded-xl text-xs font-mono shadow-sm"
+                    className="h-10 bg-zinc-50 border-zinc-200 text-zinc-900 rounded-xl text-xs font-mono tabular-nums shadow-sm"
                   />
                 </div>
                 <div className="space-y-1">
-                  <span className="text-[10px] font-black text-zinc-200 uppercase ml-1 tracking-widest">LNG</span>
+                  <span className="text-[10px] font-semibold text-zinc-500 uppercase ml-1 tracking-wider">LONGITUD</span>
                   <Input 
                     type="text" 
                     placeholder="-60.7..."
@@ -484,19 +484,19 @@ export function NewObjectiveForm({
                       const parsed = parseFloat(str.replace(',', '.'));
                       setLastClickedCoords((prev: any) => ({ ...(prev || {}), lng: isNaN(parsed) ? str : parsed }));
                     }}
-                    className="h-12 bg-zinc-50 border-zinc-200 text-zinc-900 rounded-xl text-xs font-mono shadow-sm"
+                    className="h-10 bg-zinc-50 border-zinc-200 text-zinc-900 rounded-xl text-xs font-mono tabular-nums shadow-sm"
                   />
                 </div>
               </div>
  
               {lastClickedCoords && (
-                <div className="flex items-center gap-4 p-5 bg-zinc-50 rounded-[1.5rem] border border-zinc-200 shadow-sm">
-                  <div className="w-12 h-12 bg-white text-[#0F4C5C] rounded-xl flex items-center justify-center shrink-0 border border-zinc-200 shadow-sm">
-                    <Target size={24} className="animate-pulse" />
+                <div className="flex items-center gap-3 p-3.5 bg-zinc-50 rounded-2xl border border-zinc-200 shadow-sm">
+                  <div className="w-9 h-9 bg-white text-[#0F4C5C] rounded-xl flex items-center justify-center shrink-0 border border-zinc-200 shadow-sm">
+                    <Target size={18} className="animate-pulse" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[10px] font-black text-[#0F4C5C] uppercase tracking-[0.2em]">Punto Confirmado</p>
-                    <p className="text-[10px] font-medium text-zinc-400 truncate mt-1">
+                    <p className="text-[11px] font-semibold text-[#0F4C5C] uppercase tracking-wider">Punto Confirmado</p>
+                    <p className="text-xs font-medium text-zinc-500 truncate mt-0.5">
                       {newObjective.address || 'Ubicación táctica seleccionada'}
                     </p>
                   </div>
@@ -504,7 +504,7 @@ export function NewObjectiveForm({
               )}
             </div>
  
-            <button type="submit" className="w-full h-14 bg-[#0F4C5C] text-white text-xs font-black uppercase tracking-[0.3em] rounded-xl hover:bg-[#C4A030] transition-all shadow-lg shadow-[#0F4C5C]/20 active:scale-[0.98]">
+            <button type="submit" className="w-full h-12 bg-[#0F4C5C] text-white text-xs font-semibold uppercase tracking-widest rounded-xl hover:bg-[#0a333e] transition-all shadow-md shadow-[#0F4C5C]/20 active:scale-[0.98]">
               Guardar Objetivo
             </button>
           </form>

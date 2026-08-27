@@ -455,9 +455,9 @@ export default function SuperAdminDashboard() {
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
-                      <tr className="border-b border-zinc-800/80 bg-zinc-950/20">
+                      <tr className="border-b border-zinc-800/80 bg-zinc-950/40">
                         {['Empresa', 'Estado', 'Plan', 'Guardias', 'Objetivos', 'Turnos activos', 'Registro', 'Acciones'].map(h => (
-                          <th key={h} className="px-5 py-4.5 text-left text-[10px] font-black uppercase tracking-wider text-zinc-500">
+                          <th key={h} className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wider text-zinc-400">
                             {h}
                           </th>
                         ))}
@@ -491,34 +491,34 @@ export default function SuperAdminDashboard() {
                               className="border-b border-zinc-800/40 hover:bg-zinc-800/20 transition-colors"
                             >
                               <td className="px-5 py-4">
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2.5">
                                   <span className="text-lg">{COUNTRY_FLAGS[tenant.country_code] || '🌐'}</span>
                                   <div>
-                                    <div className="text-sm font-bold text-white">{tenant.tenant_name}</div>
-                                    <div className="text-[9px] text-zinc-500 font-mono">{tenant.tenant_id}</div>
+                                    <div className="text-sm font-bold text-white tracking-tight">{tenant.tenant_name}</div>
+                                    <div className="text-[10px] text-zinc-500 font-mono">{tenant.tenant_id}</div>
                                   </div>
                                 </div>
                               </td>
                               <td className="px-5 py-4">
-                                <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg border text-[10px] font-black uppercase tracking-wide ${status.color}`}>
-                                  <status.icon size={10} />
+                                <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-xs font-semibold uppercase tracking-wider ${status.color}`}>
+                                  <status.icon size={11} />
                                   {status.label}
                                 </span>
                               </td>
                               <td className="px-5 py-4">
-                                <span className={`flex items-center gap-1.5 text-xs font-bold ${plan.color}`}>
-                                  <plan.icon size={12} />
+                                <span className={`flex items-center gap-1.5 text-xs font-semibold ${plan.color}`}>
+                                  <plan.icon size={13} />
                                   {plan.label}
                                 </span>
                               </td>
-                              <td className="px-5 py-4 text-sm font-semibold text-zinc-300">{tenant.total_operators || 0}</td>
-                              <td className="px-5 py-4 text-sm font-semibold text-zinc-300">{tenant.total_objectives || 0}</td>
+                              <td className="px-5 py-4 text-sm font-mono font-semibold text-zinc-300">{tenant.total_operators || 0}</td>
+                              <td className="px-5 py-4 text-sm font-mono font-semibold text-zinc-300">{tenant.total_objectives || 0}</td>
                               <td className="px-5 py-4">
-                                <span className={`text-sm font-black ${tenant.active_shifts > 0 ? 'text-emerald-400' : 'text-zinc-500'}`}>
+                                <span className={`text-sm font-mono font-bold ${tenant.active_shifts > 0 ? 'text-emerald-400' : 'text-zinc-500'}`}>
                                   {tenant.active_shifts || 0}
                                 </span>
                               </td>
-                              <td className="px-5 py-4 text-xs text-zinc-500 font-medium">
+                              <td className="px-5 py-4 text-xs font-mono text-zinc-400">
                                 {new Date(tenant.created_at).toLocaleDateString('es-AR')}
                               </td>
                               <td className="px-5 py-4">
@@ -526,7 +526,7 @@ export default function SuperAdminDashboard() {
                                   <button
                                     onClick={() => handleSwitchTenant(tenant.tenant_id, tenant.tenant_name)}
                                     disabled={isLoading}
-                                    className="text-[10px] px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 transition-all font-black uppercase tracking-wider disabled:opacity-50 flex items-center gap-1 shadow-sm"
+                                    className="text-xs px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 transition-all font-semibold uppercase tracking-wider disabled:opacity-50 flex items-center gap-1 shadow-sm"
                                     title="Ingresar a esta empresa como Gerente"
                                   >
                                     ⚡ Entrar / Probar
@@ -535,7 +535,7 @@ export default function SuperAdminDashboard() {
                                     <button
                                       onClick={() => updateTenant(tenant.tenant_id, { billing_status: 'suspended' })}
                                       disabled={isLoading}
-                                      className="text-[10px] px-3 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 hover:border-red-500/30 transition-all font-black uppercase tracking-wider disabled:opacity-50"
+                                      className="text-xs px-3 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 hover:border-red-500/30 transition-all font-semibold uppercase tracking-wider disabled:opacity-50"
                                     >
                                       Suspender
                                     </button>
@@ -543,7 +543,7 @@ export default function SuperAdminDashboard() {
                                     <button
                                       onClick={() => updateTenant(tenant.tenant_id, { billing_status: 'active' })}
                                       disabled={isLoading}
-                                      className="text-[10px] px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 hover:border-emerald-500/30 transition-all font-black uppercase tracking-wider disabled:opacity-50"
+                                      className="text-xs px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 hover:border-emerald-500/30 transition-all font-semibold uppercase tracking-wider disabled:opacity-50"
                                     >
                                       Reactivar
                                     </button>
