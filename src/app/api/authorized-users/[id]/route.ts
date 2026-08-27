@@ -1,20 +1,19 @@
 import { createServiceClient } from '@/lib/supabase-server';
-import { isConfigured } from '@/lib/supabase';
 import { NextRequest, NextResponse } from 'next/server';
 import { removeFromMemoryWhitelist } from '@/lib/memory-whitelist';
+import { resolveTenantFromRequest } from '@/lib/resolve-tenant';
 
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    if (!isConfigured) {
-      return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
-    }
+    const ctx = await resolveTenantFromRequest(req);
+    if (!ctx) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    const { tenantId, isSuper } = ctx;
 
-    const userCookie = req.cookies.get('SIGPAD_user');
-    if (!userCookie) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    if (!isSuper && !tenantId) {
+      return NextResponse.json({ error: 'Falta empresa asignada' }, { status: 403 });
     }
 
     const { id } = await params;
@@ -23,16 +22,19 @@ export async function PATCH(
 
     const supabase = createServiceClient();
     
-    const { data, error } = await supabase
+    let query = supabase
       .from('authorized_users')
       .update({ 
         status, 
         approved_at: status === 'approved' ? new Date().toISOString() : null 
       })
-      .eq('id', id)
-      .select()
-      .single();
+      .eq('id', id);
 
+    if (!isSuper && tenantId) {
+      query = query.eq('tenant_id', tenantId);
+    }
+
+    const { data, error } = await query.select().single();
     if (error) throw error;
 
     return NextResponse.json(data);
@@ -47,21 +49,39 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const ctx = await resolveTenantFromRequest(req);
+    if (!ctx) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    const { tenantId, isSuper } = ctx;
+
+    if (!isSuper && !tenantId) {
+      return NextResponse.json({ error: 'Falta empresa asignada' }, { status: 403 });
+    }
+
     const { id } = await params;
     const supabase = createServiceClient();
     
     // First, try deleting from authorized_users by ID
-    await supabase.from('authorized_users').delete().eq('id', id);
+    let authDelete = supabase.from('authorized_users').delete().eq('id', id);
+    if (!isSuper && tenantId) authDelete = authDelete.eq('tenant_id', tenantId);
+    await authDelete;
 
     // If ID contains email or prefix, try deleting by email
     const emailCandidate = id.replace(/^auth-/, '');
     if (emailCandidate.includes('@')) {
       removeFromMemoryWhitelist(emailCandidate);
-      await supabase.from('authorized_users').delete().ilike('email', emailCandidate);
-      await supabase.from('resources').delete().ilike('email', emailCandidate);
+      let authDelEmail = supabase.from('authorized_users').delete().ilike('email', emailCandidate);
+      let resDelEmail = supabase.from('resources').delete().ilike('email', emailCandidate);
+      if (!isSuper && tenantId) {
+        authDelEmail = authDelEmail.eq('tenant_id', tenantId);
+        resDelEmail = resDelEmail.eq('tenant_id', tenantId);
+      }
+      await authDelEmail;
+      await resDelEmail;
     } else {
       // Also delete from resources by ID
-      await supabase.from('resources').delete().eq('id', id);
+      let resDelete = supabase.from('resources').delete().eq('id', id);
+      if (!isSuper && tenantId) resDelete = resDelete.eq('tenant_id', tenantId);
+      await resDelete;
     }
 
     return NextResponse.json({ success: true });
@@ -70,3 +90,4 @@ export async function DELETE(
     return NextResponse.json({ error: err.message || 'Internal Server Error' }, { status: 500 });
   }
 }
+

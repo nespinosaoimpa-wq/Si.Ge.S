@@ -1,24 +1,21 @@
 import { createServiceClient } from '@/lib/supabase-server';
-import { isConfigured } from '@/lib/supabase';
 import { NextRequest, NextResponse } from 'next/server';
 import { inMemoryAuthorizedUsers } from '@/lib/memory-whitelist';
+import { resolveTenantFromRequest } from '@/lib/resolve-tenant';
 
 export async function GET(req: NextRequest) {
   try {
-    const userCookie = req.cookies.get('SIGPAD_user');
-    let tenantId: string | null = null;
-    let isSuper = false;
-    if (userCookie) {
-      try {
-        const u = JSON.parse(decodeURIComponent(userCookie.value));
-        tenantId = u?.tenant_id || u?.user_metadata?.tenant_id;
-        isSuper = u?.role === 'superadmin' || u?.email === 'sigpad.info@gmail.com';
-      } catch (e) {}
+    const ctx = await resolveTenantFromRequest(req);
+    if (!ctx) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    const { tenantId, isSuper } = ctx;
+
+    if (!isSuper && !tenantId) {
+      return NextResponse.json([]);
     }
 
     const supabase = createServiceClient();
     
-    // 1. Fetch authorized_users from Supabase
+    // 1. Fetch authorized_users from Supabase filtered by tenant_id
     let authUsers: any[] = [];
     try {
       let query = supabase
@@ -34,7 +31,7 @@ export async function GET(req: NextRequest) {
       console.warn('[GET_AUTHORIZED_USERS] authorized_users query notice:', e?.message);
     }
 
-    // 2. Fetch resources from Supabase
+    // 2. Fetch resources from Supabase filtered by tenant_id
     let resources: any[] = [];
     try {
       let query = supabase
@@ -53,17 +50,9 @@ export async function GET(req: NextRequest) {
 
     const map = new Map<string, any>();
 
-    // Primary system owners (only for SuperAdmin or global master view)
-    if (isSuper) {
-      const defaults = [
-        { id: 'auth-002', email: 'sigpad.info@gmail.com', role: 'gerente', status: 'approved', created_at: '2026-01-01T00:00:00.000Z' },
-      ];
-      defaults.forEach(d => map.set(d.email.toLowerCase().trim(), d));
-    }
-
-    // Include in-memory authorized users (high priority)
+    // Include in-memory authorized users strictly matching tenant_id
     inMemoryAuthorizedUsers.forEach((u, key) => {
-      if (isSuper || !tenantId || u.tenant_id === tenantId) {
+      if (isSuper || (tenantId && u.tenant_id === tenantId)) {
         map.set(key, u);
       }
     });
@@ -119,16 +108,9 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const userCookie = req.cookies.get('SIGPAD_user');
-    let tenantId: string | null = null;
-    let isSuper = false;
-    if (userCookie) {
-      try {
-        const u = JSON.parse(decodeURIComponent(userCookie.value));
-        tenantId = u?.tenant_id || u?.user_metadata?.tenant_id;
-        isSuper = u?.role === 'superadmin' || u?.email === 'sigpad.info@gmail.com';
-      } catch (e) {}
-    }
+    const ctx = await resolveTenantFromRequest(req);
+    if (!ctx) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    const { tenantId, isSuper } = ctx;
 
     const body = await req.json();
     const { email, role, status } = body;
@@ -138,6 +120,9 @@ export async function POST(req: NextRequest) {
     }
 
     const targetTenantId = isSuper ? (body.tenant_id || tenantId) : tenantId;
+    if (!targetTenantId) {
+      return NextResponse.json({ error: 'No se puede autorizar: falta empresa asignada' }, { status: 400 });
+    }
     const emailNormalized = email.toLowerCase().trim();
     const displayRole = (role || 'operador').toLowerCase();
     const createdItem = {
