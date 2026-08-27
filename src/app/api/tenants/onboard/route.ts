@@ -82,20 +82,25 @@ export async function POST(req: NextRequest) {
 
         // 2. CREACIÓN O VINCULACIÓN DEL USUARIO ADMINISTRADOR
         if (hasPasswordAndName) {
-          const { data: authUser } = await supabaseAdmin.auth.admin.createUser({
-            email: lowerEmail,
-            password: adminPassword,
-            email_confirm: true,
-            user_metadata: {
-              full_name: adminFullName,
-              role: 'gerente',
-              tenant_id: tenantId,
-              company_name: companyName
-            },
-          });
+          try {
+            const { data: authUser } = await supabaseAdmin.auth.admin.createUser({
+              email: lowerEmail,
+              password: adminPassword,
+              email_confirm: true,
+              user_metadata: {
+                full_name: adminFullName,
+                role: 'gerente',
+                tenant_id: tenantId,
+                company_name: companyName
+              },
+            });
 
-          if (authUser?.user) {
-            userId = authUser.user.id;
+            if (authUser?.user) {
+              userId = authUser.user.id;
+            }
+          } catch (e) {}
+
+          if (userId) {
             await supabaseAdmin.from('users').upsert({
               id: userId,
               email: lowerEmail,
@@ -108,6 +113,11 @@ export async function POST(req: NextRequest) {
             });
           }
         }
+
+        // Actualizar cualquier fila existente con este email para re-vincularlo al nuevo tenantId
+        try {
+          await supabaseAdmin.from('users').update({ tenant_id: tenantId, role: 'gerente' }).ilike('email', lowerEmail);
+        } catch (e) {}
 
         // 3. REGISTRAR EN LISTA BLANCA (authorized_users)
         await supabaseAdmin.from('authorized_users').upsert({
@@ -137,19 +147,36 @@ export async function POST(req: NextRequest) {
           notes: `Plan ${finalPlanTier} asignado a ${companyName}`,
         });
       } catch (dbError: any) {
-        console.warn('[Onboard] Database execution fallback mode:', dbError?.message);
+        console.warn('[Onboard] Modo fallback de base de datos:', dbError?.message);
       }
     }
+
+    const createdUser = {
+      id: userId || 'user-' + Date.now(),
+      email: lowerEmail,
+      role: 'gerente',
+      name: adminFullName || lowerEmail.split('@')[0],
+      tenant_id: tenantId,
+      company_name: companyName,
+      user_metadata: {
+        role: 'gerente',
+        full_name: adminFullName || lowerEmail.split('@')[0],
+        tenant_id: tenantId,
+        company_name: companyName
+      }
+    };
 
     return NextResponse.json({
       success: true,
       tenantId,
+      companyName,
       userId,
+      user: createdUser,
       inviteLink: `https://sigpad.com.ar/register?email=${encodeURIComponent(lowerEmail)}`,
       message: `¡Empresa "${companyName}" pre-registrada con éxito!`,
     });
   } catch (err: any) {
-    console.error('[Onboard] Unexpected error:', err);
+    console.error('[Onboard] Error inesperado:', err);
     return NextResponse.json({ error: err?.message || 'Error interno al procesar el alta' }, { status: 500 });
   }
 }

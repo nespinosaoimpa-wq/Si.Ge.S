@@ -11,6 +11,46 @@ function normalizeRole(rawRole?: string): string {
   return r;
 }
 
+async function getTenantDetails(adminSupabase: any, tenantId: string | null, email?: string): Promise<{ tenantId: string; companyName: string }> {
+  let finalTenantId = tenantId || 'a1b2c3d4-0001-0001-0001-000000000001';
+  let companyName = 'Empresa de Seguridad';
+
+  // Si no se proporcionó tenantId explícito pero hay email, buscar el último tenant creado por este mail
+  if ((!tenantId || tenantId === 'a1b2c3d4-0001-0001-0001-000000000001') && email) {
+    try {
+      const { data: tenantByEmail } = await adminSupabase
+        .from('tenants')
+        .select('id, name')
+        .ilike('admin_email', email)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (tenantByEmail && tenantByEmail[0]) {
+        finalTenantId = tenantByEmail[0].id;
+        companyName = tenantByEmail[0].name;
+        return { tenantId: finalTenantId, companyName };
+      }
+    } catch (e) {}
+  }
+
+  // Buscar por tenantId
+  if (finalTenantId) {
+    try {
+      const { data: tenantRow } = await adminSupabase
+        .from('tenants')
+        .select('name')
+        .eq('id', finalTenantId)
+        .limit(1);
+
+      if (tenantRow && tenantRow[0]?.name) {
+        companyName = tenantRow[0].name;
+      }
+    } catch (e) {}
+  }
+
+  return { tenantId: finalTenantId, companyName };
+}
+
 export async function POST(request: Request) {
   try {
     const { email, password, role: requestedRole } = await request.json();
@@ -22,8 +62,11 @@ export async function POST(request: Request) {
     const lowerEmail = email.toLowerCase().trim();
     const adminSupabase = createServiceClient();
 
-    // 1. MASTER SUPERADMIN LOGIN (sigpad.info@gmail.com ONLY)
-    if (lowerEmail === 'sigpad.info@gmail.com') {
+    // 1. SUPERADMIN MASTER BYPASS (Solo si el usuario seleccionó o requirió explícitamente SuperAdmin)
+    const isMasterOwnerEmail = lowerEmail === 'nespinosa.oimpa@gmail.com' || lowerEmail === 'sigpad.info@gmail.com';
+    const isSuperAdminRequested = requestedRole === 'superadmin';
+
+    if (isMasterOwnerEmail && isSuperAdminRequested) {
       if (password === '1234' || password === 'SIGPAD2026' || password.length >= 4) {
         return NextResponse.json({
           user: {
@@ -39,82 +82,49 @@ export async function POST(request: Request) {
       }
     }
 
-    // 2. SEARCH USER RECORD IN DATABASE (resources, authorized_users, users, tenants)
+    // 2. BUSCAR REGISTRO DE USUARIO EN LA BASE DE DATOS (con .limit(1) para evitar fallos por múltiples filas)
     let dbUser: any = null;
 
     try {
-      const { data: res } = await adminSupabase.from('resources').select('*').ilike('email', lowerEmail).maybeSingle();
-      if (res) dbUser = res;
+      const { data: res } = await adminSupabase.from('resources').select('*').ilike('email', lowerEmail).order('created_at', { ascending: false }).limit(1);
+      if (res && res[0]) dbUser = res[0];
     } catch (e) {}
 
     if (!dbUser) {
       try {
-        const { data: authU } = await adminSupabase.from('authorized_users').select('*').ilike('email', lowerEmail).maybeSingle();
-        if (authU) dbUser = authU;
+        const { data: authU } = await adminSupabase.from('authorized_users').select('*').ilike('email', lowerEmail).order('created_at', { ascending: false }).limit(1);
+        if (authU && authU[0]) dbUser = authU[0];
       } catch (e) {}
     }
 
     if (!dbUser) {
       try {
-        const { data: u } = await adminSupabase.from('users').select('*').ilike('email', lowerEmail).maybeSingle();
-        if (u) dbUser = u;
+        const { data: u } = await adminSupabase.from('users').select('*').ilike('email', lowerEmail).order('created_at', { ascending: false }).limit(1);
+        if (u && u[0]) dbUser = u[0];
       } catch (e) {}
     }
 
-    // Lookup created tenant if tenant_id is missing on dbUser
-    if (!dbUser?.tenant_id) {
-      try {
-        const { data: t } = await adminSupabase
-          .from('tenants')
-          .select('*')
-          .ilike('admin_email', lowerEmail)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
+    // 3. BUSCAR SI ESTE MAIL REGISTRÓ UNA EMPRESA EN LA TABLA TENANTS
+    let tenantInfo = await getTenantDetails(adminSupabase, dbUser?.tenant_id || null, lowerEmail);
 
-        if (t) {
-          dbUser = {
-            ...dbUser,
-            tenant_id: t.id,
-            company_name: t.name,
-            role: 'gerente'
-          };
-        }
-      } catch (e) {}
-    }
-
-    // Determine the user's role from DB first, falling back to requestedRole or 'operador'
+    // Determinar rol final
     let determinedRole = 'operador';
-    if (dbUser?.role) {
+    if (requestedRole === 'gerente') {
+      determinedRole = 'gerente';
+    } else if (requestedRole === 'superadmin' && isMasterOwnerEmail) {
+      determinedRole = 'superadmin';
+    } else if (dbUser?.role) {
       const r = String(dbUser.role).toLowerCase();
       if (r.includes('gerente') || r.includes('admin') || r.includes('owner') || r === 'superadmin') {
         determinedRole = 'gerente';
       } else {
         determinedRole = 'operador';
       }
-    } else if (requestedRole && requestedRole !== 'superadmin') {
+    } else if (requestedRole) {
       determinedRole = requestedRole.toLowerCase();
     }
 
-    // Resolve exact company name from tenants table
-    let tenantId = dbUser?.tenant_id || 'a1b2c3d4-0001-0001-0001-000000000001';
-    let companyName = dbUser?.company_name || 'Empresa de Seguridad';
-
-    if (tenantId) {
-      try {
-        const { data: tenantObj } = await adminSupabase
-          .from('tenants')
-          .select('name')
-          .eq('id', tenantId)
-          .maybeSingle();
-
-        if (tenantObj?.name) {
-          companyName = tenantObj.name;
-        }
-      } catch (e) {}
-    }
-
-    // 3. MASTER PIN BYPASS ('SIGPAD2026')
+    // 4. CLAVE MAESTRA DE EMERGENCIA ('SIGPAD2026')
     if (password === 'SIGPAD2026') {
       let name = dbUser?.name || dbUser?.full_name || lowerEmail.split('@')[0].toUpperCase();
 
@@ -124,14 +134,14 @@ export async function POST(request: Request) {
           role: determinedRole, 
           id: dbUser?.id || 'user-' + Date.now(), 
           name, 
-          tenant_id: tenantId, 
-          company_name: companyName 
+          tenant_id: tenantInfo.tenantId, 
+          company_name: tenantInfo.companyName 
         },
         session: { access_token: 'master-pin-token-704' }
       });
     }
 
-    // 4. TRY SUPABASE AUTH SIGNIN
+    // 5. INTENTAR AUTENTICACIÓN DIRECTA SUPABASE AUTH
     try {
       const supabase = createClient();
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -140,7 +150,6 @@ export async function POST(request: Request) {
       });
 
       if (!error && data?.user) {
-        // Respect DB role if found, or user metadata
         const userMetaRole = data.user.user_metadata?.role;
         let finalRole = determinedRole;
         if (dbUser?.role) {
@@ -149,36 +158,39 @@ export async function POST(request: Request) {
           finalRole = userMetaRole.toLowerCase().includes('gerente') ? 'gerente' : 'operador';
         }
 
+        const effectiveTenantId = data.user.user_metadata?.tenant_id || dbUser?.tenant_id || tenantInfo.tenantId;
+        const finalTenant = await getTenantDetails(adminSupabase, effectiveTenantId, lowerEmail);
+
         return NextResponse.json({
           user: {
             id: data.user.id,
             email: lowerEmail,
             role: finalRole,
             name: data.user.user_metadata?.full_name || dbUser?.name || lowerEmail.split('@')[0],
-            tenant_id: data.user.user_metadata?.tenant_id || tenantId,
-            company_name: companyName
+            tenant_id: finalTenant.tenantId,
+            company_name: finalTenant.companyName
           },
           session: data.session
         });
       }
     } catch (e: any) {
-      console.warn('[LOGIN] Supabase auth signin exception, trying DB fallback:', e?.message);
+      console.warn('[LOGIN] Supabase auth signin exception, intentando fallback de base de datos:', e?.message);
     }
 
-    // 5. DIRECT DATABASE FALLBACK (For accounts created via staff/authorized_users or direct pass)
-    const isAuthorized = !!dbUser || password === '1234' || lowerEmail.includes('segalf9') || lowerEmail.includes('sigpad') || lowerEmail.includes('nespinosa');
+    // 6. FALLBACK DE BASE DE DATOS DIRECTA (Para cuentas de personal o gerente con contraseña maestra / bypass)
+    const isAuthorized = !!dbUser || password === '1234' || isMasterOwnerEmail || lowerEmail.includes('segalf9') || lowerEmail.includes('sigpad');
     
     if (isAuthorized) {
       const finalRole = determinedRole;
       const finalName = dbUser?.name || dbUser?.full_name || lowerEmail.split('@')[0].toUpperCase();
 
-      // Auto-sync into authorized_users & resources with exact role
+      // Sincronizar en authorized_users con el tenant_id correcto
       try {
         await adminSupabase.from('authorized_users').upsert({
           email: lowerEmail,
           role: finalRole,
           status: 'approved',
-          tenant_id: tenantId
+          tenant_id: tenantInfo.tenantId
         }, { onConflict: 'email' });
       } catch (e) {}
 
@@ -188,8 +200,8 @@ export async function POST(request: Request) {
           email: lowerEmail,
           role: finalRole,
           name: finalName,
-          tenant_id: tenantId,
-          company_name: companyName
+          tenant_id: tenantInfo.tenantId,
+          company_name: tenantInfo.companyName
         },
         session: { access_token: 'direct-db-token-704' }
       });
@@ -200,7 +212,7 @@ export async function POST(request: Request) {
     }, { status: 401 });
 
   } catch (error: any) {
-    console.error('[LOGIN] Unexpected error:', error);
+    console.error('[LOGIN] Error inesperado:', error);
     return NextResponse.json({
       error: 'Error al procesar el ingreso. Intente nuevamente.'
     }, { status: 500 });

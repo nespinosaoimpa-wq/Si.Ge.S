@@ -670,7 +670,7 @@ export default function ObjectiveDetail() {
                 <MapView 
                   objectives={objective?.latitude && objective?.longitude ? [objective] : []} 
                   guards={resources}
-                  incidents={guardBook}
+                  incidents={[]}
                   checkpoints={checkpoints}
                   onCheckpointDragEnd={async (cpId, lat, lng) => {
                     try {

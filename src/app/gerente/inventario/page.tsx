@@ -68,32 +68,32 @@ export default function InventarioHub() {
   const fetchInventory = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/inventory');
-      const data = await res.json();
-      
-      if (data && Array.isArray(data) && data.length > 0) {
-        const objectiveIds = [...new Set(data.map((i: any) => i.objective_id).filter(Boolean))];
-        const resourceIds = [...new Set(data.map((i: any) => i.resource_id).filter(Boolean))];
+      const { data: { session } } = await supabase.auth.getSession();
+      const tenantId = session?.user?.user_metadata?.tenant_id || null;
 
-        const [objRes, resRes] = await Promise.all([
-          objectiveIds.length > 0 ? supabase.from('objectives').select('id, name').in('id', objectiveIds) : Promise.resolve({ data: [] }),
-          resourceIds.length > 0 ? supabase.from('resources').select('id, name, role').in('id', resourceIds) : Promise.resolve({ data: [] })
-        ]);
+      let query = supabase
+        .from('resource_inventory')
+        .select('*, objectives(name), resources(name, role)')
+        .order('created_at', { ascending: false });
 
-        const objMap = Object.fromEntries(objRes.data?.map(o => [o.id, o.name]) || []);
-        const resMap = Object.fromEntries(resRes.data?.map(r => [r.id, `${r.name} (${r.role || 'Personal'})`]) || []);
-
-        const enriched = data.map((i: any) => ({ 
-          ...i, 
-          objectives: i.objective_id ? { name: objMap[i.objective_id] || 'Desconocido' } : null,
-          resources: i.resource_id ? { name: resMap[i.resource_id] || 'Personal' } : null
-        }));
-        setItems(enriched);
-      } else {
-        setItems(data || []);
+      if (tenantId) {
+        query = query.eq('tenant_id', tenantId);
       }
+
+      const { data, error } = await query;
+      
+      if (error || !data) {
+        // Fallback to API
+        const res = await fetch('/api/inventory');
+        const apiData = await res.json();
+        setItems(apiData || []);
+        return;
+      }
+
+      setItems(data);
     } catch (e) {
       console.error(e);
+      setItems([]);
     } finally {
       setLoading(false);
     }
@@ -120,20 +120,43 @@ export default function InventarioHub() {
       const targetObjId = (newItem.objective_id && newItem.objective_id.trim() !== '' && newItem.objective_id !== 'null') ? newItem.objective_id : null;
       const targetResId = (newItem.resource_id && newItem.resource_id.trim() !== '' && newItem.resource_id !== 'null') ? newItem.resource_id : null;
 
-      await fetch('/api/inventory', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          item_name: newItem.item_name.trim(),
+      const { data: { session } } = await supabase.auth.getSession();
+      const tenantId = session?.user?.user_metadata?.tenant_id || null;
+
+      const quantity = Math.max(1, newItem.quantity || 1);
+      const itemsToInsert: any[] = [];
+
+      for (let i = 0; i < quantity; i++) {
+        itemsToInsert.push({
+          item_name: quantity > 1 ? `${newItem.item_name.trim()} #${i + 1}` : newItem.item_name.trim(),
           category: newItem.category,
-          serial_number: newItem.serial_number ? newItem.serial_number.trim() : null,
+          serial_number: newItem.serial_number ? (quantity > 1 ? `${newItem.serial_number.trim()}-${i + 1}` : newItem.serial_number.trim()) : null,
           status: newItem.status,
           objective_id: targetObjId,
           resource_id: targetResId,
           notes: newItem.notes ? newItem.notes.trim() : null,
-          quantity: newItem.quantity || 1
-        }),
-      });
+          tenant_id: tenantId
+        });
+      }
+
+      const { error } = await supabase.from('resource_inventory').insert(itemsToInsert as any).select();
+
+      if (error) {
+        await fetch('/api/inventory', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            item_name: newItem.item_name.trim(),
+            category: newItem.category,
+            serial_number: newItem.serial_number ? newItem.serial_number.trim() : null,
+            status: newItem.status,
+            objective_id: targetObjId,
+            resource_id: targetResId,
+            notes: newItem.notes ? newItem.notes.trim() : null,
+            quantity: quantity
+          }),
+        });
+      }
 
       setIsSheetOpen(false);
       setNewItem({ item_name: '', category: 'linterna', serial_number: '', status: 'operativo', objective_id: '', resource_id: '', notes: '', quantity: 1 });
@@ -150,9 +173,9 @@ export default function InventarioHub() {
   const handleDelete = async (id: string, name: string) => {
     if (!confirm(`¿Eliminar "${name}" del inventario? Esta acción no se puede deshacer.`)) return;
     try {
-      const res = await fetch(`/api/inventory?id=${id}`, { method: 'DELETE' });
-      if (!res.ok) {
-        await supabase.from('resource_inventory').delete().eq('id', id);
+      const { error } = await supabase.from('resource_inventory').delete().eq('id', id);
+      if (error) {
+        await fetch(`/api/inventory?id=${id}`, { method: 'DELETE' });
       }
       fetchInventory();
     } catch (e: any) {
@@ -173,7 +196,7 @@ export default function InventarioHub() {
       if (!res.ok) {
         await supabase
           .from('resource_inventory')
-          .update({ objective_id: targetObjId })
+          .update({ objective_id: targetObjId } as any)
           .eq('id', itemId);
       }
       fetchInventory();
@@ -194,7 +217,7 @@ export default function InventarioHub() {
       if (!res.ok) {
         await supabase
           .from('resource_inventory')
-          .update({ resource_id: targetResId })
+          .update({ resource_id: targetResId } as any)
           .eq('id', itemId);
       }
       fetchInventory();
@@ -232,7 +255,7 @@ export default function InventarioHub() {
             status: selectedEditItem.status,
             objective_id: selectedEditItem.objective_id || null,
             resource_id: selectedEditItem.resource_id || null,
-          })
+          } as any)
           .eq('id', selectedEditItem.id);
       }
 
@@ -249,17 +272,13 @@ export default function InventarioHub() {
 
   const updateItemStatus = async (id: string, newCondition: string) => {
     try {
-      const res = await fetch('/api/inventory', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, status: newCondition }),
-      });
-
-      if (!res.ok) {
-        await supabase
-          .from('resource_inventory')
-          .update({ status: newCondition })
-          .eq('id', id);
+      const { error } = await supabase.from('resource_inventory').update({ status: newCondition } as any).eq('id', id);
+      if (error) {
+        await fetch('/api/inventory', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, status: newCondition }),
+        });
       }
       fetchInventory();
     } catch (e: any) {
@@ -447,10 +466,24 @@ export default function InventarioHub() {
               <p className="text-xs font-black text-zinc-500 uppercase tracking-widest">Cargando inventario logístico...</p>
             </div>
           ) : filteredItems.length === 0 ? (
-            <div className="col-span-full py-24 text-center bg-white rounded-[2.5rem] border border-dashed border-zinc-200">
-               <Box size={56} className="text-zinc-300 mx-auto mb-4" />
-               <p className="text-base font-black text-zinc-900 uppercase">Sin artículos cargados</p>
-               <p className="text-xs text-zinc-500 mt-1 uppercase font-bold">Haga clic en "Publicar / Cargar Nuevos Artículos" para dar de alta equipamiento.</p>
+            <div className="col-span-full py-24 text-center bg-white rounded-[2.5rem] border border-dashed border-zinc-200 p-8 space-y-3">
+               <Box size={56} className="text-zinc-300 mx-auto mb-2" />
+               <p className="text-base font-black text-zinc-900 uppercase">
+                 {items.length > 0 ? "Sin coincidencias con los filtros aplicados" : "Sin artículos cargados"}
+               </p>
+               <p className="text-xs text-zinc-500 max-w-md mx-auto uppercase font-bold">
+                 {items.length > 0 
+                   ? "Existen artículos registrados, pero ninguno coincide con los filtros seleccionados (Categoría / Estado / Búsqueda)." 
+                   : "Haga clic en 'Cargar Nuevos Artículos' para dar de alta equipamiento."}
+               </p>
+               {items.length > 0 && (categoryFilter !== 'all' || statusFilter !== 'all' || search) && (
+                 <button 
+                   onClick={() => { setCategoryFilter('all'); setStatusFilter('all'); setSearch(''); }}
+                   className="mt-4 px-6 py-3 bg-zinc-900 hover:bg-black text-white text-[10px] font-black uppercase tracking-widest rounded-2xl transition-all shadow-md active:scale-95"
+                 >
+                   🔄 Mostrar Todos los Artículos ({items.length})
+                 </button>
+               )}
             </div>
           ) : (
             filteredItems.map((item, i) => {

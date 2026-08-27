@@ -14,41 +14,17 @@ import { cn } from '@/lib/utils';
 // ──────────────── Plan Cards ────────────────────────────────
 const PLANS = [
   {
-    id: 'starter',
-    name: 'Starter',
-    price: 'USD 49',
+    id: 'full',
+    name: 'Plan Único Full',
+    price: '$400.000 ARS',
     period: '/mes',
-    description: 'Para empresas pequeñas',
-    operators: '10 guardias',
-    objectives: '5 objetivos',
-    icon: Zap,
-    color: 'from-blue-500/20 to-cyan-500/10',
-    border: 'border-blue-500/30',
-  },
-  {
-    id: 'professional',
-    name: 'Professional',
-    price: 'USD 129',
-    period: '/mes',
-    description: 'El más popular',
-    operators: '50 guardias',
-    objectives: '25 objetivos',
+    description: 'Acceso total a todas las herramientas de SIGPAD',
+    operators: 'Hasta 50 guardias',
+    objectives: 'Hasta 20 objetivos',
     icon: Star,
-    color: 'from-violet-500/20 to-purple-500/10',
-    border: 'border-violet-500/40',
-    featured: true,
-  },
-  {
-    id: 'enterprise',
-    name: 'Enterprise',
-    price: 'A consultar',
-    period: '',
-    description: 'Sin límites',
-    operators: 'Ilimitados',
-    objectives: 'Ilimitados',
-    icon: Shield,
     color: 'from-amber-500/20 to-orange-500/10',
-    border: 'border-amber-500/30',
+    border: 'border-amber-500/40',
+    featured: true,
   },
 ];
 
@@ -72,6 +48,8 @@ export default function RegisterCompanyPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [acceptGPS, setAcceptGPS] = useState(false);
+
+  const [createdUser, setCreatedUser] = useState<any>(null);
 
   const handleSubmit = async () => {
     setError(null);
@@ -101,6 +79,7 @@ export default function RegisterCompanyPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Error al registrar la empresa.');
+      if (data.user) setCreatedUser(data.user);
       setStep('success');
     } catch (err: any) {
       setError(err.message);
@@ -353,10 +332,23 @@ export default function RegisterCompanyPage() {
               </p>
               <div className="space-y-3">
                 <button
-                  onClick={() => router.push('/login')}
-                  className="w-full h-14 bg-white hover:bg-zinc-100 text-zinc-950 font-bold rounded-2xl transition-all"
+                  onClick={() => {
+                    if (createdUser) {
+                      localStorage.setItem('SIGPAD_user', JSON.stringify(createdUser));
+                      document.cookie = `SIGPAD_user=${encodeURIComponent(JSON.stringify(createdUser))}; path=/; max-age=2592000`;
+                      document.cookie = "SIGPAD_bypass_active=true; path=/; max-age=2592000";
+                    }
+                    router.push('/gerente');
+                  }}
+                  className="w-full h-14 bg-violet-600 hover:bg-violet-500 text-white font-bold rounded-2xl transition-all shadow-lg shadow-violet-600/20 flex items-center justify-center gap-2"
                 >
-                  Iniciar sesión →
+                  ⚡ Ingresar a {companyName} Ahora →
+                </button>
+                <button
+                  onClick={() => router.push('/login')}
+                  className="w-full h-12 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-semibold rounded-2xl transition-all text-xs"
+                >
+                  Ir al inicio de sesión tradicional
                 </button>
                 <p className="text-zinc-600 text-xs">
                   ¿Preguntas? Contactanos a{' '}

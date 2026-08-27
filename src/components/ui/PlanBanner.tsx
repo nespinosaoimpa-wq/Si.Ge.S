@@ -14,10 +14,11 @@ import { useTenant } from '@/hooks/useTenant';
  */
 
 const PLAN_META: Record<string, { icon: any; label: string; color: string }> = {
-  starter: { icon: Zap, label: 'Starter', color: 'text-blue-400' },
-  professional: { icon: Star, label: 'Professional', color: 'text-violet-400' },
-  enterprise: { icon: Crown, label: 'Enterprise', color: 'text-amber-400' },
-  trial: { icon: Clock, label: 'Prueba gratuita', color: 'text-zinc-400' },
+  starter: { icon: Zap, label: 'Plan Básico', color: 'text-blue-400' },
+  professional: { icon: Star, label: 'Plan Profesional', color: 'text-violet-400' },
+  full: { icon: Star, label: 'Plan Único Full', color: 'text-violet-400' },
+  enterprise: { icon: Crown, label: 'Plan Corporativo', color: 'text-amber-400' },
+  trial: { icon: Clock, label: 'Prueba Gratuita', color: 'text-zinc-400' },
 };
 
 export function PlanBanner() {

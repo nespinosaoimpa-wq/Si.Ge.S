@@ -20,6 +20,8 @@ import { Card } from '@/components/ui/Card';
 import { api } from '@/lib/api';
 import { supabase, isConfigured } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/components/providers/AuthProvider';
+import { OnboardingBanner } from '@/components/gerente/OnboardingBanner';
 import { 
   geocodeForward, 
   searchAddresses, 
@@ -39,6 +41,7 @@ const MapView = dynamic(() => import('@/components/MapView'), {
 });
 
 export default function AdminDashboard() {
+  const { user } = useAuth();
   const [data, setData] = useState<any>({ objectives: [], resources: [], recentIncidents: [] });
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -190,17 +193,39 @@ export default function AdminDashboard() {
     }).filter((r: any) => r.status !== 'baja' && r.status !== 'inactivo');
   }, [data.resources, data.activeShifts]);
 
+  const resourcesRef = React.useRef(data.resources);
+  const dataRef = React.useRef(data);
+  useEffect(() => {
+    resourcesRef.current = data.resources;
+    dataRef.current = data;
+  }, [data.resources, data]);
+
   // --- HANDLERS ---
   const fetchData = useCallback(async () => {
     try {
       const res = await api.dashboard.getMapData();
       setData(res);
+
+      // Auto-trigger emergency overlay if there is an active, unresolved critical panic/emergency alert
+      if (res && Array.isArray(res.recentIncidents)) {
+        const activeCritical = res.recentIncidents.find((inc: any) => {
+          const isResolved = inc.status === 'resolved' || inc.status === 'resuelto' || inc.status === 'acknowledged';
+          if (isResolved) return false;
+          const type = (inc.entry_type || '').toLowerCase();
+          const content = (inc.content || '').toLowerCase();
+          return type === 'panic' || type === 'panico' || type === 'emergencia' || type === 'sos_panic' || inc.urgency === 'critica' || content.includes('pánico') || content.includes('panico') || content.includes('sos');
+        });
+
+        if (activeCritical) {
+          handleEmergencyTrigger(activeCritical);
+        }
+      }
     } catch (err) {
       console.error("Error fetching map data:", err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [handleEmergencyTrigger]);
 
   const handleMapboxSearch = async (query: string) => {
     setSearchQuery(query);
@@ -395,32 +420,37 @@ export default function AdminDashboard() {
   const handleResolveIncident = async (id: string) => {
     if (!id) return;
     try {
-      // 1. Actualización optimista inmediata en interfaz (0ms)
+      // 1. Actualización optimista inmediata en interfaz y cierre de sirena/modal (0ms)
+      setActiveEmergency(prev => (prev?.id === id ? null : prev));
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+
       setData((prev: any) => ({
         ...prev,
         recentIncidents: (prev.recentIncidents || []).filter((inc: any) => inc.id !== id)
       }));
 
+      const now = new Date().toISOString();
+
       // 2. Actualización DIRECTA en Supabase (0 llamadas a Vercel)
       await Promise.allSettled([
-        supabase.from('incidents').update({ status: 'resolved' }).eq('id', id),
-        supabase.from('alarms').update({ status: 'resolved', acknowledged_at: new Date().toISOString() }).eq('id', id),
-        supabase.from('guard_book_entries').update({ status: 'resolved' }).eq('id', id),
-        supabase.from('geofencing_incidents').update({ status: 'resolved' }).eq('id', id)
+        supabase.from('incidents').update({ status: 'resolved', resolved_at: now }).eq('id', id),
+        supabase.from('alarms').update({ status: 'resolved', acknowledged_at: now, resolved_at: now }).eq('id', id),
+        supabase.from('guard_book_entries').update({ status: 'resolved', resolved_at: now }).eq('id', id),
+        supabase.from('geofencing_incidents').update({ status: 'resuelto', return_at: now }).eq('id', id)
       ]);
 
-      // 3. Fallback no bloqueante a la API
+      // 3. Fallback no bloqueante a la API (Service Role bypass)
       fetch(`/api/tracking/incidents/${encodeURIComponent(id)}/resolve`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'resolved', comment: 'Resuelto por gerencia' })
       }).catch(() => {});
 
-      // 4. Refrescar estado para confirmar sincronización total
-      fetchData();
     } catch (err: any) {
       console.error("Error al resolver incidente:", err);
-      fetchData();
     }
   };
 
@@ -436,11 +466,6 @@ export default function AdminDashboard() {
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
-
-  const resourcesRef = React.useRef(data.resources);
-  useEffect(() => {
-    resourcesRef.current = data.resources;
-  }, [data.resources]);
 
   useEffect(() => {
     fetchData();
@@ -514,16 +539,24 @@ export default function AdminDashboard() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'incidents' }, async (payload) => {
         if (payload.eventType === 'INSERT') {
           const entry = payload.new as any;
-          const { data: res } = await supabase.from('resources').select('name, current_objective_id').eq('id', entry.operator_id).single();
-          
-          // Resolve missing coordinates from objective
+          let operatorName = entry.operator_name || 'Personal';
           let resolvedLat = entry.latitude;
           let resolvedLng = entry.longitude;
+          
+          if (!operatorName || operatorName === 'Personal') {
+            try {
+              const { data: res } = await supabase.from('resources').select('name, current_objective_id').eq('id', entry.operator_id).single();
+              if (res?.name) operatorName = res.name;
+              if (!entry.objective_id && res?.current_objective_id) entry.objective_id = res.current_objective_id;
+            } catch (e) {}
+          }
+          
+          // Resolve missing coordinates from dataRef
           const hasCoords = resolvedLat && resolvedLng && !isNaN(Number(resolvedLat)) && Number(resolvedLat) !== 0;
           if (!hasCoords) {
-            const objId = entry.objective_id || res?.current_objective_id;
+            const objId = entry.objective_id;
             if (objId) {
-              const targetObj = data.objectives?.find((o: any) => o.id === objId);
+              const targetObj = dataRef.current.objectives?.find((o: any) => o.id === objId);
               if (targetObj?.latitude && targetObj?.longitude) {
                 resolvedLat = targetObj.latitude;
                 resolvedLng = targetObj.longitude;
@@ -531,19 +564,28 @@ export default function AdminDashboard() {
             }
           }
 
+          const isCritical = entry.entry_type === 'panic' || entry.entry_type === 'emergencia' || 
+                             entry.status === 'critica' || entry.status === 'crítica' ||
+                             (entry.content || '').toLowerCase().includes('pánico') || 
+                             (entry.content || '').toLowerCase().includes('sos');
+
           const enrichedEntry = { 
             ...entry, 
-            resource_name: res?.name || 'Personal',
+            resource_name: operatorName,
             resource_id: entry.operator_id,
-            urgency: entry.status === 'critica' || entry.status === 'crítica' ? 'critica' : 'normal',
+            urgency: isCritical ? 'critica' : 'normal',
             latitude: resolvedLat,
             longitude: resolvedLng
           };
           
           setData((prev: any) => ({
             ...prev,
-            recentIncidents: [enrichedEntry, ...(prev.recentIncidents || [])].slice(0, 20)
+            recentIncidents: [enrichedEntry, ...(prev.recentIncidents || []).filter((x: any) => x.id !== enrichedEntry.id)].slice(0, 20)
           }));
+
+          if (isCritical) {
+            handleEmergencyTrigger(enrichedEntry);
+          }
         } else if (payload.eventType === 'UPDATE') {
           const updated = payload.new as any;
           if (updated.status === 'resolved' || updated.status === 'resuelto') {
@@ -690,15 +732,34 @@ export default function AdminDashboard() {
       // ═══ ALARMS TABLE (panic, geofence, SOS) ═══
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'alarms' }, async (payload) => {
         const newAlarm = payload.new as any;
-        if (newAlarm && newAlarm.status === 'active') {
+        if (newAlarm && (newAlarm.status === 'active' || newAlarm.status === 'critica')) {
           let resourceName = newAlarm.operator_name || 'Operador';
           let latitude = newAlarm.latitude || newAlarm.operator_latitude;
           let longitude = newAlarm.longitude || newAlarm.operator_longitude;
 
-          if (!latitude || !longitude) {
-            if (newAlarm.objective_id && data.objectives) {
-              const obj = data.objectives.find((o: any) => o.id === newAlarm.objective_id);
-              if (obj) {
+          if (!resourceName || resourceName === 'Operador') {
+            const opId = newAlarm.operator_id || newAlarm.triggered_by;
+            if (opId) {
+              const resObj = dataRef.current.resources?.find((r: any) => r.id === opId);
+              if (resObj?.name) resourceName = resObj.name;
+            }
+          }
+
+          const hasCoords = latitude && longitude && !isNaN(Number(latitude)) && Number(latitude) !== 0;
+          if (!hasCoords) {
+            let objId = newAlarm.objective_id;
+            if (!objId) {
+              const opId = newAlarm.operator_id || newAlarm.triggered_by;
+              if (opId) {
+                const resObj = dataRef.current.resources?.find((r: any) => r.id === opId);
+                if (resObj?.current_objective_id) {
+                  objId = resObj.current_objective_id;
+                }
+              }
+            }
+            if (objId) {
+              const obj = dataRef.current.objectives?.find((o: any) => o.id === objId);
+              if (obj?.latitude && obj?.longitude) {
                 latitude = obj.latitude;
                 longitude = obj.longitude;
               }
@@ -711,7 +772,7 @@ export default function AdminDashboard() {
             entry_type: newAlarm.alarm_type === 'panico' || newAlarm.alarm_type === 'sos_panic' ? 'panic' : (newAlarm.alarm_type || 'alerta'),
             content: newAlarm.message || 'Alerta activada por operador',
             resource_name: resourceName,
-            resource_id: newAlarm.triggered_by,
+            resource_id: newAlarm.triggered_by || newAlarm.operator_id,
             latitude: latitude,
             longitude: longitude,
             urgency: 'critica',
@@ -721,7 +782,7 @@ export default function AdminDashboard() {
           // Add to map incidents for immediate visual feedback
           setData((prev: any) => ({
             ...prev,
-            recentIncidents: [enrichedAlert, ...(prev.recentIncidents || [])].slice(0, 20)
+            recentIncidents: [enrichedAlert, ...(prev.recentIncidents || []).filter((inc: any) => inc.id !== enrichedAlert.id)].slice(0, 20)
           }));
 
           // Trigger emergency overlay
@@ -781,6 +842,17 @@ export default function AdminDashboard() {
 
       {/* ====== MAP AREA ====== */}
       <div ref={mapContainerRef} id="map-fullscreen-container" className="flex-1 relative flex flex-col">
+
+        {/* Onboarding Banner para empresas recién creadas sin objetivos */}
+        {(!data.objectives || data.objectives.length === 0) && !loading && (
+          <div className="absolute top-4 left-4 right-4 z-[48] max-w-4xl mx-auto">
+            <OnboardingBanner
+              companyName={(user as any)?.company_name || user?.user_metadata?.company_name || 'Tu Empresa'}
+              tenantId={(user as any)?.tenant_id || user?.user_metadata?.tenant_id || ''}
+              onSeedSuccess={() => fetchData()}
+            />
+          </div>
+        )}
 
         {/* Picker mode instruction */}
         {isAddingPoint && !lastClickedCoords && (

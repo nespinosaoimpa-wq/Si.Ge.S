@@ -81,18 +81,31 @@ export default function MapaOperativoPage() {
     try {
       setActiveAlert((prev: any) => prev?.id === id ? null : prev);
       stopAlarm();
-      const res = await fetch(`/api/tracking/incidents/${encodeURIComponent(id)}/resolve`, {
+      
+      setData((prev: any) => ({
+        ...prev,
+        recentIncidents: (prev.recentIncidents || []).filter((inc: any) => inc.id !== id)
+      }));
+
+      const now = new Date().toISOString();
+
+      // Direct Supabase updates (0ms latency, zero Vercel invocations)
+      await Promise.allSettled([
+        supabase.from('incidents').update({ status: 'resolved', resolved_at: now }).eq('id', id),
+        supabase.from('alarms').update({ status: 'resolved', acknowledged_at: now, resolved_at: now }).eq('id', id),
+        supabase.from('guard_book_entries').update({ status: 'resolved', resolved_at: now }).eq('id', id),
+        supabase.from('geofencing_incidents').update({ status: 'resuelto', return_at: now }).eq('id', id)
+      ]);
+
+      // Non-blocking server API fallback
+      fetch(`/api/tracking/incidents/${encodeURIComponent(id)}/resolve`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'resolved', comment: 'Resuelto por gerencia' })
-      });
-      if (!res.ok) {
-        console.error("Error al resolver alerta en servidor");
-      }
-      fetchData();
+      }).catch(() => {});
+
     } catch (err: any) {
       console.error("Error al resolver incidente:", err);
-      fetchData();
     }
   };
 
@@ -138,11 +151,35 @@ export default function MapaOperativoPage() {
     }
   };
 
+  const dataRef = useRef(data);
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
+
   const fetchData = async () => {
     try {
       setLoading(true);
       const res = await api.dashboard.getMapData();
       setData(res);
+
+      // Auto-trigger active emergency alert on load if present
+      if (res && Array.isArray(res.recentIncidents)) {
+        const activeCritical = res.recentIncidents.find((inc: any) => {
+          const isResolved = inc.status === 'resolved' || inc.status === 'resuelto' || inc.status === 'acknowledged';
+          if (isResolved) return false;
+          const type = (inc.entry_type || '').toLowerCase();
+          const content = (inc.content || '').toLowerCase();
+          return type === 'panic' || type === 'panico' || type === 'emergencia' || type === 'sos_panic' || inc.urgency === 'critica' || content.includes('pánico') || content.includes('panico') || content.includes('sos');
+        });
+
+        if (activeCritical) {
+          startAlarm();
+          setActiveAlert(activeCritical);
+          if (activeCritical.latitude && activeCritical.longitude) {
+            setMapCenter([Number(activeCritical.latitude), Number(activeCritical.longitude)]);
+          }
+        }
+      }
     } catch (err) {
       console.error("Error fetching map data:", err);
     } finally {
@@ -259,13 +296,46 @@ export default function MapaOperativoPage() {
           // Trigger audio siren loop
           startAlarm();
           
+          let resourceName = newAlarm.operator_name || 'Operador';
+          let latitude = newAlarm.latitude || newAlarm.operator_latitude;
+          let longitude = newAlarm.longitude || newAlarm.operator_longitude;
+
+          if (!resourceName || resourceName === 'Operador') {
+            const opId = newAlarm.operator_id || newAlarm.triggered_by;
+            if (opId) {
+              const resObj = dataRef.current.resources?.find((r: any) => r.id === opId);
+              if (resObj?.name) resourceName = resObj.name;
+            }
+          }
+
+          const hasCoords = latitude && longitude && !isNaN(Number(latitude)) && Number(latitude) !== 0;
+          if (!hasCoords) {
+            let objId = newAlarm.objective_id;
+            if (!objId) {
+              const opId = newAlarm.operator_id || newAlarm.triggered_by;
+              if (opId) {
+                const resObj = dataRef.current.resources?.find((r: any) => r.id === opId);
+                if (resObj?.current_objective_id) {
+                  objId = resObj.current_objective_id;
+                }
+              }
+            }
+            if (objId) {
+              const obj = dataRef.current.objectives?.find((o: any) => o.id === objId);
+              if (obj?.latitude && obj?.longitude) {
+                latitude = obj.latitude;
+                longitude = obj.longitude;
+              }
+            }
+          }
+
           const enrichedAlert = {
             ...newAlarm,
-            entry_type: newAlarm.alarm_type === 'panico' ? 'emergencia' : (newAlarm.alarm_type || 'emergencia'),
+            entry_type: newAlarm.alarm_type === 'panico' || newAlarm.alarm_type === 'sos_panic' ? 'emergencia' : (newAlarm.alarm_type || 'emergencia'),
             content: newAlarm.message || 'Alerta de pánico activada por operador',
-            operator_name: newAlarm.operator_name || 'Operador',
-            latitude: newAlarm.latitude || newAlarm.operator_latitude,
-            longitude: newAlarm.longitude || newAlarm.operator_longitude,
+            operator_name: resourceName,
+            latitude: latitude,
+            longitude: longitude,
             created_at: newAlarm.created_at || new Date().toISOString()
           };
           

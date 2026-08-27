@@ -288,6 +288,11 @@ export function Sidebar() {
                       {(user as any)?.company_name || user?.user_metadata?.company_name || (role === 'superadmin' ? 'Matriz SIGPAD' : 'Empresa de Seguridad')}
                     </span>
                   </p>
+                  {(role === 'superadmin' || (user as any)?.role === 'superadmin' || user?.email === 'nespinosa.oimpa@gmail.com') && (
+                    <a href="/superadmin" className="text-[9px] font-black text-amber-400 hover:underline block mt-0.5">
+                      👑 Ir a SuperAdmin
+                    </a>
+                  )}
                 </div>
                 <button
                   onClick={() => { signOut(); window.location.href = '/login'; }}

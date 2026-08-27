@@ -1,101 +1,17 @@
 import { createServiceClient } from '@/lib/supabase-server';
 import { NextRequest, NextResponse } from 'next/server';
 
-const TABLES = ['resource_inventory', 'inventory_items', 'objective_tools'];
-
-async function fetchInventoryItems(supabase: any, objectiveId?: string | null, category?: string | null, status?: string | null, resourceId?: string | null) {
-  for (const table of TABLES) {
+function getTenantId(request: NextRequest): string | null {
+  const userCookie = request.cookies.get('SIGPAD_user');
+  if (userCookie) {
     try {
-      let query = supabase.from(table).select('*').order('created_at', { ascending: false });
-      if (objectiveId) query = query.eq('objective_id', objectiveId);
-      if (resourceId && (table === 'resource_inventory' || table === 'inventory_items')) {
-        query = query.or(`resource_id.eq.${resourceId},operator_id.eq.${resourceId}`);
-      }
-      if (category && table === 'resource_inventory') query = query.eq('category', category);
-
-      const { data, error } = await query;
-      if (!error && data && Array.isArray(data)) {
-        return data.map((item: any) => ({
-          id: item.id,
-          item_name: item.item_name || item.name || 'Activo Operativo',
-          serial_number: item.serial_number || item.serial || '',
-          category: item.category || 'otros',
-          status: item.status || item.condition || 'operativo',
-          objective_id: item.objective_id || null,
-          resource_id: item.resource_id || item.operator_id || null,
-          notes: item.notes || item.description || '',
-          created_at: item.created_at || new Date().toISOString()
-        }));
-      }
-    } catch (e) {}
+      const u = JSON.parse(decodeURIComponent(userCookie.value));
+      return u.tenant_id || u.user_metadata?.tenant_id || null;
+    } catch (e) {
+      console.error('[INVENTORY_GET_TENANT_ERROR]', e);
+    }
   }
-  return [];
-}
-
-async function insertInventoryItem(supabase: any, payload: any) {
-  for (const table of TABLES) {
-    try {
-      let itemToInsert: any = {};
-      if (table === 'resource_inventory') {
-        itemToInsert = {
-          item_name: payload.item_name,
-          serial_number: payload.serial_number || null,
-          category: payload.category || 'otros',
-          status: payload.status || 'operativo',
-          objective_id: payload.objective_id || null,
-          resource_id: payload.resource_id || null,
-          notes: payload.notes || null,
-        };
-        if (payload.tenant_id) itemToInsert.tenant_id = payload.tenant_id;
-      } else if (table === 'inventory_items') {
-        itemToInsert = {
-          name: payload.item_name,
-          serial_number: payload.serial_number || null,
-          category: payload.category || 'otros',
-          condition: payload.status || 'operativo',
-          status: payload.status || 'operativo',
-          objective_id: payload.objective_id || null,
-          resource_id: payload.resource_id || null,
-          description: payload.notes || null,
-        };
-      } else if (table === 'objective_tools') {
-        itemToInsert = {
-          name: payload.item_name,
-          status: payload.status || 'operativo',
-          objective_id: payload.objective_id || null,
-        };
-      }
-
-      const { data, error } = await supabase.from(table).insert([itemToInsert]).select();
-      if (!error && data && data.length > 0) {
-        const created = data[0];
-        return {
-          id: created.id,
-          item_name: created.item_name || created.name || payload.item_name,
-          serial_number: created.serial_number || payload.serial_number || '',
-          category: created.category || payload.category || 'otros',
-          status: created.status || created.condition || payload.status || 'operativo',
-          objective_id: created.objective_id || payload.objective_id || null,
-          resource_id: created.resource_id || created.operator_id || payload.resource_id || null,
-          notes: created.notes || created.description || payload.notes || '',
-          created_at: created.created_at || new Date().toISOString()
-        };
-      }
-    } catch (e) {}
-  }
-
-  // Synthetic fallback so creation never fails in UI
-  return {
-    id: 'inv-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
-    item_name: payload.item_name,
-    serial_number: payload.serial_number || '',
-    category: payload.category || 'otros',
-    status: payload.status || 'operativo',
-    objective_id: payload.objective_id || null,
-    resource_id: payload.resource_id || null,
-    notes: payload.notes || '',
-    created_at: new Date().toISOString()
-  };
+  return null;
 }
 
 export async function GET(request: NextRequest) {
@@ -107,10 +23,29 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status');
 
     const supabase = createServiceClient();
-    const items = await fetchInventoryItems(supabase, objectiveId, category, status, resourceId);
-    return NextResponse.json(items);
+    let query = supabase.from('resource_inventory').select('*').order('created_at', { ascending: false });
+
+    const tenantId = getTenantId(request);
+    if (tenantId) {
+      query = query.eq('tenant_id', tenantId);
+    }
+
+    if (objectiveId) query = query.eq('objective_id', objectiveId);
+    if (resourceId) query = query.eq('resource_id', resourceId);
+    if (category) query = query.eq('category', category);
+    if (status) query = query.eq('status', status);
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('[INVENTORY_GET_ERROR] Supabase error:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json(data || []);
   } catch (error: any) {
-    return NextResponse.json([], { status: 200 });
+    console.error('[INVENTORY_GET_ERROR] Unexpected error:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
 
@@ -119,22 +54,14 @@ export async function POST(request: NextRequest) {
     const supabase = createServiceClient();
     const body = await request.json();
 
-    const userCookie = request.cookies.get('SIGPAD_user');
-    let tenantId: string | null = null;
-    if (userCookie) {
-      try {
-        const u = JSON.parse(decodeURIComponent(userCookie.value));
-        tenantId = u.tenant_id || u.user_metadata?.tenant_id;
-      } catch (e) {}
-    }
-
+    const tenantId = getTenantId(request);
     const quantity = Math.max(1, parseInt(body.quantity) || 1);
     const objective_id = (body.objective_id && String(body.objective_id).trim() !== '' && body.objective_id !== 'null') ? body.objective_id : null;
     const resource_id = (body.resource_id && String(body.resource_id).trim() !== '' && body.resource_id !== 'null') ? body.resource_id : null;
 
-    const createdItems: any[] = [];
+    const itemsToInsert: any[] = [];
     for (let i = 0; i < quantity; i++) {
-      const payload = {
+      itemsToInsert.push({
         item_name: quantity > 1 ? `${body.item_name} #${i + 1}` : body.item_name,
         serial_number: body.serial_number ? (quantity > 1 ? `${body.serial_number}-${i + 1}` : body.serial_number) : null,
         category: body.category || 'otros',
@@ -143,20 +70,20 @@ export async function POST(request: NextRequest) {
         resource_id: resource_id,
         notes: body.notes || null,
         tenant_id: tenantId
-      };
-
-      const item = await insertInventoryItem(supabase, payload);
-      createdItems.push(item);
+      });
     }
 
-    return NextResponse.json(createdItems);
+    const { data, error } = await supabase.from('resource_inventory').insert(itemsToInsert as any).select();
+
+    if (error) {
+      console.error('[INVENTORY_POST_ERROR] Supabase error:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json(data || []);
   } catch (error: any) {
-    console.error('[INVENTORY_POST_ERROR]', error);
-    return NextResponse.json([{
-      id: 'inv-' + Date.now(),
-      item_name: 'Nuevo Activo',
-      status: 'operativo'
-    }], { status: 200 });
+    console.error('[INVENTORY_POST_ERROR] Unexpected error:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
 
@@ -182,16 +109,17 @@ export async function PATCH(request: NextRequest) {
       }
     }
 
-    for (const table of TABLES) {
-      try {
-        const { error } = await supabase.from(table).update(updates).eq('id', id);
-        if (!error) break;
-      } catch (e) {}
+    const { data, error } = await supabase.from('resource_inventory').update(updates as any).eq('id', id).select();
+
+    if (error) {
+      console.error('[INVENTORY_PATCH_ERROR] Supabase error:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, id });
+    return NextResponse.json({ success: true, data });
   } catch (error: any) {
-    return NextResponse.json({ success: true }, { status: 200 });
+    console.error('[INVENTORY_PATCH_ERROR] Unexpected error:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
 
@@ -205,14 +133,16 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Se requiere el ID del elemento' }, { status: 400 });
     }
 
-    for (const table of TABLES) {
-      try {
-        await supabase.from(table).delete().eq('id', id);
-      } catch (e) {}
+    const { error } = await supabase.from('resource_inventory').delete().eq('id', id);
+
+    if (error) {
+      console.error('[INVENTORY_DELETE_ERROR] Supabase error:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, id });
   } catch (error: any) {
-    return NextResponse.json({ success: true }, { status: 200 });
+    console.error('[INVENTORY_DELETE_ERROR] Unexpected error:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

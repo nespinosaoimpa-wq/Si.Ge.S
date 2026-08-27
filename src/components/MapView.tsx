@@ -357,12 +357,14 @@ const IncidentMarkerContent = React.memo(({
   entryType,
   content,
   urgency,
-  status
+  status,
+  isFallback
 }: {
   entryType: string;
   content: string;
   urgency?: string;
   status?: string;
+  isFallback?: boolean;
 }) => {
   const isEmergency = entryType === 'emergencia' || entryType === 'panic' || urgency === 'critica' || status === 'critica' || status === 'crítica' || content?.toLowerCase().includes('alerta') || content?.toLowerCase().includes('crítica');
 
@@ -376,6 +378,7 @@ const IncidentMarkerContent = React.memo(({
       )}
     >
       {(() => {
+        if (isFallback) return <MapPin size={18} className={isEmergency ? "text-white animate-pulse" : "text-amber-400"} />;
         const text = content?.toLowerCase() || '';
         if (text.includes('vehículo')) return <Car size={18} className="text-white" />;
         if (text.includes('persona')) return <UserX size={18} className="text-white" />;
@@ -464,18 +467,46 @@ export default function MapView({
   const [loadingNearby, setLoadingNearby] = useState(false);
 
   // Resolve coordinates for incidents: if lat/lng are missing/invalid on the incident object itself,
-  // resolve them from the associated objective in the objectives prop using objective_id.
+  // resolve them from objective_id in objectives, OR from operator_id in guards/assigned objectives.
   const resolvedIncidents = useMemo(() => {
     return (incidents || []).map(inc => {
       let lat = inc.latitude;
       let lng = inc.longitude;
 
-      if (!isValidCoords(lat, lng) && (inc as any).objective_id) {
-        const targetObj = (objectives || []).find(o => o.id === (inc as any).objective_id);
-        if (targetObj && isValidCoords(targetObj.latitude, targetObj.longitude)) {
-          lat = targetObj.latitude;
-          lng = targetObj.longitude;
+      if (!isValidCoords(lat, lng)) {
+        // 1. Try to resolve from objective_id
+        if ((inc as any).objective_id) {
+          const targetObj = (objectives || []).find(o => o.id === (inc as any).objective_id);
+          if (targetObj && isValidCoords(targetObj.latitude, targetObj.longitude)) {
+            lat = targetObj.latitude;
+            lng = targetObj.longitude;
+          }
         }
+
+        // 2. Try to resolve from operator_id / resource_id in guards
+        if (!isValidCoords(lat, lng)) {
+          const opId = (inc as any).operator_id || (inc as any).resource_id || (inc as any).triggered_by;
+          if (opId) {
+            const targetGuard = (guards || []).find(g => g.id === opId);
+            if (targetGuard && isValidCoords(targetGuard.latitude, targetGuard.longitude)) {
+              lat = targetGuard.latitude;
+              lng = targetGuard.longitude;
+            } else if (targetGuard?.current_objective_id) {
+              const guardObj = (objectives || []).find(o => o.id === targetGuard.current_objective_id);
+              if (guardObj && isValidCoords(guardObj.latitude, guardObj.longitude)) {
+                lat = guardObj.latitude;
+                lng = guardObj.longitude;
+              }
+            }
+          }
+        }
+      }
+
+      // 3. Final fallback: Use mapCenter or [0,0] if still missing coords
+      if (!isValidCoords(lat, lng)) {
+        lat = center && center[0] ? center[0] : 0;
+        lng = center && center[1] ? center[1] : 0;
+        (inc as any)._isFallbackCoord = true;
       }
 
       return {
@@ -484,7 +515,7 @@ export default function MapView({
         longitude: lng
       };
     });
-  }, [incidents, objectives]);
+  }, [incidents, objectives, guards, center]);
 
   // Separate incidents into panic and regular alerts
   const panicIncidents = useMemo(() => {
@@ -493,7 +524,7 @@ export default function MapView({
       if (isResolved) return false;
       const type = (inc.entry_type || '').toLowerCase();
       const content = (inc.content || '').toLowerCase();
-      return type === 'panic' || type === 'panico' || type === 'emergencia' || type === 'sos_panic' || type === 'sos' || content.includes('pánico') || content.includes('panico') || content.includes('sos');
+      return type === 'panic' || type === 'panico' || type === 'emergencia' || type === 'sos_panic' || type === 'sos' || content.includes('pánico') || content.includes('panico') || content.includes('sos') || (inc as any).alarm_type === 'sos_panic' || (inc as any).severity === 'critica';
     });
   }, [resolvedIncidents]);
 
@@ -504,7 +535,7 @@ export default function MapView({
       if (isResolved || isFichaje) return false;
       const type = (inc.entry_type || '').toLowerCase();
       const content = (inc.content || '').toLowerCase();
-      const isPanic = type === 'panic' || type === 'panico' || type === 'emergencia' || type === 'sos_panic' || type === 'sos' || content.includes('pánico') || content.includes('panico') || content.includes('sos');
+      const isPanic = type === 'panic' || type === 'panico' || type === 'emergencia' || type === 'sos_panic' || type === 'sos' || content.includes('pánico') || content.includes('panico') || content.includes('sos') || (inc as any).alarm_type === 'sos_panic' || (inc as any).severity === 'critica';
       return !isPanic;
     });
   }, [resolvedIncidents]);
@@ -1076,6 +1107,7 @@ export default function MapView({
                 entryType={inc.entry_type}
                 content={inc.content}
                 status={inc.status}
+                isFallback={(inc as any)._isFallbackCoord}
               />
             </Marker>
           );

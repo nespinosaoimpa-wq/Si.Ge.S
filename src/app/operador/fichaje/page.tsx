@@ -85,13 +85,21 @@ export default function FichajePage() {
       if (navigator.vibrate) navigator.vibrate(100);
       
       try {
-        const lat = location?.lat || 0;
-        const lng = location?.lng || 0;
+        // Coordenadas: si el GPS es 0, usar las del objetivo asignado
+        // Garantiza que la alarma SIEMPRE aparezca en el mapa del gerente
+        const objLat = assignedObjective?.latitude ? Number(assignedObjective.latitude) : 0;
+        const objLng = assignedObjective?.longitude ? Number(assignedObjective.longitude) : 0;
+        const lat = (location?.lat && location.lat !== 0) ? location.lat : objLat;
+        const lng = (location?.lng && location.lng !== 0) ? location.lng : objLng;
+        const tenantId = (user as any)?.user_metadata?.tenant_id || null;
+        const operatorName = (user as any)?.user_metadata?.name || user?.email || 'Operador';
 
         // 1. Insert into alarms table (triggers Manager realtime overlay)
         await supabase.from('alarms').insert({
           operator_id: OPERATOR_ID,
+          operator_name: operatorName,
           objective_id: assignedObjective?.id || null,
+          tenant_id: tenantId,
           alarm_type: 'sos_panic',
           severity: 'critica',
           message: '🚨 BOTÓN DE PÁNICO S.O.S ACTIVADO EN FICHAJE',
@@ -99,19 +107,22 @@ export default function FichajePage() {
           longitude: lng,
           status: 'active',
           created_at: new Date().toISOString()
-        });
+        } as any);
 
-        // 2. Insert incident
+        // 2. Insert into incidents table (for map marker display)
         await supabase.from('incidents').insert({
           objective_id: assignedObjective?.id || null,
           operator_id: OPERATOR_ID,
+          operator_name: operatorName,
+          tenant_id: tenantId,
           entry_type: 'panic',
+          urgency: 'critica',
           content: '🚨 BOTÓN DE PÁNICO S.O.S ACTIVADO EN FICHAJE',
           latitude: lat,
           longitude: lng,
-          status: 'critica',
+          status: 'abierto',
           created_at: new Date().toISOString()
-        });
+        } as any);
 
         // 3. Dispatch server push notification
         fetch('/api/notifications/push', {
@@ -360,17 +371,26 @@ export default function FichajePage() {
   const confirmInventoryCheck = async () => {
     setShowInventoryCheck(false);
     // Report damages/missing as incidents
+    const tenantId = (user as any)?.user_metadata?.tenant_id || null;
+    const operatorName = (user as any)?.user_metadata?.name || user?.email || 'Operador';
+    const objLat = assignedObjective?.latitude ? Number(assignedObjective.latitude) : 0;
+    const objLng = assignedObjective?.longitude ? Number(assignedObjective.longitude) : 0;
+    const lat = (location?.lat && location.lat !== 0) ? location.lat : objLat;
+    const lng = (location?.lng && location.lng !== 0) ? location.lng : objLng;
     for (const item of inventoryItems) {
       if (inventoryStatus[item.id] !== 'Operativo') {
         await supabase.from('incidents').insert({
           objective_id: assignedObjective?.id,
           operator_id: OPERATOR_ID,
+          operator_name: operatorName,
+          tenant_id: tenantId,
           entry_type: 'novedad',
-          content: `INVENTARIO INICIAL: ${item.item_name} reportado como ${inventoryStatus[item.id].toUpperCase()}`,
-          latitude: location?.lat || 0,
-          longitude: location?.lng || 0,
-          status: 'crítica'
-        });
+          urgency: 'alta',
+          content: `📦 INVENTARIO: ${item.item_name} reportado como ${inventoryStatus[item.id].toUpperCase()}`,
+          latitude: lat,
+          longitude: lng,
+          status: 'abierto'
+        } as any);
       }
     }
     handleClock();

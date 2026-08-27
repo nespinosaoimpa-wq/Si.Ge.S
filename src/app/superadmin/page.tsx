@@ -64,10 +64,11 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }>
 };
 
 const PLAN_CONFIG: Record<string, { label: string; icon: any; color: string }> = {
-  starter: { label: 'Starter', icon: Zap, color: 'text-blue-400' },
-  professional: { label: 'Professional', icon: Star, color: 'text-violet-400' },
-  enterprise: { label: 'Enterprise', icon: Crown, color: 'text-amber-400' },
-  trial: { label: 'Trial', icon: Clock, color: 'text-zinc-400' },
+  starter: { label: 'Básico', icon: Zap, color: 'text-blue-400' },
+  professional: { label: 'Profesional', icon: Star, color: 'text-violet-400' },
+  full: { label: 'Único Full', icon: Star, color: 'text-violet-400' },
+  enterprise: { label: 'Corporativo', icon: Crown, color: 'text-amber-400' },
+  trial: { label: 'Prueba Gratuita', icon: Clock, color: 'text-zinc-400' },
 };
 
 const COUNTRY_FLAGS: Record<string, string> = {
@@ -119,7 +120,7 @@ export default function SuperAdminDashboard() {
   const [taxId, setTaxId] = useState('');
   const [phone, setPhone] = useState('');
   const [countryCode, setCountryCode] = useState('ar');
-  const [planTier, setPlanTier] = useState('professional');
+  const [planTier, setPlanTier] = useState('full');
   const [adminEmail, setAdminEmail] = useState('');
 
   // Invitation Success States
@@ -128,21 +129,28 @@ export default function SuperAdminDashboard() {
   const [createdTenantId, setCreatedTenantId] = useState<string | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
 
-  const enterTenantAsManager = (tenantId: string, tenantName: string) => {
-    const userData = {
-      id: 'super-admin-master',
-      email: 'sigpad.info@gmail.com',
-      role: 'gerente',
-      name: 'SuperAdmin (Modo Gerente)',
-      company_name: tenantName,
-      tenant_id: tenantId,
-      is_superadmin_view: false,
-      user_metadata: { role: 'gerente', full_name: 'SuperAdmin (Modo Gerente)', tenant_id: tenantId }
-    };
-    localStorage.setItem('SIGPAD_user', JSON.stringify(userData));
-    document.cookie = `SIGPAD_user=${encodeURIComponent(JSON.stringify(userData))}; path=/; max-age=2592000`;
-    document.cookie = "SIGPAD_bypass_active=true; path=/; max-age=2592000";
-    window.location.href = '/gerente';
+  const handleSwitchTenant = async (tenantId: string, tenantName: string) => {
+    setActionLoading(tenantId);
+    try {
+      const res = await fetch('/api/tenants/switch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al conmutar empresa');
+
+      if (data.user) {
+        localStorage.setItem('SIGPAD_user', JSON.stringify(data.user));
+        document.cookie = `SIGPAD_user=${encodeURIComponent(JSON.stringify(data.user))}; path=/; max-age=2592000`;
+        document.cookie = "SIGPAD_bypass_active=true; path=/; max-age=2592000";
+      }
+      window.location.href = '/gerente';
+    } catch (e: any) {
+      alert(`Error: ${e.message}`);
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   const handleCreateTenant = async (e: React.FormEvent) => {
@@ -202,7 +210,7 @@ export default function SuperAdminDashboard() {
       setTaxId('');
       setPhone('');
       setCountryCode('ar');
-      setPlanTier('professional');
+      setPlanTier('full');
       setAdminEmail('');
       
       fetchTenants();
@@ -516,11 +524,12 @@ export default function SuperAdminDashboard() {
                               <td className="px-5 py-4">
                                 <div className="flex items-center gap-2">
                                   <button
-                                    onClick={() => enterTenantAsManager(tenant.tenant_id, tenant.tenant_name)}
-                                    className="text-[10px] px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 hover:border-amber-500/30 transition-all font-black uppercase tracking-wider flex items-center gap-1.5 shadow-sm"
-                                    title="Ingresar al Panel de Gestión (Gerente) de esta Empresa"
+                                    onClick={() => handleSwitchTenant(tenant.tenant_id, tenant.tenant_name)}
+                                    disabled={isLoading}
+                                    className="text-[10px] px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 transition-all font-black uppercase tracking-wider disabled:opacity-50 flex items-center gap-1 shadow-sm"
+                                    title="Ingresar a esta empresa como Gerente"
                                   >
-                                    <Play size={11} /> Entrar
+                                    ⚡ Entrar / Probar
                                   </button>
                                   {tenant.billing_status !== 'suspended' ? (
                                     <button
@@ -768,23 +777,25 @@ export default function SuperAdminDashboard() {
                       </p>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row gap-2 pt-2">
-                      {createdTenantId && (
-                        <button
-                          onClick={() => enterTenantAsManager(createdTenantId, createdCompanyName)}
-                          className="flex-1 h-11 bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg"
-                        >
-                          <Play size={14} /> Entrar a esta Empresa (Panel Gerente)
-                        </button>
-                      )}
+                    <div className="space-y-2">
+                      <button
+                        onClick={() => {
+                          if (createdTenantId) {
+                            handleSwitchTenant(createdTenantId, createdCompanyName);
+                          }
+                        }}
+                        className="w-full h-12 bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold rounded-xl transition-all shadow-md shadow-amber-500/20 flex items-center justify-center gap-2"
+                      >
+                        ⚡ Ingresar a {createdCompanyName} ahora →
+                      </button>
                       <button
                         onClick={() => {
                           setIsCreateModalOpen(false);
                           setGeneratedInviteLink(null);
                         }}
-                        className="h-11 px-5 bg-zinc-900 hover:bg-zinc-850 text-white text-xs font-bold rounded-xl transition-all"
+                        className="w-full h-11 bg-zinc-900 hover:bg-zinc-850 text-white text-xs font-bold rounded-xl transition-all"
                       >
-                        Cerrar
+                        Cerrar Ventana
                       </button>
                     </div>
                   </div>
@@ -861,10 +872,8 @@ export default function SuperAdminDashboard() {
                           onChange={(e) => setPlanTier(e.target.value)}
                           className="w-full h-10 rounded-xl border border-zinc-800 bg-zinc-900/60 text-white text-xs px-3 focus:border-zinc-600 focus:outline-none transition-colors"
                         >
+                          <option value="full">Plan Único Full — $400.000 ARS/mes (20 obj / 50 guardias)</option>
                           <option value="trial">Prueba Gratis (14 días)</option>
-                          <option value="starter">Starter (Suscripción Activa)</option>
-                          <option value="professional">Professional (Suscripción Activa)</option>
-                          <option value="enterprise">Enterprise (Suscripción Activa)</option>
                         </select>
                       </div>
                     </div>

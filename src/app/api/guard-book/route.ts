@@ -297,11 +297,18 @@ export async function POST(request: NextRequest) {
     if (urgency === 'critica' || entry_type === 'emergencia') {
       let operatorName = resource_id;
       let objectiveName = '';
+      let objLat = latitude;
+      let objLng = longitude;
       try {
         const { data: resData } = await supabase.from('resources').select('name').eq('id', resource_id).maybeSingle();
         if (resData?.name) operatorName = resData.name;
-        const { data: objData } = await supabase.from('objectives').select('name').eq('id', objective_id).maybeSingle();
+        const { data: objData } = await supabase.from('objectives').select('name, latitude, longitude').eq('id', objective_id).maybeSingle();
         if (objData?.name) objectiveName = objData.name;
+        // Use objective coordinates when operator GPS is missing/zero
+        if ((!objLat || !objLng) && objData?.latitude) {
+          objLat = objData.latitude;
+          objLng = objData.longitude;
+        }
       } catch (e) {}
 
       await supabase.from('alarms').insert({
@@ -309,8 +316,8 @@ export async function POST(request: NextRequest) {
         objective_id,
         alarm_type: entry_type === 'emergencia' ? 'panico' : (entry_type || 'panico'),
         message: content,
-        latitude,
-        longitude,
+        latitude: objLat,
+        longitude: objLng,
         status: 'active',
         operator_name: operatorName,
         operator_latitude: latitude,
@@ -318,6 +325,43 @@ export async function POST(request: NextRequest) {
         objective_name: objectiveName,
         tenant_id: targetTenantId
       });
+    }
+
+    // ════ TAMBIÉN INSERTAR EN INCIDENTS PARA APARECER EN MAPA GENERAL ════
+    // Todas las novedades que no sean fichajes simples deben aparecer en el mapa
+    if (entry_type !== 'fichaje') {
+      try {
+        let objLat = latitude;
+        let objLng = longitude;
+        if ((!objLat || !objLng || Number(objLat) === 0) && objective_id) {
+          const { data: objCoords } = await supabase
+            .from('objectives')
+            .select('latitude, longitude')
+            .eq('id', objective_id)
+            .maybeSingle();
+          if (objCoords?.latitude) {
+            objLat = objCoords.latitude;
+            objLng = objCoords.longitude;
+          }
+        }
+        await supabase.from('incidents').insert({
+          objective_id,
+          operator_id: resource_id,
+          tenant_id: targetTenantId,
+          entry_type: entry_type || 'novedad',
+          content,
+          latitude: objLat,
+          longitude: objLng,
+          urgency: urgency || 'normal',
+          status: 'abierto',
+          image_url: image_url || null,
+          audio_url: audio_url || null,
+          created_at: new Date().toISOString()
+        } as any);
+      } catch (e) {
+        // Non-blocking: guard_book_entry already saved
+        console.warn('[GUARD_BOOK_POST] Could not mirror to incidents:', e);
+      }
     }
 
     // ════ DISPARAR NOTIFICACIÓN INMEDIATA A LOS OPERADORES DEL OBJETIVO ════

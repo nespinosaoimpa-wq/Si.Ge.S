@@ -41,12 +41,20 @@ export function AppHeader() {
 
         {/* Desktop: page title + Company Badge */}
         <div className="hidden lg:flex items-center gap-3">
-          <div className="flex items-center gap-1.5 px-3 py-1 bg-zinc-900 text-amber-400 border border-zinc-800 rounded-xl">
+          <div className="flex items-center gap-1.5 px-3 py-1 bg-zinc-900 text-amber-400 border border-zinc-800 rounded-xl shadow-sm">
             <Building2 size={13} className="shrink-0 text-amber-400" />
             <span className="text-xs font-bold truncate max-w-[220px]">
               {(user as any)?.company_name || user?.user_metadata?.company_name || (role === 'superadmin' ? 'Matriz SIGPAD OS' : 'Empresa de Seguridad')}
             </span>
           </div>
+          {(role === 'superadmin' || (user as any)?.role === 'superadmin' || user?.email === 'nespinosa.oimpa@gmail.com') && (
+            <a
+              href="/superadmin"
+              className="text-[11px] font-black text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2.5 py-1 rounded-lg hover:bg-amber-500/20 transition-all flex items-center gap-1"
+            >
+              👑 Panel SuperAdmin
+            </a>
+          )}
           <p className="text-[13px] text-gray-500 font-normal">
             {mounted ? time.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }) : ''}
           </p>

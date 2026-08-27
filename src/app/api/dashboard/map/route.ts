@@ -313,10 +313,19 @@ export async function GET(req: NextRequest) {
     });
 
     const recentIncidentsFromAlarms = (alarmsRes?.data || []).map((alarm: any) => {
+      let latitude = alarm.latitude || alarm.operator_latitude;
+      let longitude = alarm.longitude || alarm.operator_longitude;
+      
+      const obj = rawObjectives.find((o: any) => o.id === alarm.objective_id || o.id === resourceObjectiveMap[alarm.operator_id || alarm.triggered_by]);
+      if (obj) {
+        latitude = obj.latitude;
+        longitude = obj.longitude;
+      }
+
       const rawInc = {
         ...alarm,
-        latitude: alarm.latitude || alarm.operator_latitude,
-        longitude: alarm.longitude || alarm.operator_longitude,
+        latitude,
+        longitude,
         resource_id: alarm.operator_id || alarm.triggered_by
       };
       const coords = resolveCoords(rawInc);
