@@ -1,9 +1,20 @@
 {
   "regions": ["gru1"],
-  "crons": [
-    {
-      "path": "/api/keep-alive",
-      "schedule": "0 4 * * *"
+  "functions": {
+    "src/app/api/dashboard/map/route.ts": {
+      "maxDuration": 10
+    },
+    "src/app/api/auth/login/route.ts": {
+      "maxDuration": 10
+    },
+    "src/app/api/objectives/route.ts": {
+      "maxDuration": 10
+    },
+    "src/app/api/shifts/checkin/route.ts": {
+      "maxDuration": 10
+    },
+    "src/app/api/tenants/onboard/route.ts": {
+      "maxDuration": 10
     }
-  ]
+  }
 }

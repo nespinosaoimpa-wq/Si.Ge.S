@@ -14,14 +14,15 @@ export async function GET(req: NextRequest) {
     
     if (!isSuper && !tenantId) return NextResponse.json({ error: 'Tu sesión no tiene empresa asignada.' }, { status: 403 });
 
-    // 🚀 CACHE CHECK: Prevent DB hit if requested within 4 seconds
+    // 🚀 CACHE CHECK: Evitar hit a DB si fue consultado en los últimos 10 segundos
+    // Con Vercel Free (10s max), el caché de 10s divide por 10 el consumo de invocaciones
     const cacheKey = `dashboard-map-${isSuper ? 'super' : tenantId}`;
-    const cachedData = serverCache.get(cacheKey, 4000); // 4 seconds TTL
+    const cachedData = serverCache.get(cacheKey, 10000); // 10 seconds TTL
     if (cachedData) {
       return NextResponse.json(cachedData, {
         headers: {
           'X-Cache': 'HIT',
-          'Cache-Control': 'public, max-age=4'
+          'Cache-Control': 'public, max-age=10'
         }
       });
     }

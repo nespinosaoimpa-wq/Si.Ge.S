@@ -5,21 +5,27 @@ export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/keep-alive
- * Endpoint automatizado para mantener activa la base de datos de Supabase en el plan gratuito.
- * Evita la pausa automática por 7 días de inactividad ejecutando una consulta liviana.
+ * Health check de la base de datos Supabase.
+ *
+ * NOTA: Con Supabase Pro la base de datos NUNCA se pausa automáticamente,
+ * por lo que este endpoint ya no es necesario como cron automático.
+ * Se mantiene como endpoint de healthcheck manual y monitoreo externo.
+ *
+ * Para llamarlo manualmente: GET /api/keep-alive
+ * Para monitoreo externo (UptimeRobot, BetterStack, etc.) apuntar a esta URL.
  */
 export async function GET() {
   try {
     const supabase = createServiceClient();
-    
-    // Consulta ultraliviana a la base de datos para registrar actividad real en el motor Postgres
+
+    // Consulta ultraliviana — verifica conectividad real con Postgres
     const { data, error } = await supabase
-      .from('users')
+      .from('tenants')
       .select('id')
       .limit(1);
 
     if (error) {
-      console.error('[Keep-Alive Error]:', error.message);
+      console.error('[Health-Check Error]:', error.message);
       return NextResponse.json({
         status: 'error',
         message: 'Fallo al consultar Supabase',
@@ -29,13 +35,14 @@ export async function GET() {
     }
 
     return NextResponse.json({
-      status: 'active',
-      message: '🛡️ Supabase Keep-Alive Ping ejecutado con éxito. Proyecto activo.',
-      recordsFound: data?.length || 0,
-      timestamp: new Date().toISOString()
+      status: 'ok',
+      message: '✅ SIGPAD operativo. Supabase Pro activo.',
+      tenantsReachable: (data?.length ?? 0) >= 0,
+      timestamp: new Date().toISOString(),
+      plan: 'Supabase Pro (sin auto-pausa)'
     });
   } catch (err: any) {
-    console.error('[Keep-Alive Exception]:', err);
+    console.error('[Health-Check Exception]:', err);
     return NextResponse.json({
       status: 'exception',
       error: err.message || 'Error inesperado',
