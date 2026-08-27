@@ -117,7 +117,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Plantilla de inicio operativo SPS cargada correctamente.',
+      message: 'Datos de prueba cargados correctamente.',
       objectiveCreated: !!objective,
       resourcesCreated: resources ? resources.length : 0
     });

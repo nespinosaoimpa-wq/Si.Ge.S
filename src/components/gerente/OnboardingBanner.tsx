@@ -65,7 +65,7 @@ export function OnboardingBanner({ companyName, tenantId, onSeedSuccess }: Onboa
                 ¡Bienvenido a la consola táctica de SIGPAD!
               </h3>
               <p className="text-xs text-zinc-400 mt-0.5 leading-relaxed max-w-xl">
-                Esta empresa está lista para operar. Podés cargar inmediatamente tu primer puesto de guardia y personal, o presionar <strong className="text-amber-300">Cargar Plantilla SPS</strong> para probar el sistema en 1 segundo.
+                Esta empresa está lista para operar. Podés cargar inmediatamente tu primer puesto de guardia y personal, o presionar <strong className="text-amber-300">Cargar Datos de Prueba</strong> para probar el sistema en 1 segundo.
               </p>
             </div>
           </div>
@@ -74,7 +74,7 @@ export function OnboardingBanner({ companyName, tenantId, onSeedSuccess }: Onboa
             {seeded ? (
               <div className="flex items-center gap-2 px-4 py-2.5 bg-emerald-500/20 border border-emerald-500/40 rounded-2xl text-emerald-400 text-xs font-bold">
                 <CheckCircle2 size={16} />
-                ¡Plantilla SPS cargada!
+                ¡Datos de prueba cargados!
               </div>
             ) : (
               <button
@@ -83,7 +83,7 @@ export function OnboardingBanner({ companyName, tenantId, onSeedSuccess }: Onboa
                 className="flex-1 md:flex-none h-11 px-4 bg-amber-500 hover:bg-amber-400 text-black text-xs font-extrabold rounded-2xl transition-all shadow-lg shadow-amber-500/20 flex items-center justify-center gap-1.5 active:scale-95 disabled:opacity-50"
               >
                 <Sparkles size={15} />
-                {loadingSeed ? 'Cargando...' : 'Cargar Plantilla SPS (1 Clic)'}
+                {loadingSeed ? 'Cargando...' : 'Cargar Datos de Prueba (1 Clic)'}
               </button>
             )}
 
