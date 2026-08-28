@@ -197,7 +197,12 @@ export function AlarmListener() {
       <PanicAlertOverlay 
         alert={panicAlarm ? {
           id: panicAlarm.id,
+          operator_id: panicAlarm.triggered_by,
+          triggered_by: panicAlarm.triggered_by,
           resource_name: panicAlarm.operator_name,
+          operator_name: panicAlarm.operator_name,
+          objective_id: panicAlarm.objective_id,
+          objective_name: panicAlarm.objective_name,
           content: panicAlarm.message,
           latitude: panicAlarm.latitude || panicAlarm.operator_latitude,
           longitude: panicAlarm.longitude || panicAlarm.operator_longitude,
