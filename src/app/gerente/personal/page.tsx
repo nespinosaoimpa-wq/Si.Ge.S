@@ -468,13 +468,13 @@ export default function PersonalPage() {
                       <stat.icon size={22} className={stat.color} />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-xl sm:text-2xl font-black text-zinc-950 tracking-tight leading-none truncate">{stat.value}</p>
-                      <p className="text-xs font-bold text-zinc-500 uppercase tracking-wider mt-1 truncate">{stat.label}</p>
+                      <p className="text-xl sm:text-2xl font-bold font-mono tabular-nums text-zinc-950 tracking-tight leading-none truncate">{stat.value}</p>
+                      <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mt-1 truncate">{stat.label}</p>
                     </div>
                   </div>
 
                   {isSelected && stat.id !== 'all' && (
-                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-zinc-900 text-white shrink-0">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-zinc-900 text-white shrink-0">
                       Filtro Activo
                     </span>
                   )}
@@ -485,7 +485,7 @@ export default function PersonalPage() {
 
           {/* INDICADOR DE FILTRO ACTIVO POR KPI */}
           {kpiFilter !== 'all' && (
-            <div className="flex items-center justify-between bg-zinc-900 text-white px-5 py-3 rounded-xl text-xs font-bold uppercase tracking-wider shadow-md animate-fadeIn">
+            <div className="flex items-center justify-between bg-zinc-900 text-white px-5 py-3 rounded-xl text-xs font-semibold uppercase tracking-wider shadow-md animate-fadeIn">
               <div className="flex items-center gap-2">
                 <Filter size={16} className="text-amber-400" />
                 <span>
@@ -494,7 +494,7 @@ export default function PersonalPage() {
               </div>
               <button
                 onClick={() => setKpiFilter('all')}
-                className="flex items-center gap-1 px-3 py-1 bg-white/10 hover:bg-white/20 text-white rounded-lg text-[10px] font-black transition-colors"
+                className="flex items-center gap-1 px-3 py-1 bg-white/10 hover:bg-white/20 text-white rounded-lg text-[10px] font-semibold transition-colors"
               >
                 <X size={14} /> Mostrar Todos
               </button>
@@ -518,7 +518,7 @@ export default function PersonalPage() {
                   key={f}
                   onClick={() => setFilter(f)}
                   className={cn(
-                    'px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all',
+                    'px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all',
                     filter === f ? 'bg-zinc-900 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-950'
                   )}
                 >
@@ -540,7 +540,7 @@ export default function PersonalPage() {
               <div className="w-20 h-20 bg-zinc-50 rounded-full flex items-center justify-center mb-6">
                 <Users size={40} className="text-zinc-200" />
               </div>
-              <p className="text-sm font-bold text-zinc-400 uppercase tracking-wider">
+              <p className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">
                 {kpiFilter === 'alert' ? 'No hay credenciales vencidas ni alertas activas' : 'No se encontraron registros de personal'}
               </p>
             </div>
@@ -574,7 +574,7 @@ export default function PersonalPage() {
                   >
                     {/* BANNERS DESTACADOS EN LA PARTE SUPERIOR DEL PERFIL */}
                     {isExpired && (
-                      <div className="w-full bg-red-600 text-white text-[11px] font-black uppercase px-6 py-2.5 flex items-center justify-between tracking-wider shadow-sm">
+                      <div className="w-full bg-red-600 text-white text-xs font-semibold uppercase px-6 py-2.5 flex items-center justify-between tracking-wider shadow-sm">
                         <span className="flex items-center gap-1.5">
                           <AlertCircle size={15} /> CREDENCIAL VENCIDA
                         </span>
@@ -585,7 +585,7 @@ export default function PersonalPage() {
                     )}
 
                     {isExpiringSoon && !isExpired && (
-                      <div className="w-full bg-amber-500 text-zinc-950 text-[11px] font-black uppercase px-6 py-2.5 flex items-center justify-between tracking-wider shadow-sm">
+                      <div className="w-full bg-amber-500 text-zinc-950 text-xs font-semibold uppercase px-6 py-2.5 flex items-center justify-between tracking-wider shadow-sm">
                         <span className="flex items-center gap-1.5">
                           <AlertTriangle size={15} /> POR VENCER PRÓXIMAMENTE
                         </span>
@@ -596,7 +596,7 @@ export default function PersonalPage() {
                     )}
 
                     {isMissingDoc && !isExpired && !isExpiringSoon && (
-                      <div className="w-full bg-orange-500 text-white text-[11px] font-black uppercase px-6 py-2.5 flex items-center justify-between tracking-wider shadow-sm">
+                      <div className="w-full bg-orange-500 text-white text-xs font-semibold uppercase px-6 py-2.5 flex items-center justify-between tracking-wider shadow-sm">
                         <span className="flex items-center gap-1.5">
                           <AlertTriangle size={15} /> LEGAJO INCOMPLETO
                         </span>
@@ -617,7 +617,7 @@ export default function PersonalPage() {
 
                         <div className="flex flex-col items-end gap-2">
                           <span className={cn(
-                            'text-xs font-black uppercase tracking-wider px-3 py-1 rounded-xl border shadow-sm',
+                            'text-xs font-semibold uppercase tracking-wider px-3 py-1 rounded-xl border shadow-sm',
                             isExpired
                               ? 'bg-red-600 text-white border-red-700'
                               : isExpiringSoon
@@ -632,10 +632,10 @@ export default function PersonalPage() {
                       </div>
 
                       <div className="mb-6">
-                        <h3 className="text-lg font-black text-zinc-950 tracking-tight group-hover:text-[#0F4C5C] transition-colors truncate uppercase">
+                        <h3 className="text-base font-bold text-zinc-950 tracking-tight group-hover:text-[#0F4C5C] transition-colors truncate">
                           {person.name}
                         </h3>
-                        <p className="text-xs font-bold text-zinc-500 mt-0.5 uppercase tracking-wider">
+                        <p className="text-xs font-medium text-zinc-500 mt-0.5 uppercase tracking-wider">
                           {person.role || 'Operador de Seguridad'}
                         </p>
                       </div>

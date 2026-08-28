@@ -109,9 +109,9 @@ export default function DailyScorecard({ entries, totalObjectives = 0 }: Scoreca
     <div className="space-y-4">
       {/* Tactical header bar */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2">
           <TrendingUp size={14} className="text-[#0F4C5C]" />
-          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-600">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
             Resumen del Día · Actualizado en tiempo real
           </span>
         </div>
@@ -139,25 +139,25 @@ export default function DailyScorecard({ entries, totalObjectives = 0 }: Scoreca
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.06 }}
             className={cn(
-              'relative p-5 rounded-2xl border border-zinc-200 bg-white shadow-sm transition-all hover:shadow-md hover:border-zinc-300',
-              card.label === 'Alertas Críticas' && metrics.criticalAlerts > 0 ? 'bg-red-50 border-red-200' : ''
+              'relative p-5 rounded-2xl border border-zinc-200/80 bg-white shadow-sm transition-all hover:shadow-md hover:border-zinc-300',
+              card.label === 'Alertas Críticas' && metrics.criticalAlerts > 0 ? 'bg-red-50/50 border-red-200' : ''
             )}
           >
             {card.pulse && (
-              <span className="absolute top-4 right-4 flex h-3 w-3">
+              <span className="absolute top-4 right-4 flex h-2.5 w-2.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-600" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-600" />
               </span>
             )}
-            <div className={cn('mb-3', card.color)}>{card.icon}</div>
-            <p className="text-3xl font-black tabular-nums tracking-tighter text-zinc-950">
+            <div className={cn('mb-2.5', card.color)}>{card.icon}</div>
+            <p className="text-2xl lg:text-3xl font-bold font-mono tabular-nums tracking-tight text-zinc-950">
               {card.value}
             </p>
-            <p className="text-[10px] font-black uppercase tracking-widest text-zinc-700 mt-1.5">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 mt-1">
               {card.label}
             </p>
             {card.sub && (
-              <p className="text-[10px] text-zinc-500 font-bold mt-1 truncate uppercase tracking-tight">{card.sub}</p>
+              <p className="text-xs text-zinc-400 font-medium mt-0.5 truncate">{card.sub}</p>
             )}
           </motion.div>
         ))}

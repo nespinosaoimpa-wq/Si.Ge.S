@@ -290,16 +290,16 @@ export default function GuardBookPage() {
 
       {/* ─── Encabezado Principal ─── */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-        <div className="flex items-center gap-5">
-          <div className="w-14 h-14 bg-white border-2 border-zinc-200 rounded-2xl flex items-center justify-center shadow-sm">
-            <BookOpen size={28} className="text-zinc-950" />
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-white border border-zinc-200 rounded-2xl flex items-center justify-center shadow-sm">
+            <BookOpen size={24} className="text-zinc-900" />
           </div>
           <div>
-            <h1 className="text-3xl font-black uppercase tracking-tight text-zinc-950">Libro de Guardia</h1>
-            <div className="flex items-center gap-2 mt-1">
+            <h1 className="text-2xl font-bold text-zinc-950 tracking-tight">Libro de Guardia</h1>
+            <div className="flex items-center gap-2 mt-0.5">
               <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse inline-block" />
-              <span className="text-xs font-bold text-zinc-600 uppercase tracking-wider">
-                {filteredEntries.length} novedades registradas · Sincronización activa
+              <span className="text-xs font-medium text-zinc-500">
+                {filteredEntries.length} novedades registradas · Sincronización en tiempo real
               </span>
             </div>
           </div>
@@ -308,25 +308,25 @@ export default function GuardBookPage() {
         <div className="flex items-center gap-3 flex-wrap">
           <button
             onClick={() => setShowNewEntryModal(true)}
-            className="h-11 px-5 rounded-xl text-xs font-black gap-2 bg-emerald-600 hover:bg-emerald-700 text-white transition-all flex items-center justify-center shadow-lg uppercase tracking-widest"
+            className="h-10 px-4 rounded-xl text-xs font-semibold gap-2 bg-emerald-600 hover:bg-emerald-700 text-white transition-all flex items-center justify-center shadow-sm uppercase tracking-wider"
           >
-            <Zap size={16} />
-            ✍️ Publicar Novedad de Gerencia
+            <Zap size={15} />
+            Publicar Novedad
           </button>
           <button 
             onClick={fetchEntries} 
-            className="h-11 px-4 flex items-center gap-2 rounded-xl border border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50 transition-all text-xs font-bold uppercase tracking-wider shadow-sm"
+            className="h-10 px-3.5 flex items-center gap-2 rounded-xl border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 transition-all text-xs font-semibold uppercase tracking-wider shadow-sm"
           >
-            <RefreshCw size={15} className={loading ? "animate-spin text-zinc-500" : "text-zinc-700"} />
+            <RefreshCw size={14} className={loading ? "animate-spin text-zinc-400" : "text-zinc-500"} />
             Actualizar
           </button>
           <button
             onClick={handleExport}
             disabled={filteredEntries.length === 0}
-            className="h-11 px-5 rounded-xl text-xs font-black gap-2 bg-zinc-900 hover:bg-zinc-800 text-white transition-all flex items-center justify-center shadow-lg uppercase tracking-widest disabled:opacity-40"
+            className="h-10 px-4 rounded-xl text-xs font-semibold gap-2 bg-zinc-900 hover:bg-zinc-800 text-white transition-all flex items-center justify-center shadow-sm uppercase tracking-wider disabled:opacity-40"
           >
-            <Download size={16} className="text-emerald-400" />
-            Exportar Auditoría (CSV)
+            <Download size={15} className="text-emerald-400" />
+            Exportar CSV
           </button>
         </div>
       </div>
@@ -337,25 +337,25 @@ export default function GuardBookPage() {
       {/* ─── BARRA DE FILTROS AVANZADOS ─── */}
       <div className="bg-white p-6 rounded-[2rem] border border-zinc-200 shadow-sm space-y-4">
         <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
-          <div className="flex items-center gap-2 text-zinc-900 font-black text-xs uppercase tracking-wider">
-            <Filter size={16} className="text-[#0F4C5C]" />
+          <div className="flex items-center gap-2 text-zinc-900 font-semibold text-xs uppercase tracking-wider">
+            <Filter size={15} className="text-[#0F4C5C]" />
             Filtros de Auditoría y Búsqueda
           </div>
-          <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
-            {filteredEntries.length} de {entries.length} resultados
+          <span className="text-[11px] font-mono text-zinc-400">
+            {filteredEntries.length} / {entries.length} resultados
           </span>
         </div>
 
         {/* Fila 1: Buscador + Selector de Período + Selector de Objetivo */}
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-3">
           
           {/* Buscador de Texto */}
           <div className="relative md:col-span-1 lg:col-span-2">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" size={15} />
             <input
               type="text"
               placeholder="Buscar por operador, puesto o contenido..."
-              className="w-full h-11 bg-zinc-50 border border-zinc-200 rounded-xl pl-10 pr-4 text-xs font-bold text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900"
+              className="w-full h-10 bg-zinc-50 border border-zinc-200 rounded-xl pl-10 pr-4 text-xs font-medium text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-[#0F4C5C]"
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
             />
@@ -363,12 +363,12 @@ export default function GuardBookPage() {
 
           {/* Filtro por Objetivo */}
           <div className="relative">
-            <div className="flex items-center gap-2 h-11 px-3 bg-zinc-50 border border-zinc-200 rounded-xl">
-              <Building2 size={16} className="text-zinc-400 shrink-0" />
+            <div className="flex items-center gap-2 h-10 px-3 bg-zinc-50 border border-zinc-200 rounded-xl">
+              <Building2 size={15} className="text-zinc-400 shrink-0" />
               <select
                 value={filterObjective}
                 onChange={e => setFilterObjective(e.target.value)}
-                className="w-full bg-transparent text-xs font-bold text-zinc-900 focus:outline-none cursor-pointer uppercase truncate"
+                className="w-full bg-transparent text-xs font-medium text-zinc-800 focus:outline-none cursor-pointer truncate"
               >
                 <option value="all">🏢 Todos los Objetivos</option>
                 {objectives.map((o: any) => (
@@ -380,12 +380,12 @@ export default function GuardBookPage() {
 
           {/* Filtro por Período */}
           <div className="relative">
-            <div className="flex items-center gap-2 h-11 px-3 bg-zinc-50 border border-zinc-200 rounded-xl">
-              <Calendar size={16} className="text-zinc-400 shrink-0" />
+            <div className="flex items-center gap-2 h-10 px-3 bg-zinc-50 border border-zinc-200 rounded-xl">
+              <Calendar size={15} className="text-zinc-400 shrink-0" />
               <select
                 value={filterPeriod}
                 onChange={e => setFilterPeriod(e.target.value as any)}
-                className="w-full bg-transparent text-xs font-bold text-zinc-900 focus:outline-none cursor-pointer uppercase"
+                className="w-full bg-transparent text-xs font-medium text-zinc-800 focus:outline-none cursor-pointer"
               >
                 <option value="all">📌 Historial Completo</option>
                 <option value="today">📅 Hoy</option>
@@ -400,23 +400,23 @@ export default function GuardBookPage() {
         {/* Sub-fila: Rango de Fechas Personalizado (si elige custom) */}
         {filterPeriod === 'custom' && (
           <div className="flex items-center gap-3 pt-2 flex-wrap bg-zinc-50 p-3 rounded-xl border border-zinc-200">
-            <span className="text-[10px] font-black uppercase text-zinc-500">Rango de fechas:</span>
+            <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Rango de fechas:</span>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold text-zinc-400 uppercase">Desde</span>
+              <span className="text-xs text-zinc-400 font-medium">Desde</span>
               <input 
                 type="date" 
                 value={customStartDate} 
                 onChange={e => setCustomStartDate(e.target.value)}
-                className="h-9 px-3 bg-white border border-zinc-200 rounded-lg text-xs font-bold text-zinc-900"
+                className="h-9 px-3 bg-white border border-zinc-200 rounded-lg text-xs font-mono text-zinc-900"
               />
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold text-zinc-400 uppercase">Hasta</span>
+              <span className="text-xs text-zinc-400 font-medium">Hasta</span>
               <input 
                 type="date" 
                 value={customEndDate} 
                 onChange={e => setCustomEndDate(e.target.value)}
-                className="h-9 px-3 bg-white border border-zinc-200 rounded-lg text-xs font-bold text-zinc-900"
+                className="h-9 px-3 bg-white border border-zinc-200 rounded-lg text-xs font-mono text-zinc-900"
               />
             </div>
           </div>
@@ -427,7 +427,7 @@ export default function GuardBookPage() {
           
           {/* Categoría */}
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mr-1">Tipo:</span>
+            <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mr-1">Tipo:</span>
             {[
               { id: 'all', label: 'Todos' },
               { id: 'libro_guardia', label: 'Novedades' },
@@ -440,7 +440,7 @@ export default function GuardBookPage() {
                 key={t.id}
                 onClick={() => setFilterType(t.id)}
                 className={cn(
-                  "px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border",
+                  "px-3 py-1.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all border",
                   filterType === t.id
                     ? "bg-zinc-900 text-white border-zinc-900 shadow-sm"
                     : "bg-zinc-50 text-zinc-600 border-zinc-200 hover:bg-zinc-100"
@@ -453,11 +453,11 @@ export default function GuardBookPage() {
 
           {/* Severidad */}
           <div className="flex items-center gap-2 shrink-0">
-            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Urgencia:</span>
+            <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">Urgencia:</span>
             <select
               value={filterUrgency}
               onChange={e => setFilterUrgency(e.target.value)}
-              className="h-9 px-3 bg-zinc-50 border border-zinc-200 rounded-xl text-xs font-bold text-zinc-900 focus:outline-none cursor-pointer uppercase"
+              className="h-9 px-3 bg-zinc-50 border border-zinc-200 rounded-xl text-xs font-medium text-zinc-800 focus:outline-none cursor-pointer"
             >
               <option value="all">Todas las severidades</option>
               <option value="critica">🔴 Crítica</option>
@@ -474,15 +474,15 @@ export default function GuardBookPage() {
       {/* ─── LISTADO DE REGISTROS DE BITÁCORA ─── */}
       <div className="space-y-4">
         {loading ? (
-          <div className="p-20 flex flex-col items-center justify-center gap-3 bg-white rounded-[2rem] border border-zinc-200">
-            <div className="w-10 h-10 border-4 border-zinc-200 border-t-zinc-900 rounded-full animate-spin" />
-            <p className="text-xs font-black text-zinc-500 uppercase tracking-widest">Sincronizando bitácoras de objetivos...</p>
+          <div className="p-16 flex flex-col items-center justify-center gap-3 bg-white rounded-[2rem] border border-zinc-200">
+            <div className="w-8 h-8 border-3 border-zinc-200 border-t-zinc-900 rounded-full animate-spin" />
+            <p className="text-xs font-mono text-zinc-400 uppercase tracking-wider">Sincronizando bitácoras de objetivos...</p>
           </div>
         ) : filteredEntries.length === 0 ? (
           <div className="bg-white rounded-[2.5rem] p-16 text-center border-2 border-dashed border-zinc-200">
-            <BookOpen size={48} className="text-zinc-300 mx-auto mb-4" />
-            <h3 className="text-lg font-black text-zinc-900 uppercase tracking-tight">Sin registros para estos filtros</h3>
-            <p className="text-zinc-500 text-xs font-bold mt-1">Pruebe seleccionando "Historial Completo" o cambiando el objetivo/tipo de novedad.</p>
+            <BookOpen size={44} className="text-zinc-300 mx-auto mb-3" />
+            <h3 className="text-lg font-bold text-zinc-900 tracking-tight">Sin registros para estos filtros</h3>
+            <p className="text-zinc-500 text-xs font-medium mt-1">Pruebe seleccionando "Historial Completo" o cambiando el objetivo/tipo de novedad.</p>
           </div>
         ) : (
           <AnimatePresence>
@@ -529,18 +529,18 @@ export default function GuardBookPage() {
                         />
                         <div>
                           <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="text-base font-black text-zinc-950 uppercase tracking-tight leading-none">
+                            <h3 className="text-sm font-bold text-zinc-950 tracking-tight leading-none">
                               {operatorName}
                             </h3>
-                            <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest bg-zinc-100 text-zinc-600 border border-zinc-200">
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider bg-zinc-100 text-zinc-600 border border-zinc-200">
                               {operatorRole}
                             </span>
                           </div>
 
                           {/* PUESTO / OBJETIVO DE ORIGEN */}
-                          <div className="flex items-center gap-1.5 mt-1.5 text-xs font-bold text-zinc-700">
-                            <Building2 size={14} className="text-[#0F4C5C] shrink-0" />
-                            <span className="text-zinc-900 uppercase font-black">{objectiveName}</span>
+                          <div className="flex items-center gap-1.5 mt-1.5 text-xs text-zinc-700 font-medium">
+                            <Building2 size={13} className="text-[#0F4C5C] shrink-0" />
+                            <span className="text-zinc-900 font-semibold">{objectiveName}</span>
                             {objectiveAddress && (
                               <span className="text-zinc-400 font-normal truncate max-w-[250px]">
                                 ({objectiveAddress})
@@ -554,7 +554,7 @@ export default function GuardBookPage() {
                       <div className="flex flex-col items-start md:items-end gap-1.5 shrink-0">
                         <div className="flex items-center gap-2">
                           <span className={cn(
-                            'flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-black border uppercase tracking-wider',
+                            'flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold border uppercase tracking-wider',
                             'bg-zinc-100 border-zinc-200 text-zinc-800'
                           )}>
                             {typeCfg.icon}
@@ -563,7 +563,7 @@ export default function GuardBookPage() {
 
                           {entry.urgency && entry.urgency !== 'normal' && (
                             <span className={cn(
-                              'px-3 py-1 rounded-xl text-xs font-black border uppercase tracking-wider',
+                              'px-3 py-1 rounded-xl text-xs font-semibold border uppercase tracking-wider',
                               sev.badge, sev.badgeText
                             )}>
                               {sev.label}
@@ -572,11 +572,11 @@ export default function GuardBookPage() {
                         </div>
 
                         {/* Fecha y Hora formateada */}
-                        <div className="flex items-center gap-2 text-xs font-black text-zinc-900 bg-zinc-100/80 px-3 py-1 rounded-lg border border-zinc-200/80 font-mono">
-                          <Calendar size={13} className="text-zinc-500" />
+                        <div className="flex items-center gap-2 text-xs font-mono font-medium text-zinc-700 bg-zinc-100/80 px-3 py-1 rounded-lg border border-zinc-200/80">
+                          <Calendar size={13} className="text-zinc-400" />
                           <span>{createdDate.toLocaleDateString('es-AR', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
                           <span className="text-zinc-300">|</span>
-                          <Clock size={13} className="text-zinc-500" />
+                          <Clock size={13} className="text-zinc-400" />
                           <span>{createdDate.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })} hs</span>
                         </div>
                       </div>
@@ -585,7 +585,7 @@ export default function GuardBookPage() {
 
                     {/* CUERPO DEL REGISTRO / NOVEDAD */}
                     <div className="bg-zinc-50 p-4 rounded-2xl border border-zinc-100">
-                      <p className="text-sm text-zinc-900 font-medium leading-relaxed whitespace-pre-wrap">
+                      <p className="text-sm text-zinc-900 font-normal leading-relaxed whitespace-pre-wrap">
                         {entry.content}
                       </p>
                     </div>
@@ -629,11 +629,11 @@ export default function GuardBookPage() {
                         {entry.latitude && (
                           <div className="flex items-center gap-1.5 bg-zinc-100 px-2.5 py-1 rounded-lg border border-zinc-200">
                             <MapPin size={13} className="text-zinc-500 shrink-0" />
-                            <span className="font-mono text-[11px] font-bold text-zinc-800">
+                            <span className="font-mono text-xs font-semibold tabular-nums text-zinc-800">
                               {Number(entry.latitude).toFixed(5)}, {Number(entry.longitude).toFixed(5)}
                             </span>
                             {entry.tactical_zone && (
-                              <span className="ml-1 text-[9px] font-black text-[#0F4C5C] uppercase tracking-wider bg-[#0F4C5C]/10 px-1.5 py-0.5 rounded border border-[#0F4C5C]/20">
+                              <span className="ml-1 text-[10px] font-semibold text-[#0F4C5C] uppercase tracking-wider bg-[#0F4C5C]/10 px-1.5 py-0.5 rounded border border-[#0F4C5C]/20">
                                 {entry.tactical_zone}
                               </span>
                             )}
@@ -647,14 +647,14 @@ export default function GuardBookPage() {
 
                         {/* Alerta de Reincidencia */}
                         {entry.weekly_alert_count > 3 && (
-                          <span className="px-2.5 py-1 rounded-lg text-[10px] font-black border bg-red-500/10 border-red-500/30 text-red-600 flex items-center gap-1 uppercase tracking-wider">
+                          <span className="px-2.5 py-1 rounded-lg text-xs font-semibold border bg-red-500/10 border-red-500/30 text-red-600 flex items-center gap-1 uppercase tracking-wider">
                             <AlertTriangle size={12} />
                             Reincidente ({entry.weekly_alert_count} alertas esta semana)
                           </span>
                         )}
                       </div>
 
-                      <div className="flex items-center gap-1.5 text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-auto">
+                      <div className="flex items-center gap-1.5 text-xs font-medium text-zinc-400 ml-auto">
                         <CheckCircle2 size={13} className="text-emerald-500" />
                         Sincronizado en Nube
                       </div>
@@ -678,14 +678,14 @@ export default function GuardBookPage() {
                   <Zap size={20} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-black uppercase text-zinc-900 tracking-tight">Publicar Novedad de Gerencia</h3>
+                  <h3 className="text-lg font-bold text-zinc-900 tracking-tight">Publicar Novedad de Gerencia</h3>
                   <p className="text-xs text-zinc-500 font-medium">Se transmitirá inmediatamente a los vigiladores del puesto</p>
                 </div>
               </div>
               <button 
                 type="button"
                 onClick={() => setShowNewEntryModal(false)}
-                className="w-8 h-8 rounded-full bg-zinc-100 text-zinc-500 hover:bg-zinc-200 flex items-center justify-center font-black"
+                className="w-8 h-8 rounded-full bg-zinc-100 text-zinc-500 hover:bg-zinc-200 flex items-center justify-center font-bold"
               >
                 ✕
               </button>
@@ -693,14 +693,14 @@ export default function GuardBookPage() {
 
             <form onSubmit={handleCreateManagerEntry} className="space-y-4">
               <div>
-                <label className="text-[11px] font-black uppercase tracking-wider text-zinc-600 block mb-1.5">
+                <label className="text-xs font-semibold uppercase tracking-wider text-zinc-600 block mb-1.5">
                   1. Objetivo / Puesto Destino:
                 </label>
                 <select
                   required
                   value={managerObjectiveId}
                   onChange={e => setManagerObjectiveId(e.target.value)}
-                  className="w-full h-11 px-3 bg-zinc-50 border border-zinc-200 rounded-xl text-xs font-bold text-zinc-900 uppercase"
+                  className="w-full h-11 px-3 bg-zinc-50 border border-zinc-200 rounded-xl text-xs font-medium text-zinc-900"
                 >
                   <option value="">-- Seleccione un Objetivo --</option>
                   {objectives.map((o: any) => (
@@ -711,13 +711,13 @@ export default function GuardBookPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[11px] font-black uppercase tracking-wider text-zinc-600 block mb-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-zinc-600 block mb-1.5">
                     2. Categoría:
                   </label>
                   <select
                     value={managerEntryType}
                     onChange={e => setManagerEntryType(e.target.value)}
-                    className="w-full h-11 px-3 bg-zinc-50 border border-zinc-200 rounded-xl text-xs font-bold text-zinc-900 uppercase"
+                    className="w-full h-11 px-3 bg-zinc-50 border border-zinc-200 rounded-xl text-xs font-medium text-zinc-900"
                   >
                     <option value="libro_guardia">Novedad General</option>
                     <option value="incidente">Incidente / Aviso</option>
@@ -725,13 +725,13 @@ export default function GuardBookPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="text-[11px] font-black uppercase tracking-wider text-zinc-600 block mb-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-zinc-600 block mb-1.5">
                     3. Urgencia:
                   </label>
                   <select
                     value={managerUrgency}
                     onChange={e => setManagerUrgency(e.target.value)}
-                    className="w-full h-11 px-3 bg-zinc-50 border border-zinc-200 rounded-xl text-xs font-bold text-zinc-900 uppercase"
+                    className="w-full h-11 px-3 bg-zinc-50 border border-zinc-200 rounded-xl text-xs font-medium text-zinc-900"
                   >
                     <option value="normal">⚪ Normal</option>
                     <option value="alta">🟧 Alta</option>
@@ -741,7 +741,7 @@ export default function GuardBookPage() {
               </div>
 
               <div>
-                <label className="text-[11px] font-black uppercase tracking-wider text-zinc-600 block mb-1.5">
+                <label className="text-xs font-semibold uppercase tracking-wider text-zinc-600 block mb-1.5">
                   4. Detalle de la Novedad / Consigna:
                 </label>
                 <textarea
@@ -758,14 +758,14 @@ export default function GuardBookPage() {
                 <button
                   type="button"
                   onClick={() => setShowNewEntryModal(false)}
-                  className="h-12 px-5 rounded-xl text-xs font-bold uppercase tracking-wider border border-zinc-200 text-zinc-600 hover:bg-zinc-50"
+                  className="h-11 px-5 rounded-xl text-xs font-semibold uppercase tracking-wider border border-zinc-200 text-zinc-600 hover:bg-zinc-50"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={isPublishing || !managerContent.trim()}
-                  className="h-12 px-6 rounded-xl text-xs font-black uppercase tracking-widest bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20 disabled:opacity-50 flex items-center gap-2"
+                  className="h-11 px-6 rounded-xl text-xs font-semibold uppercase tracking-wider bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20 disabled:opacity-50 flex items-center gap-2"
                 >
                   {isPublishing ? 'Publicando...' : '📢 Publicar Novedad'}
                 </button>
