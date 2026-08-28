@@ -74,18 +74,39 @@ export default function PanicTriggerModal({
       let operatorName = 'Operador';
       let tenantId: string | null = null;
 
-      // 1. Fetch operator details (name, tenant_id, current_objective_id)
+      // 1. Resolve from Objective if objectiveId is present
+      if (resolvedObjectiveId) {
+        try {
+          const { data: obj } = await supabase
+            .from('objectives')
+            .select('latitude, longitude, tenant_id')
+            .eq('id', resolvedObjectiveId)
+            .maybeSingle();
+
+          if (obj) {
+            if (obj.tenant_id) tenantId = obj.tenant_id;
+            if ((!lat || !lng) && obj.latitude && obj.longitude) {
+              lat = Number(obj.latitude);
+              lng = Number(obj.longitude);
+            }
+          }
+        } catch (e) {
+          console.warn('[PanicModal] Failed to fetch objective details:', e);
+        }
+      }
+
+      // 2. Fetch operator details (name, tenant_id, current_objective_id)
       if (operatorId && operatorId !== 'recurso_demo') {
         try {
           const { data: res } = await supabase
             .from('resources')
             .select('name, tenant_id, current_objective_id')
-            .eq('id', operatorId)
+            .or(`id.eq.${operatorId},assigned_to.eq.${operatorId}`)
             .maybeSingle();
 
           if (res) {
             if (res.name) operatorName = res.name;
-            if (res.tenant_id) tenantId = res.tenant_id;
+            if (!tenantId && res.tenant_id) tenantId = res.tenant_id;
             if (!resolvedObjectiveId && res.current_objective_id) {
               resolvedObjectiveId = res.current_objective_id;
             }
@@ -95,25 +116,18 @@ export default function PanicTriggerModal({
         }
       }
 
-      // 2. If coordinates are missing, resolve from objective
-      if ((!lat || !lng) && resolvedObjectiveId) {
+      // 3. Fallback to SIGPAD_user cookie if tenant_id is still missing
+      if (!tenantId && typeof document !== 'undefined') {
         try {
-          const { data: obj } = await supabase
-            .from('objectives')
-            .select('latitude, longitude')
-            .eq('id', resolvedObjectiveId)
-            .maybeSingle();
-
-          if (obj?.latitude && obj?.longitude) {
-            lat = Number(obj.latitude);
-            lng = Number(obj.longitude);
+          const cookieStr = document.cookie.split('; ').find(row => row.startsWith('SIGPAD_user='));
+          if (cookieStr) {
+            const userObj = JSON.parse(decodeURIComponent(cookieStr.split('=')[1]));
+            if (userObj.tenant_id) tenantId = userObj.tenant_id;
           }
-        } catch (e) {
-          console.warn('[PanicModal] Failed to fetch objective coords:', e);
-        }
+        } catch (e) {}
       }
 
-      // 3. Fallback to browser geolocation if still missing
+      // 4. Fallback to browser geolocation if coords still missing
       if (!lat || !lng) {
         if (typeof navigator !== 'undefined' && navigator.geolocation) {
           navigator.geolocation.getCurrentPosition((pos) => {
@@ -164,7 +178,22 @@ export default function PanicTriggerModal({
           latitude: lat,
           longitude: lng,
           tenant_id: tenantId
-        }) : Promise.resolve()
+        }) : Promise.resolve(),
+        // Also call Server API route for fallback server-side atomic insertion with Service Role
+        fetch('/api/guard-book', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            objective_id: resolvedObjectiveId,
+            resource_id: operatorId || 'op_demo',
+            entry_type: 'emergencia',
+            urgency: 'critica',
+            content: `🚨 ¡ALERTA DE PÁNICO S.O.S ACTIVADA! ${operatorName} en situación de emergencia.`,
+            latitude: lat,
+            longitude: lng,
+            tenant_id: tenantId
+          })
+        }).catch(() => {})
       ]);
 
       // 4. Trigger Server Web Push Notification (requireInteraction: true)

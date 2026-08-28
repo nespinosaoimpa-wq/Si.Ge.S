@@ -81,7 +81,19 @@ export async function GET(req: NextRequest) {
     }
 
     // Fetch queries: for gerente/owner/superadmin, fetch all active objectives cleanly without PostgREST syntax issues
+    // Fetch objectives first so we can use objective IDs to catch any alerts for this tenant
     let objectivesQuery = supabase.from('objectives').select('*');
+    if (!isSuper && tenantId) {
+      objectivesQuery = objectivesQuery.eq('tenant_id', tenantId);
+    }
+    const objectivesRes = await objectivesQuery;
+    const rawObjectives = (objectivesRes.data || []).filter((o: any) => 
+      o.is_active !== false && 
+      o.status !== 'Inactivo' && 
+      o.status !== 'inactivo' && 
+      !o.deleted_at
+    );
+    const tenantObjectiveIds = rawObjectives.map((o: any) => o.id).filter(Boolean);
 
     let resourcesQuery = supabase.from('resources')
       .select('*')
@@ -122,18 +134,24 @@ export async function GET(req: NextRequest) {
       .order('created_at', { ascending: false })
       .limit(10);
 
-    // Apply strict tenant filter for tenant managers
+    // Apply tenant filter with objective fallback
     if (!isSuper && tenantId) {
-      objectivesQuery = objectivesQuery.eq('tenant_id', tenantId);
       resourcesQuery = resourcesQuery.eq('tenant_id', tenantId);
-      guardBookQuery = guardBookQuery.eq('tenant_id', tenantId);
       shiftsQuery = shiftsQuery.eq('tenant_id', tenantId);
-      incidentsQuery = incidentsQuery.eq('tenant_id', tenantId);
-      alarmsQuery = alarmsQuery.eq('tenant_id', tenantId);
+
+      if (tenantObjectiveIds.length > 0) {
+        const idListStr = tenantObjectiveIds.map(id => `"${id}"`).join(',');
+        guardBookQuery = guardBookQuery.or(`tenant_id.eq.${tenantId},objective_id.in.(${idListStr})`);
+        incidentsQuery = incidentsQuery.or(`tenant_id.eq.${tenantId},objective_id.in.(${idListStr})`);
+        alarmsQuery = alarmsQuery.or(`tenant_id.eq.${tenantId},objective_id.in.(${idListStr})`);
+      } else {
+        guardBookQuery = guardBookQuery.eq('tenant_id', tenantId);
+        incidentsQuery = incidentsQuery.eq('tenant_id', tenantId);
+        alarmsQuery = alarmsQuery.eq('tenant_id', tenantId);
+      }
     }
 
-    const [objectivesRes, resourcesRes, incidentsRes, shiftsRes, rawIncidentsRes, alarmsRes] = await Promise.all([
-      objectivesQuery,
+    const [resourcesRes, incidentsRes, shiftsRes, rawIncidentsRes, alarmsRes] = await Promise.all([
       resourcesQuery,
       guardBookQuery,
       shiftsQuery,
@@ -148,13 +166,6 @@ export async function GET(req: NextRequest) {
     if (rawIncidentsRes.error) console.error("❌ Raw incidents fetch error:", JSON.stringify(rawIncidentsRes.error));
     if (alarmsRes?.error) console.error("❌ Alarms fetch error:", JSON.stringify(alarmsRes.error));
 
-    // Filter out inactive and deleted objectives
-    const rawObjectives = (objectivesRes.data || []).filter((o: any) => 
-      o.is_active !== false && 
-      o.status !== 'Inactivo' && 
-      o.status !== 'inactivo' && 
-      !o.deleted_at
-    );
     const rawResources = resourcesRes.data || [];
 
     // Map assigned personnel in memory cleanly

@@ -1,5 +1,6 @@
 import { createServiceClient } from '@/lib/supabase-server';
 import { NextRequest, NextResponse } from 'next/server';
+import { resolveTenantFromRequest } from '@/lib/resolve-tenant';
 
 // GET /api/guard-book?objective_id=X&date=YYYY-MM-DD&start_date=X&end_date=Y&urgency=X&entry_type=Y
 export async function GET(request: NextRequest) {
@@ -13,41 +14,21 @@ export async function GET(request: NextRequest) {
     const entryType = searchParams.get('entry_type');
     const limit = parseInt(searchParams.get('limit') || '300');
 
-    const userCookie = request.cookies.get('SIGPAD_user');
-    if (!userCookie) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
+    const ctx = await resolveTenantFromRequest(request);
+    let tenantId = ctx?.tenantId || null;
+    let isSuper = ctx?.isSuper || false;
 
-    let tenantId: string | null = null;
-    let isSuper = false;
-    let userId: string | null = null;
+    const supabase = createServiceClient();
 
-    try {
-      const user = JSON.parse(decodeURIComponent(userCookie.value));
-      userId = user?.id;
-      tenantId = user?.tenant_id || user?.user_metadata?.tenant_id;
-      isSuper = user?.role === 'superadmin' || user?.user_metadata?.role === 'superadmin';
-    } catch {
-      return NextResponse.json({ error: 'Sesión inválida' }, { status: 401 });
-    }
-
-    if (!tenantId && !isSuper && userId) {
-      const supabase = createServiceClient();
-      const { data: dbUser } = await supabase
-        .from('users')
-        .select('tenant_id')
-        .eq('id', userId)
-        .maybeSingle();
-      if (dbUser?.tenant_id) {
-        tenantId = dbUser.tenant_id;
-      }
+    // Fallback: if tenantId is missing, resolve from objectiveId
+    if (!tenantId && !isSuper && objectiveId && objectiveId !== 'all') {
+      const { data: obj } = await supabase.from('objectives').select('tenant_id').eq('id', objectiveId).maybeSingle();
+      if (obj?.tenant_id) tenantId = obj.tenant_id;
     }
 
     if (!tenantId && !isSuper) {
       return NextResponse.json({ error: 'Inquilino no especificado' }, { status: 400 });
     }
-
-    const supabase = createServiceClient();
 
     let query = supabase
       .from('guard_book_entries')
@@ -199,35 +180,10 @@ export async function GET(request: NextRequest) {
 // POST /api/guard-book — insert a new entry
 export async function POST(request: NextRequest) {
   try {
-    const userCookie = request.cookies.get('SIGPAD_user');
-    if (!userCookie) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
-
-    let tenantId: string | null = null;
-    let isSuper = false;
-    let userId: string | null = null;
-
-    try {
-      const user = JSON.parse(decodeURIComponent(userCookie.value));
-      userId = user?.id;
-      tenantId = user?.tenant_id || user?.user_metadata?.tenant_id;
-      isSuper = user?.role === 'superadmin' || user?.user_metadata?.role === 'superadmin';
-    } catch {
-      return NextResponse.json({ error: 'Sesión inválida' }, { status: 401 });
-    }
-
-    if (!tenantId && !isSuper && userId) {
-      const supabase = createServiceClient();
-      const { data: dbUser } = await supabase
-        .from('users')
-        .select('tenant_id')
-        .eq('id', userId)
-        .maybeSingle();
-      if (dbUser?.tenant_id) {
-        tenantId = dbUser.tenant_id;
-      }
-    }
+    const ctx = await resolveTenantFromRequest(request);
+    let tenantId = ctx?.tenantId || null;
+    let isSuper = ctx?.isSuper || false;
+    let userId = ctx?.userId || null;
 
     const body = await request.json();
     const supabase = createServiceClient();
@@ -251,7 +207,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'resource_id inválido o faltante' }, { status: 400 });
     }
 
-    const targetTenantId = isSuper ? (body.tenant_id || tenantId) : tenantId;
+    let targetTenantId = isSuper ? (body.tenant_id || tenantId) : tenantId;
+
+    if (!targetTenantId && objective_id) {
+      const { data: obj } = await supabase.from('objectives').select('tenant_id').eq('id', objective_id).maybeSingle();
+      if (obj?.tenant_id) targetTenantId = obj.tenant_id;
+    }
+
+    if (!targetTenantId && rawResourceId) {
+      const { data: res } = await supabase.from('resources').select('tenant_id').or(`id.eq.${rawResourceId},assigned_to.eq.${rawResourceId}`).limit(1).maybeSingle();
+      if (res?.tenant_id) targetTenantId = res.tenant_id;
+    }
 
     if (!targetTenantId) {
       return NextResponse.json({ error: 'tenant_id es requerido' }, { status: 400 });

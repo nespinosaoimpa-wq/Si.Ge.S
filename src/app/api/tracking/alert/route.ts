@@ -11,15 +11,18 @@ export async function POST(request: Request) {
     // 1. Fetch details of operator and objective for notification text
     let operatorName = 'Vigilador';
     let objectiveName = 'Puesto Asignado';
+    let tenantId: string | null = null;
 
     try {
-      if (operator_id) {
-        const { data: op } = await supabase.from('resources').select('name').or(`id.eq.${operator_id},assigned_to.eq.${operator_id}`).limit(1).maybeSingle();
-        if (op?.name) operatorName = op.name;
-      }
       if (objective_id) {
-        const { data: obj } = await supabase.from('objectives').select('name').eq('id', objective_id).maybeSingle();
+        const { data: obj } = await supabase.from('objectives').select('name, tenant_id').eq('id', objective_id).maybeSingle();
         if (obj?.name) objectiveName = obj.name;
+        if (obj?.tenant_id) tenantId = obj.tenant_id;
+      }
+      if (!tenantId && operator_id) {
+        const { data: op } = await supabase.from('resources').select('name, tenant_id').or(`id.eq.${operator_id},assigned_to.eq.${operator_id}`).limit(1).maybeSingle();
+        if (op?.name) operatorName = op.name;
+        if (op?.tenant_id) tenantId = op.tenant_id;
       }
     } catch (e) {}
 
@@ -56,7 +59,8 @@ export async function POST(request: Request) {
         objective_id,
         exit_at: now,
         max_distance_meters: distMeters,
-        status: 'pendiente'
+        status: 'pendiente',
+        tenant_id: tenantId
       });
 
       // ════ ALERTA PARA EL GERENTE (TABLA ALARMS) ════
@@ -69,15 +73,18 @@ export async function POST(request: Request) {
         message: `🚨 ABANDONO DE PUESTO: ${operatorName} se alejó ${distMeters}m de ${objectiveName}. CÓMPUTO DE HORAS PAUSADO.`,
         latitude: latitude || 0,
         longitude: longitude || 0,
-        created_at: now
+        created_at: now,
+        tenant_id: tenantId
       });
 
       // ════ ALERTA PUSH / NOTIFICACIÓN PARA GERENCIA Y SUPERVISORES ════
       try {
-        const { data: managers } = await supabase
+        let managerQuery = supabase
           .from('resources')
           .select('id')
           .in('role', ['owner', 'gerente', 'superadmin', 'supervisor']);
+        if (tenantId) managerQuery = managerQuery.eq('tenant_id', tenantId);
+        const { data: managers } = await managerQuery;
 
         if (managers && managers.length > 0) {
           const notifications = managers.map(m => ({
@@ -86,7 +93,8 @@ export async function POST(request: Request) {
             title: '🚨 ABANDONO DE PUESTO - CÓMPUTO PAUSADO',
             body: `El operador ${operatorName} se alejó ${distMeters}m de ${objectiveName}. El conteo de minutos de su turno ha sido CONGELADO automáticamente.`,
             data: { operator_id, objective_id, distance: distMeters, latitude, longitude },
-            created_at: now
+            created_at: now,
+            tenant_id: tenantId
           }));
           await supabase.from('notifications').insert(notifications);
         }
@@ -101,7 +109,8 @@ export async function POST(request: Request) {
             title: '⚠️ REGRESA A TU PUESTO - CÓMPUTO PAUSADO',
             body: `Te has alejado ${distMeters}m de ${objectiveName}. El conteo de horas trabajadas se ha DETENIDO. Regresa a la zona autorizada para reanudarlo.`,
             data: { type: 'geofence_warning', distance: distMeters },
-            created_at: now
+            created_at: now,
+            tenant_id: tenantId
           });
         } catch (err) {}
       }
@@ -156,7 +165,8 @@ export async function POST(request: Request) {
             type: 'novedad',
             title: '✅ REINGRESO DETECTADO - CÓMPUTO REANUDADO',
             body: `Has regresado a la zona autorizada de ${objectiveName}. Se ha reanudado el conteo de minutos de tu turno.`,
-            created_at: now
+            created_at: now,
+            tenant_id: tenantId
           });
         } catch (err) {}
       }
@@ -172,7 +182,8 @@ export async function POST(request: Request) {
         : `✅ REINGRESO AL PUESTO: El operador ${operatorName} ha regresado a ${objectiveName}. Conteo de horas REANUDADO.`,
       latitude: latitude || 0,
       longitude: longitude || 0,
-      urgency: type === 'exit' ? 'critica' : 'normal'
+      urgency: type === 'exit' ? 'critica' : 'normal',
+      tenant_id: tenantId
     });
 
     return NextResponse.json({ success: true, is_paused: type === 'exit' });
