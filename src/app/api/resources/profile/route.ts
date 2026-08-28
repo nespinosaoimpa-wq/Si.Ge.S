@@ -13,65 +13,42 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'User ID or Email is required' }, { status: 400 });
     }
 
-    // ALWAYS use Service Role to bypass RLS for profile linking and objective mapping
     const supabase = createServiceClient();
 
     let resource: any = null;
     let debug: any = { userId, email };
 
-    const cleanEmail = email ? email.toLowerCase().trim() : '';
-
-    // 1. PRIMARY SEARCH: Match exact email in resources table
-    if (cleanEmail) {
-      const { data: byEmail } = await supabase
+    // 1. Search by Email (Primary match for logged in users)
+    if (email) {
+      const cleanEmail = email.toLowerCase().trim();
+      const { data: resourcesByEmail } = await supabase
         .from('resources')
-        .select('*, objectives!current_objective_id(*)')
+        .select('*')
         .ilike('email', cleanEmail)
         .neq('status', 'baja')
-        .limit(1)
-        .maybeSingle();
-
+        .limit(1);
+      
+      const byEmail = resourcesByEmail?.[0];
       if (byEmail) {
         resource = byEmail;
-        debug.foundBy = 'email_exact';
+        debug.foundBy = 'email';
 
+        // Self-heal assigned_to if we have a valid auth userId
         if (userId && userId !== 'recurso_demo' && !byEmail.assigned_to) {
           await supabase
             .from('resources')
             .update({ assigned_to: userId })
             .eq('id', byEmail.id);
+          resource.assigned_to = userId;
+          debug.action = 'linked_by_email_healing';
         }
       }
     }
 
-    // 2. SECONDARY SEARCH: Match by email prefix or name (e.g. nicoespinosa -> Nico Espinosa / S-701)
-    if (!resource && cleanEmail) {
-      const emailPrefix = cleanEmail.split('@')[0].replace(/[0-9._-]/g, '');
-      if (emailPrefix.length >= 3) {
-        const { data: byName } = await supabase
-          .from('resources')
-          .select('*, objectives!current_objective_id(*)')
-          .or(`name.ilike.%${emailPrefix}%,email.ilike.%${emailPrefix}%`)
-          .neq('status', 'baja')
-          .limit(1)
-          .maybeSingle();
-
-        if (byName) {
-          resource = byName;
-          debug.foundBy = 'email_prefix_match';
-          // Self-heal: Update email on the matched resource so exact match works next time!
-          await supabase
-            .from('resources')
-            .update({ email: cleanEmail, assigned_to: userId && userId !== 'recurso_demo' ? userId : byName.assigned_to })
-            .eq('id', byName.id);
-        }
-      }
-    }
-
-    // 3. TERTIARY SEARCH: Match by userId if valid UUID or resource ID
+    // 2. Search by User ID or assigned_to (Secondary match)
     if (!resource && userId && userId !== 'recurso_demo') {
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
-      let resourceQuery = supabase.from('resources').select('*, objectives!current_objective_id(*)');
+      let resourceQuery = supabase.from('resources').select('*');
       
       if (isUUID) {
         resourceQuery = resourceQuery.or(`id.eq.${userId},assigned_to.eq.${userId}`);
@@ -79,56 +56,40 @@ export async function GET(request: Request) {
         resourceQuery = resourceQuery.eq('id', userId);
       }
 
-      const { data: primary } = await resourceQuery
-        .neq('status', 'baja')
-        .order('status', { ascending: true })
-        .limit(1)
-        .maybeSingle();
-      
+      const { data: primaryList } = await resourceQuery.order('status', { ascending: true }).limit(5);
+      const primary = primaryList?.find((r: any) => r.status !== 'baja') || primaryList?.[0];
+
       if (primary) {
         resource = primary;
         debug.foundBy = 'primary_id';
-        if (cleanEmail && !primary.email) {
-          await supabase.from('resources').update({ email: cleanEmail }).eq('id', primary.id);
+        if (email && (!primary.email || primary.email.toLowerCase().trim() !== email.toLowerCase().trim())) {
+          await supabase.from('resources').update({ email: email.toLowerCase().trim() }).eq('id', primary.id);
+          resource.email = email;
         }
       }
     }
 
-    // 4. AUTO-PROVISION LEGAJO: Create official resource if still not found
-    if (!resource && cleanEmail) {
-      try {
-        const rawName = cleanEmail.split('@')[0];
-        const formattedName = rawName.charAt(0).toUpperCase() + rawName.slice(1).replace(/[._-]/g, ' ');
-        const nextId = `S-${Math.floor(1000 + Math.random() * 9000)}`;
+    // 3. Search by Name / Email prefix match (Fuzzy fail-safe match)
+    if (!resource && (email || userId)) {
+      const searchTerm = email ? email.split('@')[0].toLowerCase() : '';
+      const { data: allRes } = await supabase.from('resources').select('*').neq('status', 'baja');
+      
+      if (allRes && allRes.length > 0) {
+        const matched = allRes.find((r: any) => {
+          if (!r.name) return false;
+          const rName = r.name.toLowerCase();
+          if (searchTerm && (rName.includes(searchTerm) || searchTerm.includes(rName.split(' ')[0]))) return true;
+          return false;
+        });
 
-        let autoTenantId: string | null = null;
-        const { data: authUser } = await supabase
-          .from('authorized_users')
-          .select('tenant_id')
-          .ilike('email', cleanEmail)
-          .maybeSingle();
-        if (authUser?.tenant_id) autoTenantId = authUser.tenant_id;
-
-        const { data: newRes } = await supabase
-          .from('resources')
-          .insert({
-            id: nextId,
-            name: formattedName.toLowerCase().includes('nico') ? 'Nico Espinosa' : formattedName,
-            email: cleanEmail,
-            assigned_to: userId && userId !== 'recurso_demo' ? userId : null,
-            status: 'activo',
-            role: 'Vigilador Táctico',
-            ...(autoTenantId ? { tenant_id: autoTenantId } : {})
-          })
-          .select('*, objectives!current_objective_id(*)')
-          .maybeSingle();
-
-        if (newRes) {
-          resource = newRes;
-          debug.action = 'auto_provisioned_legajo';
+        if (matched) {
+          resource = matched;
+          debug.foundBy = 'fuzzy_name_match';
+          if (email && !matched.email) {
+            await supabase.from('resources').update({ email: email.toLowerCase().trim(), assigned_to: userId || matched.assigned_to }).eq('id', matched.id);
+            resource.email = email;
+          }
         }
-      } catch (e) {
-        console.error('[PROFILE_API] Auto-provision error:', e);
       }
     }
 
@@ -141,75 +102,81 @@ export async function GET(request: Request) {
       });
     }
 
-    // Auto-heal missing tenant_id on resource if found in authorized_users
-    if (!resource.tenant_id && (cleanEmail || resource.email)) {
-      try {
-        const checkEmail = (cleanEmail || resource.email).toLowerCase().trim();
-        const { data: authUser } = await supabase
-          .from('authorized_users')
-          .select('tenant_id')
-          .ilike('email', checkEmail)
-          .maybeSingle();
-        if (authUser?.tenant_id) {
-          resource.tenant_id = authUser.tenant_id;
-          await supabase.from('resources').update({ tenant_id: authUser.tenant_id }).eq('id', resource.id);
-        }
-      } catch (e) {}
+    // ═══ MULTI-STRATEGY OBJECTIVE RESOLUTION (WITH SELF-HEALING) ═══
+    let finalObjective: any = null;
+
+    // Strategy 1: Direct link in resources.current_objective_id
+    if (resource.current_objective_id) {
+      const { data: objective } = await supabase
+        .from('objectives')
+        .select('*')
+        .eq('id', resource.current_objective_id)
+        .maybeSingle();
+      
+      if (objective) {
+        finalObjective = objective;
+        debug.objectiveFoundBy = 'resource_current_id';
+      }
     }
 
-    // 🎯 DISCOVERY 2.0: Ensure we have objective details
-    let finalObjective = resource.objectives;
+    // Strategy 2: Active or Programmed shifts in guard_shifts
+    if (!finalObjective && resource.id) {
+      const { data: shiftRecord } = await supabase
+        .from('guard_shifts')
+        .select('objective_id, status')
+        .or(`operator_id.eq.${resource.id}${userId ? `,operator_id.eq.${userId}` : ''}`)
+        .in('status', ['activo', 'active', 'programado'])
+        .order('checkin_time', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      if (shiftRecord?.objective_id) {
+        const { data: shiftObj } = await supabase
+          .from('objectives')
+          .select('*')
+          .eq('id', shiftRecord.objective_id)
+          .maybeSingle();
+        if (shiftObj) {
+          finalObjective = shiftObj;
+          debug.objectiveFoundBy = `guard_shifts_${shiftRecord.status}`;
+        }
+      }
+    }
 
+    // Strategy 3: Search objectives table by assigned_personnel or name match
     if (!finalObjective) {
-      // a. Check by current_objective_id if join failed or was null but ID exists
-      if (resource.current_objective_id) {
-        const { data: objective } = await supabase
-          .from('objectives')
-          .select('*')
-          .eq('id', resource.current_objective_id)
-          .maybeSingle();
-        
-        if (objective) {
-          finalObjective = objective;
-          debug.objectiveFoundBy = 'resource_current_id';
-        }
-      }
+      const { data: allObjs } = await supabase.from('objectives').select('*');
+      if (allObjs && allObjs.length > 0) {
+        const matchedObj = allObjs.find((o: any) => {
+          if (o.resource_id === resource.id || o.operator_id === resource.id) return true;
+          if (Array.isArray(o.assigned_personnel)) {
+            return o.assigned_personnel.some((p: any) => 
+              p.id === resource.id || p.id === userId || 
+              (typeof p === 'string' && (p === resource.id || p === userId)) ||
+              (p.name && resource.name && p.name.toLowerCase().includes(resource.name.toLowerCase()))
+            );
+          }
+          return false;
+        });
 
-      // b. Search by current_operator_id in objectives table
-      if (!finalObjective) {
-        const { data: objByOp } = await supabase
-          .from('objectives')
-          .select('*')
-          .eq('current_operator_id', resource.id)
-          .maybeSingle();
-        
-        if (objByOp) {
-          finalObjective = objByOp;
-          debug.objectiveFoundBy = 'objectives_current_op';
-        }
-      }
-
-      // c. Search in active shifts
-      if (!finalObjective) {
-        const { data: activeShift } = await supabase
-          .from('guard_shifts')
-          .select('objective_id, objectives(*)')
-          .eq('operator_id', resource.id)
-          .in('status', ['activo', 'active'])
-          .order('checkin_time', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        
-        if (activeShift?.objectives) {
-          finalObjective = activeShift.objectives;
-          debug.objectiveFoundBy = 'guard_shifts_active';
+        if (matchedObj) {
+          finalObjective = matchedObj;
+          debug.objectiveFoundBy = 'objectives_assigned_personnel';
         }
       }
     }
 
-    if (finalObjective) {
-      resource.objectives = finalObjective;
+    // ═══ SELF-HEAL RESOURCE RECORD IF OBJECTIVE WAS RESOLVED VIA FALLBACK ═══
+    if (finalObjective && finalObjective.id && resource.current_objective_id !== finalObjective.id) {
+      await supabase
+        .from('resources')
+        .update({ current_objective_id: finalObjective.id })
+        .eq('id', resource.id);
+      resource.current_objective_id = finalObjective.id;
+      debug.action_objective_healed = true;
     }
+
+    resource.objectives = finalObjective || null;
 
     return NextResponse.json({ ...resource, debug });
   } catch (error: any) {
