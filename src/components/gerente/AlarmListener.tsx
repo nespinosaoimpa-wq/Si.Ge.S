@@ -81,11 +81,12 @@ export function AlarmListener() {
         { event: 'INSERT', schema: 'public', table: 'incidents' },
         (payload) => {
           const newIncident = payload.new;
-          if (newIncident.entry_type === 'panic') {
+          if (newIncident.entry_type === 'panic' || newIncident.entry_type === 'emergencia') {
              console.log('🚨 TACTICAL PANIC RECEIVED (INCIDENTS TABLE):', newIncident);
              setPanicAlarm({
                 id: newIncident.id,
                 triggered_by: newIncident.operator_id,
+                objective_id: newIncident.objective_id,
                 alarm_type: 'panico',
                 message: newIncident.content,
                 latitude: newIncident.latitude,

@@ -300,7 +300,11 @@ export async function POST(request: NextRequest) {
       let objLat = latitude;
       let objLng = longitude;
       try {
-        const { data: resData } = await supabase.from('resources').select('name').eq('id', resource_id).maybeSingle();
+        const { data: resData } = await supabase
+          .from('resources')
+          .select('name')
+          .or(`id.eq.${resource_id},assigned_to.eq.${resource_id}`)
+          .maybeSingle();
         if (resData?.name) operatorName = resData.name;
         const { data: objData } = await supabase.from('objectives').select('name, latitude, longitude').eq('id', objective_id).maybeSingle();
         if (objData?.name) objectiveName = objData.name;

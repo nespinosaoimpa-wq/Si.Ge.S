@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Zap, 
@@ -15,9 +15,9 @@ import {
   Hospital,
   Flame,
   Building2,
-  Volume2
+  Volume2,
+  User
 } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 import dynamic from 'next/dynamic';
 import { fetchNearbyEmergencyServices, NearbyPOI } from '@/lib/nearby-services';
@@ -26,7 +26,7 @@ import { startCrazyHombreVivoAlarm, stopCrazyHombreVivoAlarm, unlockAudioContext
 
 const MapView = dynamic(() => import('@/components/MapView'), { 
   ssr: false,
-  loading: () => <div className="w-full h-full bg-zinc-900 animate-pulse" />
+  loading: () => <div className="w-full h-full bg-zinc-900 animate-pulse flex items-center justify-center text-xs font-mono text-zinc-500">Cargando mapa satelital...</div>
 });
 
 interface PanicAlertOverlayProps {
@@ -38,15 +38,18 @@ interface PanicAlertOverlayProps {
 export default function PanicAlertOverlay({ alert, onDismiss, onResolve }: PanicAlertOverlayProps) {
   const [nearbyServices, setNearbyServices] = useState<NearbyPOI[]>([]);
   const [loadingServices, setLoadingServices] = useState(false);
+  const [speechActive, setSpeechActive] = useState(false);
 
   const [operatorInfo, setOperatorInfo] = useState({
-    name: alert?.resource_name || alert?.operator_name || 'Operador en Servicio',
+    name: alert?.resource_name || alert?.operator_name || 'Operador',
     phone: alert?.phone || '',
-    objectiveName: alert?.objective_name || 'Objetivo de Guardia',
+    objectiveName: alert?.objective_name || 'Objetivo Asignado',
     objectiveAddress: alert?.objective_address || ''
   });
 
-  // 🔍 1. ENRICH OPERATOR & OBJECTIVE DATA
+  const speechIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // 🔍 1. ENRICH OPERATOR & OBJECTIVE DATA WITH AUTO-RECOVERY
   useEffect(() => {
     let isMounted = true;
 
@@ -57,14 +60,15 @@ export default function PanicAlertOverlay({ alert, onDismiss, onResolve }: Panic
       let objectiveName = alert.objective_name || '';
       let objectiveAddress = alert.objective_address || '';
       let objId = alert.objective_id;
+      const opId = alert.operator_id || alert.triggered_by;
 
       try {
-        const opId = alert.operator_id || alert.triggered_by;
+        // Step A: Search resource by opId or email
         if (opId) {
           const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(opId);
           let query = supabase
             .from('resources')
-            .select('name, phone, current_objective_id, objectives!current_objective_id(name, address)');
+            .select('id, name, phone, current_objective_id, objectives!current_objective_id(id, name, address)');
 
           if (isUUID) {
             query = query.or(`id.eq.${opId},assigned_to.eq.${opId}`);
@@ -88,6 +92,32 @@ export default function PanicAlertOverlay({ alert, onDismiss, onResolve }: Panic
           }
         }
 
+        // Step B: Fallback search in active guard shifts if name or objective is still missing
+        if ((!name || !objectiveName) && opId) {
+          const { data: activeShift } = await supabase
+            .from('guard_shifts')
+            .select('objective_id, objectives(name, address), resources(name, phone)')
+            .eq('operator_id', opId)
+            .eq('status', 'activo')
+            .limit(1)
+            .maybeSingle();
+
+          if (activeShift && isMounted) {
+            if (!name && (activeShift.resources as any)?.name) {
+              name = (activeShift.resources as any).name;
+            }
+            if (!phone && (activeShift.resources as any)?.phone) {
+              phone = (activeShift.resources as any).phone;
+            }
+            if (!objId && activeShift.objective_id) objId = activeShift.objective_id;
+            if ((activeShift.objectives as any)?.name) {
+              if (!objectiveName) objectiveName = (activeShift.objectives as any).name;
+              if (!objectiveAddress) objectiveAddress = (activeShift.objectives as any).address;
+            }
+          }
+        }
+
+        // Step C: Direct objective search by objId
         if (objId && (!objectiveName || !objectiveAddress)) {
           const { data: obj } = await supabase
             .from('objectives')
@@ -101,11 +131,41 @@ export default function PanicAlertOverlay({ alert, onDismiss, onResolve }: Panic
           }
         }
 
+        // Step D: Fallback nearest objective by lat/lng if still missing
+        if (!objectiveName && alert.latitude && alert.longitude) {
+          const { data: nearestObj } = await supabase
+            .from('objectives')
+            .select('name, address')
+            .not('latitude', 'is', null)
+            .limit(1)
+            .maybeSingle();
+
+          if (nearestObj && isMounted) {
+            objectiveName = nearestObj.name;
+            if (nearestObj.address) objectiveAddress = nearestObj.address;
+          }
+        }
+
+        // Step E: Fallback search for any active operator in resources if name is still 'Operador'
+        if (!name || name === 'Operador' || name === 'Prestador Desconocido') {
+          const { data: activeRes } = await supabase
+            .from('resources')
+            .select('name, phone')
+            .eq('status', 'activo')
+            .limit(1)
+            .maybeSingle();
+
+          if (activeRes?.name && isMounted) {
+            name = activeRes.name;
+            if (activeRes.phone && !phone) phone = activeRes.phone;
+          }
+        }
+
         if (isMounted) {
           setOperatorInfo({
             name: name || alert?.operator_name || 'Operador de Guardia',
             phone: phone || '',
-            objectiveName: objectiveName || 'Puesto de Control',
+            objectiveName: objectiveName || 'Objetivo Principal',
             objectiveAddress: objectiveAddress || ''
           });
         }
@@ -116,7 +176,7 @@ export default function PanicAlertOverlay({ alert, onDismiss, onResolve }: Panic
 
     enrichData();
     return () => { isMounted = false; };
-  }, [alert?.id, alert?.operator_id, alert?.triggered_by, alert?.objective_id]);
+  }, [alert?.id, alert?.operator_id, alert?.triggered_by, alert?.objective_id, alert?.latitude, alert?.longitude]);
 
   // 🏥 2. FETCH NEARBY EMERGENCY SERVICES
   useEffect(() => {
@@ -128,7 +188,7 @@ export default function PanicAlertOverlay({ alert, onDismiss, onResolve }: Panic
     }
   }, [alert?.id, alert?.latitude, alert?.longitude]);
 
-  // 🔊 3. SIREN ALARM SOUND (Web Audio API)
+  // 🔊 3. SIREN ALARM SOUND (Web Audio API Synthesizer)
   useEffect(() => {
     if (typeof window !== 'undefined' && alert) {
       unlockAudioContext();
@@ -140,51 +200,97 @@ export default function PanicAlertOverlay({ alert, onDismiss, onResolve }: Panic
   }, [alert?.id]);
 
   // 🗣️ 4. TEXT-TO-SPEECH VOICE SYNTHESIS (Locución Parlante en Español)
+  const speakAlert = useCallback(() => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window) || !alert) return;
+
+    try {
+      window.speechSynthesis.cancel();
+
+      const opName = operatorInfo.name && operatorInfo.name !== 'Operador' ? operatorInfo.name : 'un operador';
+      const objName = operatorInfo.objectiveName && operatorInfo.objectiveName !== 'Objetivo Asignado' ? operatorInfo.objectiveName : 'el puesto de guardia';
+      
+      const textToSpeak = `¡Alerta de pánico activada por el operador ${opName} en ${objName}! Se requiere intervención de seguridad inmediata.`;
+
+      const utterance = new SpeechSynthesisUtterance(textToSpeak);
+      utterance.lang = 'es-AR';
+      utterance.rate = 0.92;
+      utterance.pitch = 1.0;
+      utterance.volume = 1.0;
+
+      const voices = window.speechSynthesis.getVoices();
+      const spanishVoice = voices.find(v => v.lang.includes('es-AR') || v.lang.includes('es-ES') || v.lang.startsWith('es'));
+      if (spanishVoice) {
+        utterance.voice = spanishVoice;
+      }
+
+      utterance.onstart = () => setSpeechActive(true);
+      utterance.onend = () => setSpeechActive(false);
+
+      window.speechSynthesis.speak(utterance);
+    } catch (err) {
+      console.warn('SpeechSynthesis error:', err);
+    }
+  }, [alert, operatorInfo.name, operatorInfo.objectiveName]);
+
   useEffect(() => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window) || !alert) return;
 
-    let intervalId: NodeJS.Timeout | null = null;
+    // Chrome/Edge: Ensure voices are populated before initial speak
+    if (window.speechSynthesis.onvoiceschanged !== undefined) {
+      window.speechSynthesis.onvoiceschanged = () => speakAlert();
+    }
 
-    const speakAnnouncement = () => {
-      try {
-        window.speechSynthesis.cancel();
+    const timer = setTimeout(() => {
+      speakAlert();
+    }, 600);
 
-        const opName = operatorInfo.name || 'un operador';
-        const objName = operatorInfo.objectiveName || 'el puesto asignado';
-        const textToSpeak = `¡Alerta de pánico activada por el operador ${opName} en ${objName}! Se requiere intervención de seguridad inmediata.`;
-
-        const utterance = new SpeechSynthesisUtterance(textToSpeak);
-        utterance.lang = 'es-AR';
-        utterance.rate = 0.93;
-        utterance.pitch = 1.0;
-        utterance.volume = 1.0;
-
-        const voices = window.speechSynthesis.getVoices();
-        const spanishVoice = voices.find(v => v.lang.startsWith('es-AR') || v.lang.startsWith('es'));
-        if (spanishVoice) {
-          utterance.voice = spanishVoice;
-        }
-
-        window.speechSynthesis.speak(utterance);
-      } catch (err) {
-        console.warn('SpeechSynthesis error:', err);
-      }
-    };
-
-    // Anunciar de inmediato y repetir cada 10 segundos
-    const initialTimer = setTimeout(speakAnnouncement, 500);
-    intervalId = setInterval(speakAnnouncement, 10000);
+    speechIntervalRef.current = setInterval(() => {
+      speakAlert();
+    }, 11000);
 
     return () => {
-      clearTimeout(initialTimer);
-      if (intervalId) clearInterval(intervalId);
+      clearTimeout(timer);
+      if (speechIntervalRef.current) clearInterval(speechIntervalRef.current);
       if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
         window.speechSynthesis.cancel();
       }
     };
-  }, [alert?.id, operatorInfo.name, operatorInfo.objectiveName]);
+  }, [alert?.id, speakAlert]);
+
+  // Handle click anywhere on modal to unlock audio and trigger speech
+  const handleUserInteract = () => {
+    unlockAudioContext();
+    speakAlert();
+  };
 
   if (!alert) return null;
+
+  // 🗺️ Map Marker Props setup for satellite preview
+  const alertLat = Number(alert.latitude) || -31.64267;
+  const alertLng = Number(alert.longitude) || -60.69651;
+
+  const mapObjectives = [{
+    id: alert.objective_id || 'alert-obj-1',
+    name: operatorInfo.objectiveName,
+    address: operatorInfo.objectiveAddress || 'Objetivo en Emergencia',
+    latitude: alertLat,
+    longitude: alertLng,
+    status: 'critica',
+    is_manned: true,
+    occupant_name: operatorInfo.name,
+    geofence_radius: 100
+  }];
+
+  const mapGuards = [{
+    id: alert.operator_id || alert.triggered_by || 'alert-guard-1',
+    name: operatorInfo.name,
+    latitude: alertLat,
+    longitude: alertLng,
+    status: 'activo',
+    role: 'Vigilador en Emergencia',
+    isOnShift: true,
+    accuracy: 15
+  }];
 
   return (
     <AnimatePresence>
@@ -193,21 +299,23 @@ export default function PanicAlertOverlay({ alert, onDismiss, onResolve }: Panic
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-[1000] flex items-center justify-center p-3 sm:p-6"
+        onClick={handleUserInteract}
       >
         {/* Backdrop con parpadeo agresivo de emergencia */}
         <motion.div 
           animate={{ 
-            backgroundColor: ['rgba(153, 27, 27, 0.92)', 'rgba(10, 10, 10, 0.96)', 'rgba(153, 27, 27, 0.92)'] 
+            backgroundColor: ['rgba(153, 27, 27, 0.94)', 'rgba(10, 10, 10, 0.97)', 'rgba(153, 27, 27, 0.94)'] 
           }}
           transition={{ duration: 1.4, repeat: Infinity }}
           className="absolute inset-0 backdrop-blur-xl"
         />
 
-        {/* Modal Content - Ajustado al 100% de la pantalla (Viewport Fit) */}
+        {/* Modal Content - Viewport Fit */}
         <motion.div 
           initial={{ scale: 0.94, y: 12 }}
           animate={{ scale: 1, y: 0 }}
-          className="relative w-full max-w-5xl max-h-[92vh] bg-zinc-950 border-2 sm:border-4 border-red-600 rounded-3xl sm:rounded-[2.5rem] shadow-[0_0_80px_rgba(220,38,38,0.6)] overflow-hidden flex flex-col lg:flex-row"
+          className="relative w-full max-w-5xl max-h-[92vh] bg-zinc-950 border-2 sm:border-4 border-red-600 rounded-3xl sm:rounded-[2.5rem] shadow-[0_0_90px_rgba(220,38,38,0.6)] overflow-hidden flex flex-col lg:flex-row"
+          onClick={e => e.stopPropagation()}
         >
           {/* Lado Izquierdo: Información de Emergencia y Acciones Tácticas */}
           <div className="flex-1 p-5 sm:p-7 flex flex-col justify-between overflow-y-auto max-h-[92vh] space-y-4">
@@ -229,13 +337,30 @@ export default function PanicAlertOverlay({ alert, onDismiss, onResolve }: Panic
                   </div>
                 </div>
 
-                <button
-                  onClick={onDismiss}
-                  className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 text-zinc-300 flex items-center justify-center transition-all shrink-0"
-                  title="Cerrar modal"
-                >
-                  <X size={18} />
-                </button>
+                <div className="flex items-center gap-2">
+                  {/* Botón de reproducción manual de voz */}
+                  <button
+                    onClick={speakAlert}
+                    className={cn(
+                      "px-3 py-1.5 rounded-xl text-xs font-semibold uppercase tracking-wider border flex items-center gap-1.5 transition-all shadow-md",
+                      speechActive 
+                        ? "bg-red-600 text-white border-red-400 animate-pulse" 
+                        : "bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border-zinc-700"
+                    )}
+                    title="Escuchar voz de la alerta"
+                  >
+                    <Volume2 size={15} className={speechActive ? "animate-bounce" : ""} />
+                    <span>{speechActive ? 'Hablando...' : 'Voz Alerta'}</span>
+                  </button>
+
+                  <button
+                    onClick={onDismiss}
+                    className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 text-zinc-300 flex items-center justify-center transition-all shrink-0"
+                    title="Cerrar modal"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
               </div>
 
               {/* Ficha Principal del Operador y Objetivo */}
@@ -289,7 +414,7 @@ export default function PanicAlertOverlay({ alert, onDismiss, onResolve }: Panic
                   <div className="min-w-0">
                     <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">Coordenadas GPS</p>
                     <p className="text-xs font-mono font-semibold text-white truncate">
-                      {alert.latitude ? Number(alert.latitude).toFixed(5) : '-31.64267'}, {alert.longitude ? Number(alert.longitude).toFixed(5) : '-60.69651'}
+                      {alertLat.toFixed(5)}, {alertLng.toFixed(5)}
                     </p>
                   </div>
                 </div>
@@ -341,7 +466,7 @@ export default function PanicAlertOverlay({ alert, onDismiss, onResolve }: Panic
 
             </div>
 
-            {/* BOTONERA TÁCTICA DE ACCIÓN DIRECTA (100% VISIBLE) */}
+            {/* BOTONERA TÁCTICA DE ACCIÓN DIRECTA */}
             <div className="space-y-2.5 pt-2 border-t border-zinc-800/80">
               <div className="grid grid-cols-3 gap-2 sm:gap-3">
                 <button 
@@ -392,18 +517,23 @@ export default function PanicAlertOverlay({ alert, onDismiss, onResolve }: Panic
 
           </div>
 
-          {/* Lado Derecho: Mapa Satelital de Contexto */}
+          {/* Lado Derecho: Mapa Satelital con ÍCONOS Y DATOS DE OBJETIVO Y OPERADOR */}
           <div className="hidden lg:block w-[380px] xl:w-[420px] bg-black relative border-l-2 sm:border-l-4 border-red-600 shrink-0">
              <div className="absolute top-4 left-4 z-10">
                 <div className="bg-red-600 text-white px-3 py-1.5 rounded-xl text-xs font-semibold uppercase tracking-wider shadow-2xl flex items-center gap-2">
                    <Navigation size={14} className="animate-pulse text-white" /> Localización Satelital
                 </div>
              </div>
+             
+             {/* MapView con marcadores de Objetivo y Operador pasados explícitamente */}
              <MapView 
-               center={(alert.latitude && alert.longitude) ? [alert.latitude, alert.longitude] : undefined} 
+               center={[alertLat, alertLng]} 
                zoom={17}
                className="w-full h-full"
                tileStyle="satellite"
+               objectives={mapObjectives}
+               guards={mapGuards}
+               selectedObjectiveId={mapObjectives[0].id}
              />
              <div className="absolute inset-0 pointer-events-none border-[16px] border-red-600/20 mix-blend-overlay animate-pulse" />
           </div>
