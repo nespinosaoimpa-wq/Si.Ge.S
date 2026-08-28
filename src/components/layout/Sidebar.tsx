@@ -19,9 +19,9 @@ const adminItems = [
   { name: 'Mapa', href: '/gerente', icon: MapPin },
   { name: 'Personal', href: '/gerente/personal', icon: Users },
   { name: 'Objetivos', href: '/gerente/objetivos', icon: ClipboardList },
-  { name: 'Libro', href: '/gerente/libro', icon: BookOpen },
+  { name: 'Libro de Novedades', href: '/gerente/libro', icon: BookOpen },
   { name: 'Hombre Vivo', href: '/gerente/hombre-vivo', icon: Activity },
-  { name: 'Recurso Logístico', href: '/gerente/inventario', icon: Package },
+  { name: 'Logística', href: '/gerente/inventario', icon: Package },
   { name: 'Planillas', href: '/gerente/planillas', icon: Calculator },
   { name: 'Accesos', href: '/gerente/accesos', icon: Settings },
 ];

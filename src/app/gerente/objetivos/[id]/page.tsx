@@ -534,11 +534,11 @@ export default function ObjectiveDetail() {
 
   const tabs = [
     { id: 'general', label: 'Resumen', icon: MapPin },
-    { id: 'personal', label: 'Recursos', icon: Users },
+    { id: 'personal', label: 'Operadores', icon: Users },
     { id: 'rondines', label: 'Recorridos', icon: RotateCw },
-    { id: 'libro', label: 'Bitácora', icon: MessageSquare },
+    { id: 'libro', label: 'Novedades', icon: MessageSquare },
     { id: 'historial', label: 'Turnos', icon: Clock },
-    { id: 'herramientas', label: 'Activos', icon: Hammer },
+    { id: 'herramientas', label: 'Logística', icon: Hammer },
     { id: 'liquidacion', label: 'Liquidación', icon: FileText },
   ];
 
@@ -705,7 +705,7 @@ export default function ObjectiveDetail() {
           {activeTab === 'personal' && (
             <div className="space-y-6">
               <div className="flex justify-between items-center">
-                <h3 className="text-[11px] font-black text-zinc-400 uppercase tracking-[0.2em]">Recursos Permanentes</h3>
+                <h3 className="text-[11px] font-black text-zinc-400 uppercase tracking-[0.2em]">Operadores Permanentes</h3>
                 <Button 
                   variant="primary" 
                   size="sm" 

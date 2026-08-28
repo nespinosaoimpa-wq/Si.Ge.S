@@ -338,7 +338,7 @@ export default function InventarioHub() {
             <div className="w-12 h-12 bg-white rounded-2xl shadow-sm flex items-center justify-center text-zinc-950 border border-zinc-200">
                <Box size={24} />
             </div>
-            <h1 className="text-3xl lg:text-4xl font-black text-zinc-950 tracking-tighter uppercase italic">Recursos Logísticos</h1>
+            <h1 className="text-3xl lg:text-4xl font-black text-zinc-950 tracking-tighter uppercase italic">Logística y Equipamiento</h1>
           </div>
           <p className="text-[11px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-16">
             Carga y Gestión Patrimonial de Artículos, Equipamiento y Armamento
