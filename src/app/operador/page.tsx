@@ -134,11 +134,20 @@ export default function GuardiaDashboard() {
           const res = await response.json();
           
           if (res && !res.error) {
-            if (res.objectives) {
-              setAssignedObjective(Array.isArray(res.objectives) ? res.objectives[0] : res.objectives);
-            } else if (res.current_objective_id) {
-              setAssignedObjective(res.objectives);
+            let targetObj = res.objectives 
+              ? (Array.isArray(res.objectives) ? res.objectives[0] : res.objectives)
+              : null;
+
+            if (!targetObj && res.current_objective_id) {
+              const { data: directObj } = await supabase
+                .from('objectives')
+                .select('*')
+                .eq('id', res.current_objective_id)
+                .maybeSingle();
+              if (directObj) targetObj = directObj;
             }
+
+            setAssignedObjective(targetObj);
 
             // Fetch scheduled shifts for this operator
             const { data: programmed } = await supabase

@@ -13,11 +13,14 @@ import {
   X,
   UserCheck,
   UserMinus,
-  AlertCircle
+  AlertCircle,
+  RefreshCw,
+  UserCog
 } from 'lucide-react';
-import { Card } from '@/components/ui/Card';
+import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 
 export default function AuthorizedUsersPage() {
@@ -36,10 +39,13 @@ export default function AuthorizedUsersPage() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/authorized-users');
-      if (!res.ok) throw new Error('Error al obtener lista de autorizaciones');
-      const data = await res.json();
-      setUsers(Array.isArray(data) ? data : []);
+      const { data, error } = await supabase
+        .from('authorized_users')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setUsers(data || []);
     } catch (err: any) {
       console.error('Error fetching authorized users:', err);
     } finally {
@@ -51,37 +57,61 @@ export default function AuthorizedUsersPage() {
     e.preventDefault();
     if (!newEmail) return;
 
+    const cleanEmail = newEmail.toLowerCase().trim();
+
     try {
-      const res = await fetch('/api/authorized-users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: newEmail.toLowerCase().trim(),
+      // 1. UPSERT in authorized_users (prevents duplicate key errors)
+      const { error } = await supabase
+        .from('authorized_users')
+        .upsert({
+          email: cleanEmail,
           role: newRole,
           status: 'approved',
-        }),
-      });
+          approved_at: new Date().toISOString(),
+        }, { onConflict: 'email' });
 
-      const data = await res.json().catch(() => ({}));
-      const emailClean = newEmail.toLowerCase().trim();
-      const newUserObj = {
-        id: data?.id || 'auth-' + Date.now(),
-        email: emailClean,
-        role: newRole,
-        status: 'approved',
-        created_at: new Date().toISOString()
-      };
+      if (error) throw error;
 
-      setUsers(prev => [newUserObj, ...prev.filter(u => u.email?.toLowerCase() !== emailClean)]);
+      // 2. Cascade update resources table if a legajo exists for this email
+      await supabase
+        .from('resources')
+        .update({ 
+          role: newRole === 'gerente' ? 'Gerente' : 'vigilador',
+          status: 'active'
+        })
+        .ilike('email', cleanEmail);
 
       setNewEmail('');
       setIsAdding(false);
-      setStatusMsg({ type: 'success', text: `Usuario ${emailClean} autorizado con éxito` });
+      setStatusMsg({ type: 'success', text: `Acceso asignado como ${newRole.toUpperCase()} con éxito` });
       fetchUsers();
       
-      setTimeout(() => setStatusMsg(null), 3000);
+      setTimeout(() => setStatusMsg(null), 3500);
     } catch (err: any) {
       setStatusMsg({ type: 'error', text: err.message || 'Error al autorizar usuario' });
+    }
+  };
+
+  const changeRole = async (userRecord: any, targetRole: string) => {
+    try {
+      const { error } = await supabase
+        .from('authorized_users')
+        .update({ role: targetRole })
+        .eq('id', userRecord.id);
+
+      if (error) throw error;
+
+      // Cascade update resources table
+      await supabase
+        .from('resources')
+        .update({ role: targetRole === 'gerente' ? 'Gerente' : 'vigilador' })
+        .ilike('email', userRecord.email);
+
+      setStatusMsg({ type: 'success', text: `Rol de ${userRecord.email} cambiado a ${targetRole.toUpperCase()}` });
+      fetchUsers();
+      setTimeout(() => setStatusMsg(null), 3000);
+    } catch (err: any) {
+      alert('Error al cambiar rol: ' + err.message);
     }
   };
 
@@ -89,20 +119,19 @@ export default function AuthorizedUsersPage() {
     const newStatus = currentStatus === 'approved' ? 'revoked' : 'approved';
     const approvedAt = newStatus === 'approved' ? new Date().toISOString() : null;
 
+    // Optimistic update
     const previousUsers = [...users];
     setUsers(prev => prev.map(u => u.id === id ? { ...u, status: newStatus, approved_at: approvedAt } : u));
 
     try {
-      const res = await fetch(`/api/authorized-users/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
-      });
+      const { error } = await supabase
+        .from('authorized_users')
+        .update({ status: newStatus, approved_at: approvedAt })
+        .eq('id', id);
 
-      if (!res.ok) {
-        setUsers(previousUsers);
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Error al actualizar estado');
+      if (error) {
+        setUsers(previousUsers); // Rollback
+        throw error;
       }
       
       setStatusMsg({ 
@@ -111,40 +140,48 @@ export default function AuthorizedUsersPage() {
       });
       setTimeout(() => setStatusMsg(null), 3000);
     } catch (err: any) {
-      console.warn('Status toggle notice:', err?.message);
+      alert('Error updating status: ' + err.message);
+      fetchUsers();
     }
   };
 
-  const deleteUser = async (id: string) => {
-    if (!confirm('¿Seguro que desea eliminar esta autorización? El usuario ya no podrá ingresar.')) return;
+  const deleteUser = async (userRecord: any) => {
+    if (!confirm(`¿Seguro que deseas eliminar la autorización de ${userRecord.email}? Se desvinculará por completo.`)) return;
 
+    // Optimistic update
     const previousUsers = [...users];
-    setUsers(prev => prev.filter(u => u.id !== id));
+    setUsers(prev => prev.filter(u => u.id !== userRecord.id));
 
     try {
-      const res = await fetch(`/api/authorized-users/${id}`, {
-        method: 'DELETE',
-      });
+      // 1. Delete from authorized_users
+      const { error: authErr } = await supabase
+        .from('authorized_users')
+        .delete()
+        .eq('id', userRecord.id);
 
-      if (!res.ok) {
-        setUsers(previousUsers);
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Error al eliminar autorización');
-      }
+      if (authErr) throw authErr;
 
-      setStatusMsg({ type: 'success', text: 'Autorización eliminada correctamente' });
+      // 2. Cascade delete from resources table if matching email
+      await supabase
+        .from('resources')
+        .delete()
+        .ilike('email', userRecord.email);
+
+      setStatusMsg({ type: 'success', text: 'Acceso y legajo eliminados correctamente' });
       setTimeout(() => setStatusMsg(null), 3000);
     } catch (err: any) {
-      console.warn('Delete authorization notice:', err?.message);
+      setUsers(previousUsers); // Rollback
+      alert('Error eliminando usuario: ' + err.message);
+      fetchUsers();
     }
   };
 
   const filteredUsers = users.filter(u => 
-    (u.email || '').toLowerCase().includes(searchTerm.toLowerCase())
+    u.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
-    <div className="p-6 lg:p-10 max-w-5xl mx-auto space-y-8 bg-zinc-50 min-h-screen text-zinc-900 pb-32">
+    <div className="p-6 lg:p-10 max-w-5xl mx-auto space-y-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -152,13 +189,14 @@ export default function AuthorizedUsersPage() {
             <div className="w-10 h-10 bg-[#0F4C5C]/10 text-[#0F4C5C] rounded-xl flex items-center justify-center">
               <Shield size={24} />
             </div>
-            <h1 className="text-3xl font-black text-[#0F4C5C] tracking-tighter uppercase italic">Control de Accesos</h1>
+            <h1 className="text-3xl font-black text-gray-900 tracking-tighter uppercase italic">Control de Accesos</h1>
           </div>
-          <p className="text-zinc-500 text-sm font-medium mt-2">Whitelist de personal autorizado para ingresar a la plataforma.</p>
+          <p className="text-gray-500 text-sm font-medium mt-2">Whitelist de personal autorizado para ingresar a la plataforma.</p>
         </div>
         <Button 
+          variant="primary" 
           onClick={() => setIsAdding(true)}
-          className="h-12 px-6 rounded-2xl bg-[#0F4C5C] hover:bg-[#0c3c49] text-white shadow-lg shadow-[#0F4C5C]/20 uppercase font-black text-xs tracking-widest gap-2"
+          className="h-12 px-6 rounded-2xl shadow-lg shadow-[#0F4C5C]/20 bg-[#0F4C5C] text-white uppercase font-black text-xs tracking-widest gap-2"
         >
           <Plus size={18} /> Autorizar Email
         </Button>
@@ -169,8 +207,8 @@ export default function AuthorizedUsersPage() {
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           className={cn(
-            "p-4 rounded-xl border flex items-center gap-3 text-sm font-bold",
-            statusMsg.type === 'success' ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-red-50 border-red-200 text-red-700"
+            "p-4 rounded-xl border flex items-center gap-3 text-sm font-bold shadow-md",
+            statusMsg.type === 'success' ? "bg-green-50 border-green-200 text-green-700" : "bg-red-50 border-red-200 text-red-700"
           )}
         >
           {statusMsg.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
@@ -179,30 +217,30 @@ export default function AuthorizedUsersPage() {
       )}
 
       {/* Main Content */}
-      <Card className="border-none shadow-2xl shadow-zinc-200/50 overflow-hidden bg-white">
-        <div className="p-4 border-b border-zinc-100 flex items-center gap-3">
-          <Search size={18} className="text-zinc-400" />
+      <Card className="border-none shadow-2xl shadow-gray-200/50 overflow-hidden">
+        <div className="p-4 border-b border-gray-50 flex items-center gap-3">
+          <Search size={18} className="text-gray-400" />
           <input 
             type="text"
             placeholder="Buscar por email..."
-            className="flex-1 bg-transparent border-none focus:outline-none text-sm placeholder:text-zinc-400 font-medium text-zinc-900"
+            className="flex-1 bg-transparent border-none focus:outline-none text-sm placeholder:text-gray-300 font-medium"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
 
-        <div className="divide-y divide-zinc-100">
+        <div className="divide-y divide-gray-50">
           {loading ? (
              <div className="p-20 flex flex-col items-center justify-center gap-4">
-                <div className="w-10 h-10 border-3 border-zinc-100 border-t-[#0F4C5C] rounded-full animate-spin" />
-                <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Sincronizando Whitelist...</p>
+                <div className="w-10 h-10 border-3 border-gray-100 border-t-[#0F4C5C] rounded-full animate-spin" />
+                <p className="text-xs font-bold text-gray-300 uppercase tracking-widest">Sincronizando Whitelist...</p>
              </div>
           ) : filteredUsers.length === 0 ? (
             <div className="p-20 text-center space-y-4">
-               <div className="w-16 h-16 bg-zinc-50 rounded-3xl flex items-center justify-center mx-auto text-zinc-300">
+               <div className="w-16 h-16 bg-gray-50 rounded-3xl flex items-center justify-center mx-auto text-gray-200">
                   <Shield size={32} />
                </div>
-               <p className="text-zinc-400 font-medium">No hay usuarios autorizados que coincidan con la búsqueda.</p>
+               <p className="text-gray-400 font-medium">No hay usuarios autorizados que coincidan con la búsqueda.</p>
             </div>
           ) : (
             filteredUsers.map((user, i) => (
@@ -211,25 +249,39 @@ export default function AuthorizedUsersPage() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: i * 0.05 }}
-                className="p-5 flex flex-col sm:flex-row items-center gap-4 hover:bg-zinc-50/50 transition-colors"
+                className="p-5 flex flex-col sm:flex-row items-center gap-4 hover:bg-gray-50/50 transition-colors"
               >
                 <div className={cn(
-                  "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0",
-                  user.status === 'approved' ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"
+                  "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm",
+                  user.status === 'approved' ? "bg-green-50 text-green-600 border border-green-100" : "bg-red-50 text-red-600 border border-red-100"
                 )}>
                   <Mail size={20} />
                 </div>
                 
                 <div className="flex-1 min-w-0 text-center sm:text-left">
-                  <p className="text-sm font-black text-zinc-900 truncate">{user.email}</p>
-                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-1">
-                    <span className="px-2 py-0.5 bg-zinc-100 text-[10px] font-black text-zinc-500 uppercase rounded-md tracking-tighter">
-                      {user.role}
-                    </span>
-                    <span className="text-zinc-300">•</span>
-                    <div className="flex items-center gap-1 text-[10px] text-zinc-400 font-bold uppercase tracking-tighter">
+                  <p className="text-sm font-black text-gray-900 truncate">{user.email}</p>
+                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-1.5">
+                    
+                    {/* Role Selector Dropdown */}
+                    <select
+                      value={user.role || 'operador'}
+                      onChange={(e) => changeRole(user, e.target.value)}
+                      className={cn(
+                        "px-2.5 py-1 text-[10px] font-black uppercase rounded-lg border tracking-tighter cursor-pointer focus:outline-none transition-all",
+                        user.role === 'gerente' 
+                          ? "bg-amber-50 text-amber-700 border-amber-200" 
+                          : "bg-blue-50 text-blue-700 border-blue-200"
+                      )}
+                    >
+                      <option value="operador">OPERADOR / VIGILADOR</option>
+                      <option value="gerente">GERENTE / ADMINISTRADOR</option>
+                      <option value="cliente">CLIENTE V.I.P</option>
+                    </select>
+
+                    <span className="text-gray-300">•</span>
+                    <div className="flex items-center gap-1 text-[10px] text-gray-400 font-bold uppercase tracking-tighter">
                       <Clock size={12} />
-                      Desde {user.created_at ? new Date(user.created_at).toLocaleDateString() : 'Hoy'}
+                      Desde {new Date(user.created_at).toLocaleDateString()}
                     </div>
                   </div>
                 </div>
@@ -240,8 +292,8 @@ export default function AuthorizedUsersPage() {
                     className={cn(
                       "flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border-2",
                       user.status === 'approved' 
-                        ? "border-emerald-100 bg-emerald-50 text-emerald-700 hover:bg-emerald-100" 
-                        : "border-zinc-100 bg-white text-zinc-400 hover:bg-zinc-50"
+                        ? "border-green-100 bg-green-50 text-green-700 hover:bg-green-100" 
+                        : "border-gray-100 bg-white text-gray-400 hover:bg-gray-50"
                     )}
                   >
                     {user.status === 'approved' ? <UserCheck size={14} /> : <UserMinus size={14} />}
@@ -249,8 +301,9 @@ export default function AuthorizedUsersPage() {
                   </button>
                   
                   <button 
-                    onClick={() => deleteUser(user.id)}
-                    className="p-3 text-zinc-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                    onClick={() => deleteUser(user)}
+                    className="p-3 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                    title="Eliminar autorización y legajo"
                   >
                     <Trash2 size={18} />
                   </button>
@@ -281,17 +334,17 @@ export default function AuthorizedUsersPage() {
               <div className="absolute top-0 left-0 w-full h-2 bg-[#0F4C5C]" />
               <div className="flex justify-between items-start mb-8">
                 <div>
-                  <h3 className="text-2xl font-black text-zinc-900 uppercase tracking-tighter italic">Autorizar Acceso</h3>
-                  <p className="text-sm text-zinc-400 font-medium">Habilitar email corporativo o personal.</p>
+                  <h3 className="text-2xl font-black text-gray-900 uppercase tracking-tighter italic">Autorizar Acceso</h3>
+                  <p className="text-sm text-gray-400 font-medium">Habilitar email corporativo o personal.</p>
                 </div>
-                <button onClick={() => setIsAdding(false)} className="p-2 text-zinc-300 hover:text-zinc-500 rounded-full">
+                <button onClick={() => setIsAdding(false)} className="p-2 text-gray-300 hover:text-gray-500 rounded-full">
                    <X size={24} />
                 </button>
               </div>
 
               <form onSubmit={handleAddUser} className="space-y-6">
                 <div className="space-y-2">
-                   <label className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em] ml-1">Email de Usuario</label>
+                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Email de Usuario</label>
                    <Input 
                     type="email" 
                     placeholder="nombre@gmail.com" 
@@ -303,9 +356,9 @@ export default function AuthorizedUsersPage() {
                 </div>
 
                 <div className="space-y-2">
-                   <label className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em] ml-1">Nivel de Operación</label>
+                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Nivel de Operación</label>
                    <select 
-                    className="w-full h-14 bg-zinc-50 border border-zinc-200 rounded-2xl px-4 text-sm font-bold uppercase tracking-tight focus:outline-none focus:ring-2 focus:ring-[#0F4C5C]/20 appearance-none text-zinc-900"
+                    className="w-full h-14 bg-gray-50 border border-gray-100 rounded-2xl px-4 text-sm font-bold uppercase tracking-tight focus:outline-none focus:ring-2 focus:ring-[#0F4C5C]/20 appearance-none cursor-pointer"
                     value={newRole}
                     onChange={(e) => setNewRole(e.target.value)}
                     style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%23a1a1aa\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem center', backgroundSize: '1rem' }}
@@ -317,16 +370,17 @@ export default function AuthorizedUsersPage() {
                 </div>
 
                 <div className="pt-4 flex gap-3">
-                   <button 
+                   <Button 
                     type="button" 
-                    className="flex-1 h-14 rounded-2xl text-[10px] font-black uppercase tracking-widest text-zinc-400 bg-zinc-100 hover:bg-zinc-200"
+                    variant="ghost" 
+                    className="flex-1 h-14 rounded-2xl text-[10px] font-black uppercase tracking-widest text-gray-400"
                     onClick={() => setIsAdding(false)}
                    >
                      Cancelar
-                   </button>
+                   </Button>
                    <Button 
                     type="submit" 
-                    className="flex-1 h-14 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-[#0F4C5C] hover:bg-[#0c3c49] text-white shadow-xl shadow-[#0F4C5C]/20"
+                    className="flex-1 h-14 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-[#0F4C5C] text-white shadow-xl shadow-[#0F4C5C]/20"
                    >
                      Confirmar Alta
                    </Button>
