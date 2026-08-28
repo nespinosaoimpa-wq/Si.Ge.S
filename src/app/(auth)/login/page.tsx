@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Key, Mail, ChevronRight, UserCircle, Shield } from 'lucide-react';
+import { Key, Mail, ChevronRight, UserCircle, Shield, Eye, EyeOff } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { SIGPADIcon } from '@/components/ui/SIGPADLogo';
 import Link from 'next/link';
@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState('operador');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -196,14 +197,24 @@ export default function LoginPage() {
                 <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider ml-1">
                   Código de Acceso
                 </label>
-                <Input
-                  type="password"
-                  placeholder="••••••••••••"
-                  className="rounded-2xl h-12 border-zinc-800 bg-zinc-950/60 text-white text-xs placeholder-zinc-500 focus:border-zinc-700 font-mono"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
+                <div className="relative">
+                  <Input
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="••••••••••••"
+                    className="rounded-2xl h-12 border-zinc-800 bg-zinc-950/60 text-white text-xs placeholder-zinc-500 focus:border-zinc-700 font-mono pr-10"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white p-1 transition-colors cursor-pointer"
+                    title={showPassword ? "Ocultar contraseña" : "Ver contraseña"}
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2 pt-2">
