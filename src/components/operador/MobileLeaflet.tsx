@@ -482,16 +482,15 @@ export default function MobileLeaflet({
               pitchAlignment="viewport"
               rotationAlignment="viewport"
             >
-              <div className="flex flex-col items-center pointer-events-none select-none">
+              <div className="flex flex-col items-center pointer-events-none select-none pb-0">
                 {/* Objective Label */}
                 <div className="bg-zinc-950/90 backdrop-blur-sm px-2.5 py-1 rounded-xl shadow-lg border border-[#0F4C5C]/50 mb-1">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-[#0F4C5C] whitespace-nowrap">{dest.name}</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-[#0F4C5C] whitespace-nowrap">{dest.name}</p>
                 </div>
                 {/* Pin Tip Wrapper */}
                 <div className="relative w-8 h-8 flex items-center justify-center">
-                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 bg-[#0F4C5C]/10 border border-[#0F4C5C]/25 rounded-full animate-ping pointer-events-none" style={{ animationDuration: '2.5s' }} />
-                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-[#0F4C5C]/20 rounded-full pointer-events-none" />
-                  <MapPin className="relative z-10 w-7 h-7 text-[#0F4C5C] fill-black drop-shadow-md" />
+                  <div className="absolute inset-0 bg-[#0F4C5C]/20 rounded-full animate-ping pointer-events-none" style={{ animationDuration: '2.5s' }} />
+                  <MapPin className="relative z-10 w-8 h-8 text-[#0F4C5C] fill-black drop-shadow-md" />
                 </div>
               </div>
             </Marker>

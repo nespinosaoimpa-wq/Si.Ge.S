@@ -101,6 +101,14 @@ export async function GET(request: Request) {
         const formattedName = rawName.charAt(0).toUpperCase() + rawName.slice(1).replace(/[._-]/g, ' ');
         const nextId = `S-${Math.floor(1000 + Math.random() * 9000)}`;
 
+        let autoTenantId: string | null = null;
+        const { data: authUser } = await supabase
+          .from('authorized_users')
+          .select('tenant_id')
+          .ilike('email', cleanEmail)
+          .maybeSingle();
+        if (authUser?.tenant_id) autoTenantId = authUser.tenant_id;
+
         const { data: newRes } = await supabase
           .from('resources')
           .insert({
@@ -109,7 +117,8 @@ export async function GET(request: Request) {
             email: cleanEmail,
             assigned_to: userId && userId !== 'recurso_demo' ? userId : null,
             status: 'activo',
-            role: 'Vigilador Táctico'
+            role: 'Vigilador Táctico',
+            ...(autoTenantId ? { tenant_id: autoTenantId } : {})
           })
           .select('*, objectives!current_objective_id(*)')
           .maybeSingle();
@@ -130,6 +139,22 @@ export async function GET(request: Request) {
         name: email ? email.split('@')[0] : 'Operador (Enlazando...)',
         isRecovering: true 
       });
+    }
+
+    // Auto-heal missing tenant_id on resource if found in authorized_users
+    if (!resource.tenant_id && (cleanEmail || resource.email)) {
+      try {
+        const checkEmail = (cleanEmail || resource.email).toLowerCase().trim();
+        const { data: authUser } = await supabase
+          .from('authorized_users')
+          .select('tenant_id')
+          .ilike('email', checkEmail)
+          .maybeSingle();
+        if (authUser?.tenant_id) {
+          resource.tenant_id = authUser.tenant_id;
+          await supabase.from('resources').update({ tenant_id: authUser.tenant_id }).eq('id', resource.id);
+        }
+      } catch (e) {}
     }
 
     // 🎯 DISCOVERY 2.0: Ensure we have objective details

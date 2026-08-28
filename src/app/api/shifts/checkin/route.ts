@@ -171,9 +171,36 @@ export async function POST(request: Request) {
       });
     }
 
-    // 4. Create the shift record
-    // IMPORTANT: Inject tenant_id explicitly — Service Role client cannot use auth.uid() for the trigger
-    const operatorTenantId = resourceRecord?.tenant_id || null;
+    // 4. Resolve tenant_id for the operator and shift
+    let operatorTenantId = resourceRecord?.tenant_id || null;
+
+    if (!operatorTenantId && objective_id && objective_id !== 'null') {
+      try {
+        const { data: objData } = await supabase
+          .from('objectives')
+          .select('tenant_id')
+          .eq('id', objective_id)
+          .maybeSingle();
+        if (objData?.tenant_id) {
+          operatorTenantId = objData.tenant_id;
+        }
+      } catch (e) {}
+    }
+
+    if (!operatorTenantId && (email || resourceRecord?.email)) {
+      try {
+        const checkEmail = (email || resourceRecord?.email).trim().toLowerCase();
+        const { data: authUser } = await supabase
+          .from('authorized_users')
+          .select('tenant_id')
+          .ilike('email', checkEmail)
+          .maybeSingle();
+        if (authUser?.tenant_id) {
+          operatorTenantId = authUser.tenant_id;
+        }
+      } catch (e) {}
+    }
+
     const { data: shift, error: shiftError } = await supabase
       .from('guard_shifts')
       .insert({
@@ -194,7 +221,7 @@ export async function POST(request: Request) {
       throw shiftError;
     }
 
-    // 5. Update resource: set active, link shift and objective
+    // 5. Update resource: set active, link shift, objective and tenant_id
     await supabase
       .from('resources')
       .update({
@@ -204,6 +231,7 @@ export async function POST(request: Request) {
         current_objective_id: (objective_id && objective_id !== 'null') ? objective_id : resourceRecord.current_objective_id,
         current_shift_id: shift.id,
         last_gps_update: new Date().toISOString(),
+        ...(operatorTenantId ? { tenant_id: operatorTenantId } : {}),
       })
       .eq('id', finalResourceId);
 
