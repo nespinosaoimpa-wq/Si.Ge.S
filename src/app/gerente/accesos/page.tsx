@@ -15,7 +15,8 @@ import {
   UserMinus,
   AlertCircle,
   RefreshCw,
-  UserCog
+  UserCog,
+  Key
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -142,6 +143,30 @@ export default function AuthorizedUsersPage() {
     } catch (err: any) {
       alert('Error updating status: ' + err.message);
       fetchUsers();
+    }
+  };
+
+  const resetPassword = async (userRecord: any) => {
+    const newPass = prompt(`Ingresá la nueva contraseña para ${userRecord.email}:`, '123456');
+    if (!newPass) return;
+
+    try {
+      const res = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: userRecord.email,
+          newPassword: newPass,
+          adminReset: true
+        })
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || 'Error al restablecer clave.');
+
+      setStatusMsg({ type: 'success', text: `Clave de ${userRecord.email} restablecida a '${newPass}'` });
+      setTimeout(() => setStatusMsg(null), 4000);
+    } catch (err: any) {
+      alert('Error: ' + err.message);
     }
   };
 
@@ -286,7 +311,16 @@ export default function AuthorizedUsersPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 mt-4 sm:mt-0">
+                <div className="flex flex-wrap items-center gap-2 mt-4 sm:mt-0">
+                  <button 
+                    onClick={() => resetPassword(user)}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border-2 border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100 shadow-sm"
+                    title="Establecer o blanquear contraseña de forma inmediata"
+                  >
+                    <Key size={14} />
+                    Blanquear Clave
+                  </button>
+
                   <button 
                     onClick={() => toggleStatus(user.id, user.status)}
                     className={cn(

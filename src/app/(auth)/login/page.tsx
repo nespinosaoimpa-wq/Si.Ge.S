@@ -215,6 +215,34 @@ export default function LoginPage() {
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
+                <div className="flex justify-end pt-1">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!email) {
+                        alert("Por favor, escribí tu correo electrónico arriba para solicitar la recuperación.");
+                        return;
+                      }
+                      setLoading(true);
+                      try {
+                        const res = await fetch('/api/auth/reset-password', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ email })
+                        });
+                        const data = await res.json();
+                        alert(data.message || "Solicitud de recuperación enviada.");
+                      } catch (err: any) {
+                        alert("Error: " + err.message);
+                      } finally {
+                        setLoading(false);
+                      }
+                    }}
+                    className="text-[10px] font-bold text-zinc-400 hover:text-white transition-colors uppercase tracking-wider"
+                  >
+                    ¿Olvidaste tu contraseña?
+                  </button>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2 pt-2">
@@ -259,13 +287,16 @@ export default function LoginPage() {
               </Button>
             </form>
 
-            <div className="text-center pt-4 border-t border-zinc-800 mt-6">
-              <span className="text-xs text-zinc-500 font-normal">
+            <div className="text-center pt-4 border-t border-zinc-800 mt-6 space-y-2">
+              <p className="text-xs text-zinc-500 font-normal">
                 ¿Es tu primera vez aquí?{' '}
-              </span>
-              <Link href="/register" className="text-xs font-bold text-white hover:underline">
-                Crear cuenta de personal
-              </Link>
+                <Link href="/register" className="text-xs font-bold text-white hover:underline ml-1">
+                  Crear cuenta de personal
+                </Link>
+              </p>
+              <p className="text-[10px] text-zinc-400 font-medium">
+                💡 Si olvidaste tu clave, también puedes pedir a Gerencia que te la blanquee en 5 segundos desde el panel.
+              </p>
             </div>
           </div>
         </CardContent>
