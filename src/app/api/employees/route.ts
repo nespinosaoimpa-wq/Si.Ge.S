@@ -1,11 +1,11 @@
 import { createServiceClient } from '@/lib/supabase-server';
 import { isConfigured } from '@/lib/supabase';
 import { NextRequest, NextResponse } from 'next/server';
+import { resolveTenantFromRequest } from '@/lib/resolve-tenant';
 
 export async function GET(req: NextRequest) {
   try {
     if (!isConfigured) {
-      // Mock data for local testing without Supabase keys
       return NextResponse.json([
         { id: 'S-701', name: 'NICO ESPINOSA', role: 'Gerente Operativo', status: 'active', dni: '30.123.456', email: 'nico@SIGPAD.com' },
         { id: 'S-802', name: 'CARLOS GIMENEZ', role: 'Vigilador Senior', status: 'active' },
@@ -14,35 +14,12 @@ export async function GET(req: NextRequest) {
       ]);
     }
 
-    const userCookie = req.cookies.get('SIGPAD_user');
-    if (!userCookie) {
+    const ctx = await resolveTenantFromRequest(req);
+    if (!ctx) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
-    let tenantId: string | null = null;
-    let isSuper = false;
-    let userId: string | null = null;
-
-    try {
-      const user = JSON.parse(decodeURIComponent(userCookie.value));
-      userId = user?.id;
-      tenantId = user?.tenant_id || user?.user_metadata?.tenant_id;
-      isSuper = user?.role === 'superadmin' || user?.user_metadata?.role === 'superadmin';
-    } catch {
-      return NextResponse.json({ error: 'Sesión inválida' }, { status: 401 });
-    }
-
-    if (!tenantId && !isSuper && userId) {
-      const supabase = createServiceClient();
-      const { data: dbUser } = await supabase
-        .from('users')
-        .select('tenant_id')
-        .eq('id', userId)
-        .maybeSingle();
-      if (dbUser?.tenant_id) {
-        tenantId = dbUser.tenant_id;
-      }
-    }
+    const { tenantId, isSuper } = ctx;
 
     const supabase = createServiceClient();
     let query = supabase
@@ -81,76 +58,93 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ id: 'mock-resource-id', name: 'Mock Resource' });
     }
 
-    const userCookie = req.cookies.get('SIGPAD_user');
-    if (!userCookie) {
+    const ctx = await resolveTenantFromRequest(req);
+    if (!ctx) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
-    let tenantId: string | null = null;
-    let isSuper = false;
-    let userId: string | null = null;
-
-    try {
-      const user = JSON.parse(decodeURIComponent(userCookie.value));
-      userId = user?.id;
-      tenantId = user?.tenant_id || user?.user_metadata?.tenant_id;
-      isSuper = user?.role === 'superadmin' || user?.user_metadata?.role === 'superadmin';
-    } catch {
-      return NextResponse.json({ error: 'Sesión inválida' }, { status: 401 });
-    }
-
-    if (!tenantId && !isSuper && userId) {
-      const supabase = createServiceClient();
-      const { data: dbUser } = await supabase
-        .from('users')
-        .select('tenant_id')
-        .eq('id', userId)
-        .maybeSingle();
-      if (dbUser?.tenant_id) {
-        tenantId = dbUser.tenant_id;
-      }
-    }
-
+    const { tenantId, isSuper } = ctx;
     const body = await req.json();
 
-    // Enforce tenant_id injection. Non-superadmins must use their own tenantId.
     let targetTenantId = isSuper ? (body.tenant_id || tenantId) : tenantId;
 
-    // Si no se pudo resolver el tenant, rechazar la operación
-    if (!targetTenantId) {
+    if (!targetTenantId && !isSuper) {
       return NextResponse.json(
-        { error: 'No se puede crear el empleado: no hay empresa asignada en la sesión.' },
+        { error: 'No se puede crear el empleado: tu sesión no tiene empresa asignada.' },
         { status: 400 }
       );
     }
 
-    // Clean up body: Convert empty strings to null for database compatibility,
-    // filter out non-database properties like assigned_objective, objectives, and hourly_pay_rate,
-    // and map hourly_pay_rate to the salary column.
+    // Clean up body: Convert empty strings to null for database compatibility
     const cleanedBody: any = {};
     for (const [key, value] of Object.entries(body)) {
-      if (key === 'assigned_objective' || key === 'objectives' || key === 'hourly_pay_rate') {
+      if (key === 'assigned_objective' || key === 'objectives' || key === 'hourly_pay_rate' || key === 'id') {
         continue;
       }
       cleanedBody[key] = value === '' ? null : value;
     }
 
-    cleanedBody.tenant_id = targetTenantId;
+    if (targetTenantId) {
+      cleanedBody.tenant_id = targetTenantId;
+    }
 
     if ('hourly_pay_rate' in body) {
       cleanedBody.salary = body.hourly_pay_rate === '' ? null : String(body.hourly_pay_rate);
     }
 
-    const supabase = createServiceClient();
-    const { data, error } = await supabase
-      .from('resources')
-      .insert([cleanedBody])
-      .select()
-      .single();
+    if (cleanedBody.email) {
+      cleanedBody.email = String(cleanedBody.email).toLowerCase().trim();
+    }
 
-    if (error) throw error;
+    const supabase = createServiceClient();
+
+    // Check if a resource record with this email already exists in resources table
+    let existingResource: any = null;
+    if (cleanedBody.email) {
+      const { data: found } = await supabase
+        .from('resources')
+        .select('id')
+        .ilike('email', cleanedBody.email)
+        .maybeSingle();
+      existingResource = found;
+    }
+
+    let data: any = null;
+    let error: any = null;
+
+    if (existingResource?.id) {
+      // UPDATE existing resource record to enrich full employee data instead of failing on unique constraint
+      const resUpdate = await supabase
+        .from('resources')
+        .update(cleanedBody)
+        .eq('id', existingResource.id)
+        .select()
+        .single();
+      data = resUpdate.data;
+      error = resUpdate.error;
+    } else {
+      // INSERT new resource record
+      const resInsert = await supabase
+        .from('resources')
+        .insert([cleanedBody])
+        .select()
+        .single();
+      data = resInsert.data;
+      error = resInsert.error;
+    }
+
+    if (error) {
+      if (error.code === '23505' || error.message?.includes('resources_email_key') || error.message?.includes('duplicate key')) {
+        return NextResponse.json(
+          { error: 'Ya existe un integrante de personal registrado con este correo electrónico.' },
+          { status: 400 }
+        );
+      }
+      throw error;
+    }
+
     return NextResponse.json(data);
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'Error al procesar el alta de personal' }, { status: 500 });
   }
 }
