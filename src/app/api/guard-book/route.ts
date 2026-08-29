@@ -209,14 +209,26 @@ export async function POST(request: NextRequest) {
 
     let targetTenantId = isSuper ? (body.tenant_id || tenantId) : tenantId;
 
-    if (!targetTenantId && objective_id) {
-      const { data: obj } = await supabase.from('objectives').select('tenant_id').eq('id', objective_id).maybeSingle();
-      if (obj?.tenant_id) targetTenantId = obj.tenant_id;
-    }
-
-    if (!targetTenantId && rawResourceId) {
-      const { data: res } = await supabase.from('resources').select('tenant_id').or(`id.eq.${rawResourceId},assigned_to.eq.${rawResourceId}`).limit(1).maybeSingle();
-      if (res?.tenant_id) targetTenantId = res.tenant_id;
+    if (!targetTenantId) {
+      if (objective_id) {
+        const { data: objData } = await supabase
+          .from('objectives')
+          .select('tenant_id')
+          .eq('id', objective_id)
+          .maybeSingle();
+        if (objData?.tenant_id) targetTenantId = objData.tenant_id;
+      }
+      if (!targetTenantId && rawResourceId) {
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawResourceId);
+        let resQuery = supabase.from('resources').select('tenant_id');
+        if (isUUID) {
+          resQuery = resQuery.or(`id.eq.${rawResourceId},assigned_to.eq.${rawResourceId}`);
+        } else {
+          resQuery = resQuery.eq('id', rawResourceId);
+        }
+        const { data: resData } = await resQuery.maybeSingle();
+        if (resData?.tenant_id) targetTenantId = resData.tenant_id;
+      }
     }
 
     if (!targetTenantId) {

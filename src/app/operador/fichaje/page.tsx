@@ -91,15 +91,45 @@ export default function FichajePage() {
         const objLng = assignedObjective?.longitude ? Number(assignedObjective.longitude) : 0;
         const lat = (location?.lat && location.lat !== 0) ? location.lat : objLat;
         const lng = (location?.lng && location.lng !== 0) ? location.lng : objLng;
-        const tenantId = (user as any)?.user_metadata?.tenant_id || null;
-        const operatorName = (user as any)?.user_metadata?.name || user?.email || 'Operador';
+        const resolvedTenantId = (user as any)?.tenant_id || 
+                                 (user as any)?.user_metadata?.tenant_id || 
+                                 assignedObjective?.tenant_id || 
+                                 null;
+        const resolvedOperatorName = (user as any)?.user_metadata?.name || 
+                                     user?.email || 
+                                     'Operador';
+        const targetObjectiveId = assignedObjective?.id || null;
 
-        // 1. Insert into alarms table (triggers Manager realtime overlay)
+        // 1. Call /api/guard-book to save in guard_book_entries + alarms + incidents automatically
+        if (targetObjectiveId) {
+          try {
+            await fetch('/api/guard-book', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                objective_id: targetObjectiveId,
+                resource_id: OPERATOR_ID,
+                entry_type: 'emergencia',
+                urgency: 'critica',
+                content: '🚨 BOTÓN DE PÁNICO S.O.S ACTIVADO EN FICHAJE',
+                latitude: lat,
+                longitude: lng,
+                tenant_id: resolvedTenantId
+              })
+            });
+          } catch (e) {
+            console.error('[PANIC_GUARD_BOOK_ERROR]', e);
+          }
+        }
+
+        // 2. Insert directly into alarms table as immediate realtime backup with full fields
         await supabase.from('alarms').insert({
           operator_id: OPERATOR_ID,
-          operator_name: operatorName,
-          objective_id: assignedObjective?.id || null,
-          tenant_id: tenantId,
+          triggered_by: OPERATOR_ID,
+          operator_name: resolvedOperatorName,
+          objective_id: targetObjectiveId,
+          objective_name: assignedObjective?.name || 'Objetivo de Guardia',
+          tenant_id: resolvedTenantId,
           alarm_type: 'sos_panic',
           severity: 'critica',
           message: '🚨 BOTÓN DE PÁNICO S.O.S ACTIVADO EN FICHAJE',
@@ -109,22 +139,24 @@ export default function FichajePage() {
           created_at: new Date().toISOString()
         } as any);
 
-        // 2. Insert into incidents table (for map marker display)
-        await supabase.from('incidents').insert({
-          objective_id: assignedObjective?.id || null,
-          operator_id: OPERATOR_ID,
-          operator_name: operatorName,
-          tenant_id: tenantId,
-          entry_type: 'panic',
-          urgency: 'critica',
-          content: '🚨 BOTÓN DE PÁNICO S.O.S ACTIVADO EN FICHAJE',
-          latitude: lat,
-          longitude: lng,
-          status: 'abierto',
-          created_at: new Date().toISOString()
-        } as any);
+        // 3. Insert directly into incidents table for map display
+        if (targetObjectiveId) {
+          await supabase.from('incidents').insert({
+            objective_id: targetObjectiveId,
+            operator_id: OPERATOR_ID,
+            operator_name: resolvedOperatorName,
+            tenant_id: resolvedTenantId,
+            entry_type: 'panic',
+            urgency: 'critica',
+            content: '🚨 BOTÓN DE PÁNICO S.O.S ACTIVADO EN FICHAJE',
+            latitude: lat,
+            longitude: lng,
+            status: 'abierto',
+            created_at: new Date().toISOString()
+          } as any);
+        }
 
-        // 3. Dispatch server push notification
+        // 4. Dispatch server push notification
         fetch('/api/notifications/push', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -132,7 +164,7 @@ export default function FichajePage() {
             action: 'send',
             notification: {
               title: '🚨 ¡ALERTA DE PÁNICO S.O.S!',
-              body: 'Un operador disparó la alerta de emergencia en fichaje.',
+              body: `${resolvedOperatorName} disparó la alerta de emergencia en fichaje.`,
               url: '/gerente/mapa',
               requireInteraction: true
             }

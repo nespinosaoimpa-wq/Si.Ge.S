@@ -22,7 +22,7 @@ import { cn } from '@/lib/utils';
 import dynamic from 'next/dynamic';
 import { fetchNearbyEmergencyServices, NearbyPOI } from '@/lib/nearby-services';
 import { supabase } from '@/lib/supabase';
-import { startCrazyHombreVivoAlarm, stopCrazyHombreVivoAlarm, unlockAudioContext } from '@/lib/push-notifications';
+import { startCrazyHombreVivoAlarm, stopCrazyHombreVivoAlarm, unlockAudioContext, setSirenDucked } from '@/lib/push-notifications';
 
 const MapView = dynamic(() => import('@/components/MapView'), { 
   ssr: false,
@@ -199,7 +199,7 @@ export default function PanicAlertOverlay({ alert, onDismiss, onResolve }: Panic
     };
   }, [alert?.id]);
 
-  // 🗣️ 4. TEXT-TO-SPEECH VOICE SYNTHESIS (Locución Parlante en Español)
+  // 🗣️ 4. TEXT-TO-SPEECH VOICE SYNTHESIS (Locución Parlante en Español con Ducking)
   const speakAlert = useCallback(() => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window) || !alert) return;
 
@@ -223,8 +223,15 @@ export default function PanicAlertOverlay({ alert, onDismiss, onResolve }: Panic
         utterance.voice = spanishVoice;
       }
 
-      utterance.onstart = () => setSpeechActive(true);
-      utterance.onend = () => setSpeechActive(false);
+      utterance.onstart = () => {
+        setSpeechActive(true);
+        setSirenDucked(true); // 🔥 Duck siren audio down to 5% while speech is talking!
+      };
+
+      utterance.onend = () => {
+        setSpeechActive(false);
+        setSirenDucked(false); // Restore siren audio after speech
+      };
 
       window.speechSynthesis.speak(utterance);
     } catch (err) {

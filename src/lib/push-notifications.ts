@@ -190,6 +190,14 @@ export function startCrazyHombreVivoAlarm() {
   }
 }
 
+export function setSirenDucked(ducked: boolean) {
+  if (!activeSirenGain || !sharedAudioContext) return;
+  try {
+    const targetGain = ducked ? 0.05 : 0.8; // Duck siren to 5% when speech is talking
+    activeSirenGain.gain.linearRampToValueAtTime(targetGain, sharedAudioContext.currentTime + 0.1);
+  } catch (e) {}
+}
+
 export function stopCrazyHombreVivoAlarm() {
   try {
     if (activeSirenGain && sharedAudioContext) {
