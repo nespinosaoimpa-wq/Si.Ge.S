@@ -96,7 +96,7 @@ export async function GET(req: NextRequest) {
     const tenantObjectiveIds = rawObjectives.map((o: any) => o.id).filter(Boolean);
 
     let resourcesQuery = supabase.from('resources')
-      .select('*')
+      .select('*, profiles:profile_id(avatar_url, full_name)')
       .neq('status', 'baja')
       .neq('status', 'inactivo');
 
@@ -160,13 +160,19 @@ export async function GET(req: NextRequest) {
     ]);
 
     if (objectivesRes.error) console.error("❌ Objectives fetch error:", JSON.stringify(objectivesRes.error));
-    if (resourcesRes.error) console.error("❌ Resources fetch error:", JSON.stringify(resourcesRes.error));
     if (incidentsRes.error) console.error("❌ Guard book incidents fetch error:", JSON.stringify(incidentsRes.error));
     if (shiftsRes.error) console.error("❌ Shifts fetch error:", JSON.stringify(shiftsRes.error));
     if (rawIncidentsRes.error) console.error("❌ Raw incidents fetch error:", JSON.stringify(rawIncidentsRes.error));
     if (alarmsRes?.error) console.error("❌ Alarms fetch error:", JSON.stringify(alarmsRes.error));
 
-    const rawResources = resourcesRes.data || [];
+    let rawResources = resourcesRes.data || [];
+    if (resourcesRes.error) {
+      console.error("❌ Resources fetch error:", JSON.stringify(resourcesRes.error));
+      let fallbackQuery = supabase.from('resources').select('*').neq('status', 'baja').neq('status', 'inactivo');
+      if (!isSuper && tenantId) fallbackQuery = fallbackQuery.eq('tenant_id', tenantId);
+      const fb = await fallbackQuery;
+      rawResources = fb.data || [];
+    }
 
     // Map assigned personnel in memory cleanly
     const resourcesByObjective: Record<string, any[]> = {};

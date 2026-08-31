@@ -176,7 +176,7 @@ export default function AdminDashboard() {
   }, [enrichedObjectives, searchQuery, selectedObjective]);
 
   const activeGuards = useMemo(() => {
-    return (data.resources || []).map((r: any) => {
+    const guardsList = (data.resources || []).map((r: any) => {
       const activeShift = (data.activeShifts || []).find((s: any) => s.operator_id === r.id);
       const isAbandoned = activeShift?.status === 'abandoned' || activeShift?.geofence_status === 'out' || activeShift?.geofence_status === 'outside';
       
@@ -184,14 +184,51 @@ export default function AdminDashboard() {
       const lastUpdate = r.last_gps_update ? new Date(r.last_gps_update).getTime() : 0;
       const isOffline = activeShift && (Date.now() - lastUpdate > 3 * 60 * 1000);
 
+      // Resolve coordinates if latitude/longitude are missing or 0 on resource record
+      let lat = r.latitude;
+      let lng = r.longitude;
+      const hasCoords = lat !== null && lat !== undefined && lng !== null && lng !== undefined && !isNaN(Number(lat)) && !isNaN(Number(lng)) && Number(lat) !== 0 && Number(lng) !== 0;
+
+      const targetObjId = r.current_objective_id || activeShift?.objective_id;
+      if (!hasCoords && targetObjId) {
+        const targetObj = (data.objectives || []).find((o: any) => o.id === targetObjId);
+        if (targetObj?.latitude && targetObj?.longitude) {
+          lat = targetObj.latitude;
+          lng = targetObj.longitude;
+        }
+      }
+
+      const avatarUrl = r.avatar_url || r.profiles?.avatar_url || r.profile?.avatar_url || null;
+
       return {
         ...r,
-        isOnShift: !!activeShift,
+        latitude: lat,
+        longitude: lng,
+        avatar_url: avatarUrl,
+        isOnShift: !!activeShift || !!r.current_objective_id,
         shiftId: activeShift?.id,
-        status: isAbandoned ? 'abandoned' : (isOffline ? 'offline' : r.status)
+        status: isAbandoned ? 'abandoned' : (isOffline ? 'offline' : (r.status || 'activo'))
       };
     }).filter((r: any) => r.status !== 'baja' && r.status !== 'inactivo');
-  }, [data.resources, data.activeShifts]);
+
+    // Add tiny spatial jitter offset for guards sharing exact objective coordinates so markers don't overlap
+    const coordCounts: Record<string, number> = {};
+    return guardsList.map((g: any) => {
+      if (g.latitude && g.longitude) {
+        const key = `${Number(g.latitude).toFixed(4)},${Number(g.longitude).toFixed(4)}`;
+        const count = coordCounts[key] || 0;
+        coordCounts[key] = count + 1;
+        if (count > 0) {
+          return {
+            ...g,
+            latitude: Number(g.latitude) + (count * 0.00015),
+            longitude: Number(g.longitude) + (count * 0.00015)
+          };
+        }
+      }
+      return g;
+    });
+  }, [data.resources, data.activeShifts, data.objectives]);
 
   const resourcesRef = React.useRef(data.resources);
   const dataRef = React.useRef(data);
