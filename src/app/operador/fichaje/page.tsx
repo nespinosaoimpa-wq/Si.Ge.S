@@ -303,8 +303,12 @@ export default function FichajePage() {
             if (!prev) {
               return { lat: newLat, lng: newLng, accuracy: newAcc, speed: pos.coords.speed || 0 };
             }
-            // Always prefer more accurate fix (smaller accuracy number in meters) or acceptable accuracy fix (<= 80m)
-            if (newAcc <= (prev.accuracy || 9999) || newAcc <= 80) {
+            // 1. ALWAYS upgrade location if the new fix is more accurate (smaller accuracy number in meters)
+            if (newAcc < (prev.accuracy || 9999)) {
+              return { lat: newLat, lng: newLng, accuracy: newAcc, speed: pos.coords.speed || 0 };
+            }
+            // 2. Keep location updated for high-precision fixes (<= 40m)
+            if (newAcc <= 40) {
               return { lat: newLat, lng: newLng, accuracy: newAcc, speed: pos.coords.speed || 0 };
             }
             return prev;
