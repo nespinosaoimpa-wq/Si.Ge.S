@@ -30,8 +30,10 @@ import {
   Package,
   Smartphone,
   Zap,
-  BookOpen
+  BookOpen,
+  Printer
 } from 'lucide-react';
+import { printGuardBookSheet } from '@/lib/printGuardBook';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
@@ -1108,6 +1110,27 @@ export default function ObjectiveDetail() {
 
           {activeTab === 'libro' && (
             <div className="space-y-6">
+              {/* Header Action Bar */}
+              <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-zinc-200 shadow-sm">
+                <div>
+                  <h3 className="text-sm font-black text-zinc-900 uppercase tracking-tight">Diario Táctico del Objetivo</h3>
+                  <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest mt-0.5">{guardBook.length} novedades registradas en este puesto</p>
+                </div>
+                <Button
+                  onClick={() => printGuardBookSheet(guardBook, {
+                    title: 'LIBRO DE GUARDIA INDIVIDUAL',
+                    companyName: 'SIGPAD PLATAFORMA DE SEGURIDAD',
+                    objectiveName: objective?.name || 'OBJETIVO SELECCIONADO',
+                    startDate: 'HISTÓRICO PUESTO',
+                    endDate: new Date().toLocaleDateString('es-AR')
+                  })}
+                  disabled={guardBook.length === 0}
+                  className="h-10 px-4 rounded-xl text-xs font-black uppercase tracking-widest gap-2 bg-[#0F4C5C] text-white hover:bg-[#0c3c49] transition-all shadow-md"
+                >
+                  <Printer size={15} className="text-cyan-400" /> Imprimir Libro
+                </Button>
+              </div>
+
               {/* Formulario de Nueva Novedad */}
               <Card className="p-8 border-none shadow-2xl shadow-gray-200/30 rounded-3xl bg-white">
                 <form onSubmit={handleAddBookEntry} className="space-y-4">

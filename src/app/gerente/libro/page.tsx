@@ -5,12 +5,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   BookOpen, Search, Download, Clock, User, MapPin, AlertTriangle,
   Calendar, CheckCircle2, ChevronRight, ShieldCheck, FileText, Zap,
-  RefreshCw, Building2, Filter, Radio, Eye, Layers, Shield
+  RefreshCw, Building2, Filter, Radio, Eye, Layers, Shield, Printer
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 import DailyScorecard from '@/components/gerente/DailyScorecard';
+import { printGuardBookSheet } from '@/lib/printGuardBook';
 
 // ─── Severidades Config ──────────────────────────────────────────────────────────
 const SEVERITY: Record<string, {
@@ -285,6 +286,21 @@ export default function GuardBookPage() {
     URL.revokeObjectURL(url);
   };
 
+  const handlePrint = () => {
+    const periodLabel = filterPeriod === 'today' ? 'HOY' : filterPeriod === '7days' ? 'ÚLTIMOS 7 DÍAS' : filterPeriod === '30days' ? 'ESTE MES' : 'HISTORIAL GENERAL';
+    const objName = filterObjective === 'all' 
+      ? 'TODOS LOS OBJETIVOS OPERATIVOS' 
+      : (objectives.find(o => o.id === filterObjective)?.name || 'OBJETIVO SELECCIONADO');
+
+    printGuardBookSheet(filteredEntries, {
+      title: 'LIBRO DE GUARDIA GENERAL',
+      companyName: 'SIGPAD PLATAFORMA DE SEGURIDAD',
+      objectiveName: objName,
+      startDate: filterPeriod === 'custom' ? (customStartDate || 'HISTÓRICO') : periodLabel,
+      endDate: filterPeriod === 'custom' ? (customEndDate || 'ACTUAL') : new Date().toLocaleDateString('es-AR')
+    });
+  };
+
   return (
     <div className="p-6 lg:p-10 max-w-7xl mx-auto space-y-8 font-sans">
 
@@ -319,6 +335,14 @@ export default function GuardBookPage() {
           >
             <RefreshCw size={14} className={loading ? "animate-spin text-zinc-400" : "text-zinc-500"} />
             Actualizar
+          </button>
+          <button
+            onClick={handlePrint}
+            disabled={filteredEntries.length === 0}
+            className="h-10 px-4 rounded-xl text-xs font-semibold gap-2 bg-[#0F4C5C] hover:bg-[#0c3c49] text-white transition-all flex items-center justify-center shadow-sm uppercase tracking-wider disabled:opacity-40"
+          >
+            <Printer size={15} className="text-cyan-400" />
+            Imprimir / PDF
           </button>
           <button
             onClick={handleExport}
