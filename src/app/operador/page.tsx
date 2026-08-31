@@ -149,14 +149,13 @@ export default function GuardiaDashboard() {
 
             setAssignedObjective(targetObj);
 
-            // Fetch scheduled shifts for this operator
+            // Fetch scheduled or active shifts for this operator
             const { data: programmed } = await supabase
               .from('guard_shifts')
               .select('*, objectives(*)')
-              .eq('operator_id', res.id || OPERATOR_ID)
-              .eq('status', 'programado')
-              .gte('checkin_time', new Date().toISOString())
-              .order('checkin_time', { ascending: true })
+              .or(`operator_id.eq.${res.id || OPERATOR_ID},resource_id.eq.${res.id || OPERATOR_ID}`)
+              .in('status', ['programado', 'activo', 'active'])
+              .order('checkin_time', { ascending: false })
               .limit(1)
               .maybeSingle();
             
@@ -175,23 +174,18 @@ export default function GuardiaDashboard() {
     };
     fetchObjective();
 
-    // REAL-TIME: Subscribe to changes on own resource record
-    const channel = supabase
-      .channel(`resource-${OPERATOR_ID}`)
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'resources' },
-        async (payload) => {
-          const updated = payload.new as any;
-          if (
-            updated.assigned_to === OPERATOR_ID || 
-            updated.id === OPERATOR_ID || 
-            (user?.email && updated.email?.toLowerCase() === user.email.toLowerCase())
-          ) {
-            fetchObjective();
-          }
-        }
-      )
+    // REAL-TIME: Subscribe to resources, guard_shifts, and shift_requirements for instant sync
+    const channelRes = supabase
+      .channel(`resource-op-${OPERATOR_ID}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'resources' }, () => {
+        fetchObjective();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'guard_shifts' }, () => {
+        fetchObjective();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'shift_requirements' }, () => {
+        fetchObjective();
+      })
       .subscribe();
 
     // Watch GPS accuracy for the UI auditor

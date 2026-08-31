@@ -64,7 +64,7 @@ export async function GET(request: Request) {
       }
     }
 
-    // ⛔ IF NO STRICT MATCH FOUND: DENY ACCESS IMMEDIATELY (Zero fuzzy name matching allowed)
+    // ⛔ IF NO STRICT MATCH FOUND: DENY ACCESS IMMEDIATELY
     if (!resource) {
       return NextResponse.json({ 
         error: 'Resource not found or unauthorized', 
@@ -75,7 +75,7 @@ export async function GET(request: Request) {
       }, { status: 404 });
     }
 
-    // ═══ SAFE OBJECTIVE RESOLUTION (ONLY FOR 100% VERIFIED OPERATOR) ═══
+    // ═══ SAFE & FAST OBJECTIVE RESOLUTION (MULTI-LAYER MATCHING) ═══
     let finalObjective: any = null;
 
     // 1. Direct current_objective_id from verified legajo
@@ -92,17 +92,20 @@ export async function GET(request: Request) {
       }
     }
 
-    // 2. Scheduled or Active Shift assigned specifically to this verified resource.id
-    if (!finalObjective && resource.id) {
-      const { data: shiftRecord } = await supabase
+    const resIds = [resource.id, resource.assigned_to, userId].filter(Boolean);
+
+    // 2. Active or Programmed Shift in guard_shifts
+    if (!finalObjective && resIds.length > 0) {
+      const orCondition = resIds.map(id => `operator_id.eq.${id},resource_id.eq.${id}`).join(',');
+      const { data: shiftRecords } = await supabase
         .from('guard_shifts')
-        .select('objective_id, status')
-        .eq('operator_id', resource.id)
+        .select('objective_id, status, checkin_time, checkout_time')
+        .or(orCondition)
         .in('status', ['activo', 'active', 'programado'])
         .order('checkin_time', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      
+        .limit(1);
+
+      const shiftRecord = shiftRecords?.[0];
       if (shiftRecord?.objective_id) {
         const { data: shiftObj } = await supabase
           .from('objectives')
@@ -112,6 +115,52 @@ export async function GET(request: Request) {
         if (shiftObj) {
           finalObjective = shiftObj;
           debug.objectiveFoundBy = `guard_shifts_${shiftRecord.status}`;
+        }
+      }
+    }
+
+    // 3. Shift requirements assigned specifically to operator
+    if (!finalObjective && resIds.length > 0) {
+      const orReqCondition = resIds.map(id => `assigned_operator_id.eq.${id}`).join(',');
+      const { data: reqRecords } = await supabase
+        .from('shift_requirements')
+        .select('objective_id, status')
+        .or(orReqCondition)
+        .limit(1);
+
+      const reqRecord = reqRecords?.[0];
+      if (reqRecord?.objective_id) {
+        const { data: reqObj } = await supabase
+          .from('objectives')
+          .select('*')
+          .eq('id', reqRecord.objective_id)
+          .maybeSingle();
+        if (reqObj) {
+          finalObjective = reqObj;
+          debug.objectiveFoundBy = 'shift_requirements';
+        }
+      }
+    }
+
+    // 4. Objective resources permanent linkage
+    if (!finalObjective && resIds.length > 0) {
+      const orObjResCondition = resIds.map(id => `resource_id.eq.${id}`).join(',');
+      const { data: objResRecords } = await supabase
+        .from('objective_resources')
+        .select('objective_id')
+        .or(orObjResCondition)
+        .limit(1);
+
+      const objResRecord = objResRecords?.[0];
+      if (objResRecord?.objective_id) {
+        const { data: objResObj } = await supabase
+          .from('objectives')
+          .select('*')
+          .eq('id', objResRecord.objective_id)
+          .maybeSingle();
+        if (objResObj) {
+          finalObjective = objResObj;
+          debug.objectiveFoundBy = 'objective_resources';
         }
       }
     }
