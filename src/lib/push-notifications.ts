@@ -132,6 +132,8 @@ export function unlockAudioContext() {
   }
 }
 
+let activeChimeInterval: any = null;
+
 export function startCrazyHombreVivoAlarm() {
   if (typeof window === 'undefined') return;
   
@@ -142,51 +144,45 @@ export function startCrazyHombreVivoAlarm() {
   stopCrazyHombreVivoAlarm();
 
   try {
-    const now = ctx.currentTime;
+    const playSoftChime = () => {
+      const audioCtx = getSharedAudioContext();
+      if (!audioCtx) return;
+      try {
+        const now = audioCtx.currentTime;
+        const osc1 = audioCtx.createOscillator();
+        const osc2 = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
 
-    const masterGain = ctx.createGain();
-    masterGain.gain.setValueAtTime(1.0, now);
-    masterGain.connect(ctx.destination);
-    activeSirenGain = masterGain;
+        osc1.type = 'sine';
+        osc2.type = 'sine';
 
-    const osc1 = ctx.createOscillator();
-    osc1.type = 'sawtooth';
-    osc1.frequency.setValueAtTime(800, now);
-    
-    const lfo = ctx.createOscillator();
-    lfo.type = 'sine';
-    lfo.frequency.setValueAtTime(4, now); // 4 Hz sweep rate
+        osc1.frequency.setValueAtTime(523.25, now); // C5
+        osc2.frequency.setValueAtTime(659.25, now + 0.12); // E5
 
-    const lfoGain = ctx.createGain();
-    lfoGain.gain.setValueAtTime(300, now);
+        osc1.connect(gain);
+        osc2.connect(gain);
+        gain.connect(audioCtx.destination);
 
-    lfo.connect(lfoGain);
-    lfoGain.connect(osc1.frequency);
+        gain.gain.setValueAtTime(0.35, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
 
-    osc1.connect(masterGain);
+        osc1.start(now);
+        osc1.stop(now + 0.2);
+        osc2.start(now + 0.12);
+        osc2.stop(now + 0.45);
 
-    const osc2 = ctx.createOscillator();
-    osc2.type = 'square';
-    osc2.frequency.setValueAtTime(1200, now);
-    
-    const osc2Gain = ctx.createGain();
-    osc2Gain.gain.setValueAtTime(0.6, now);
-    osc2.connect(osc2Gain);
-    osc2Gain.connect(masterGain);
+        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+          navigator.vibrate([150, 100, 150]);
+        }
+      } catch (e) {}
+    };
 
-    lfoGain.connect(osc2.frequency);
+    playSoftChime();
+    activeChimeInterval = setInterval(playSoftChime, 1800);
 
-    lfo.start(now);
-    osc1.start(now);
-    osc2.start(now);
-
-    activeSirenOsc1 = osc1;
-    activeSirenOsc2 = osc2;
-    activeSirenLfo = lfo;
-
-    console.log('[SIGPAD Audio] 🔊 Sirena Dual de Hombre Vivo INICIADA (Web Audio API Max Gain)');
+    console.log('[SIGPAD Audio] 🎵 Chime Armónico de Hombre Vivo INICIADO');
   } catch (e) {
-    console.warn('[SIGPAD Audio] Siren start warning:', e);
+    console.warn('[SIGPAD Audio] Chime start warning:', e);
   }
 }
 
@@ -200,6 +196,10 @@ export function setSirenDucked(ducked: boolean) {
 
 export function stopCrazyHombreVivoAlarm() {
   try {
+    if (activeChimeInterval) {
+      clearInterval(activeChimeInterval);
+      activeChimeInterval = null;
+    }
     if (activeSirenGain && sharedAudioContext) {
       activeSirenGain.gain.linearRampToValueAtTime(0.001, sharedAudioContext.currentTime + 0.1);
     }
