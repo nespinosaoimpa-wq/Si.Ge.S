@@ -1448,7 +1448,7 @@ export default function ObjectiveDetail() {
             <ObjectivePayrollTab
               objectiveId={objective.id}
               objectiveName={objective.name}
-              billingRate={parseFloat(billingRate) || objective.hourly_billing_rate || 3500}
+              billingRate={Number(objective?.hourly_billing_rate) || 3500}
             />
           )}
       </div>
