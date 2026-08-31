@@ -41,6 +41,7 @@ interface OperatorLocationGroupProps {
   mapRef: React.RefObject<MapRef | null>;
   mapLoaded: boolean;
   userInteractingRef: React.RefObject<boolean>;
+  paused?: boolean;
 }
 
 function OperatorLocationGroup({
@@ -49,7 +50,8 @@ function OperatorLocationGroup({
   avatarUrl,
   mapRef,
   mapLoaded,
-  userInteractingRef
+  userInteractingRef,
+  paused = false
 }: OperatorLocationGroupProps) {
   const {
     lat: animLat,
@@ -57,7 +59,7 @@ function OperatorLocationGroup({
     bearing: animBearing,
     trail,
     haversineDistance,
-  } = useAnimatedPosition(currentPosition?.[0], currentPosition?.[1], 1500);
+  } = useAnimatedPosition(currentPosition?.[0], currentPosition?.[1], 1500, paused);
 
   const lastRecenterTime = useRef<number>(0);
 
@@ -237,6 +239,7 @@ export default function MobileLeaflet({
   const [activeStyle, setActiveStyle] = useState<keyof typeof MAP_STYLES>('STANDARD');
   const [showStyles, setShowStyles] = useState(false);
   const [mapLoaded, setMapLoaded] = useState(false);
+  const [isInteracting, setIsInteracting] = useState(false);
 
   const userInteracting = useRef(false);
   const interactionTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -335,12 +338,14 @@ export default function MobileLeaflet({
 
   const handleInteractionStart = useCallback(() => {
     userInteracting.current = true;
+    setIsInteracting(true);
     if (interactionTimeout.current) clearTimeout(interactionTimeout.current);
   }, []);
 
   const handleInteractionEnd = useCallback(() => {
     interactionTimeout.current = setTimeout(() => {
       userInteracting.current = false;
+      setIsInteracting(false);
     }, 6000);
   }, []);
 
@@ -424,6 +429,7 @@ export default function MobileLeaflet({
           mapRef={mapRef}
           mapLoaded={mapLoaded}
           userInteractingRef={userInteracting}
+          paused={isInteracting}
         />
 
         {/* ROUTE LAYER */}

@@ -51,7 +51,8 @@ const MAX_TRAIL = 8;
 export function useAnimatedPosition(
   targetLat: number | undefined,
   targetLng: number | undefined,
-  duration = 1500
+  duration = 1500,
+  paused = false
 ) {
   const [pos, setPos] = useState<AnimatedPos>({ lat: 0, lng: 0, bearing: 0 });
   const posRef = useRef<AnimatedPos>({ lat: 0, lng: 0, bearing: 0 });
@@ -151,6 +152,14 @@ export function useAnimatedPosition(
       if (rafId.current) cancelAnimationFrame(rafId.current);
     };
   }, []);
+
+  // Freeze animation while user is interacting with the map (zoom/pan)
+  useEffect(() => {
+    if (paused && rafId.current) {
+      cancelAnimationFrame(rafId.current);
+      rafId.current = 0;
+    }
+  }, [paused]);
 
   return {
     lat: pos.lat,

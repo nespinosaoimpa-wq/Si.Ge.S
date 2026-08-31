@@ -12,32 +12,38 @@ export async function PATCH(
     if (!ctx) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     const { tenantId, isSuper } = ctx;
 
-    if (!isSuper && !tenantId) {
-      return NextResponse.json({ error: 'Falta empresa asignada' }, { status: 403 });
-    }
-
     const { id } = await params;
     const body = await req.json();
-    const { status } = body;
-
     const supabase = createServiceClient();
-    
+
     let query = supabase
       .from('authorized_users')
-      .update({ 
-        status, 
-        approved_at: status === 'approved' ? new Date().toISOString() : null 
-      })
+      .update(body)
       .eq('id', id);
 
     if (!isSuper && tenantId) {
       query = query.eq('tenant_id', tenantId);
     }
 
-    const { data, error } = await query.select().single();
+    const { error } = await query;
     if (error) throw error;
 
-    return NextResponse.json(data);
+    // Cascade role update to resources
+    if (body.role) {
+      const { data: authUser } = await supabase
+        .from('authorized_users')
+        .select('email')
+        .eq('id', id)
+        .maybeSingle();
+      if (authUser?.email) {
+        await supabase
+          .from('resources')
+          .update({ role: body.role === 'gerente' ? 'Gerente' : 'Operador' })
+          .ilike('email', authUser.email);
+      }
+    }
+
+    return NextResponse.json({ success: true });
   } catch (err: any) {
     console.error('Error updating authorized user:', err);
     return NextResponse.json({ error: err.message || 'Internal Server Error' }, { status: 500 });
@@ -53,35 +59,41 @@ export async function DELETE(
     if (!ctx) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     const { tenantId, isSuper } = ctx;
 
-    if (!isSuper && !tenantId) {
-      return NextResponse.json({ error: 'Falta empresa asignada' }, { status: 403 });
-    }
-
     const { id } = await params;
     const supabase = createServiceClient();
-    
-    // First, try deleting from authorized_users by ID
-    let authDelete = supabase.from('authorized_users').delete().eq('id', id);
-    if (!isSuper && tenantId) authDelete = authDelete.eq('tenant_id', tenantId);
-    await authDelete;
 
-    // If ID contains email or prefix, try deleting by email
-    const emailCandidate = id.replace(/^auth-/, '');
+    // Get email before delete for cascade & memory whitelist removal
+    const { data: authUser } = await supabase
+      .from('authorized_users')
+      .select('email')
+      .eq('id', id)
+      .maybeSingle();
+
+    const emailCandidate = authUser?.email || id.replace(/^auth-/, '');
     if (emailCandidate.includes('@')) {
       removeFromMemoryWhitelist(emailCandidate);
-      let authDelEmail = supabase.from('authorized_users').delete().ilike('email', emailCandidate);
-      let resDelEmail = supabase.from('resources').delete().ilike('email', emailCandidate);
+    }
+
+    let query = supabase.from('authorized_users').delete().eq('id', id);
+    if (!isSuper && tenantId) {
+      query = query.eq('tenant_id', tenantId);
+    }
+    const { error } = await query;
+    if (error) throw error;
+
+    // Cascade delete from resources
+    if (authUser?.email) {
+      let resQuery = supabase.from('resources').delete().ilike('email', authUser.email);
       if (!isSuper && tenantId) {
-        authDelEmail = authDelEmail.eq('tenant_id', tenantId);
-        resDelEmail = resDelEmail.eq('tenant_id', tenantId);
+        resQuery = resQuery.eq('tenant_id', tenantId);
       }
-      await authDelEmail;
-      await resDelEmail;
-    } else {
-      // Also delete from resources by ID
-      let resDelete = supabase.from('resources').delete().eq('id', id);
-      if (!isSuper && tenantId) resDelete = resDelete.eq('tenant_id', tenantId);
-      await resDelete;
+      await resQuery;
+    } else if (emailCandidate.includes('@')) {
+      let resQuery = supabase.from('resources').delete().ilike('email', emailCandidate);
+      if (!isSuper && tenantId) {
+        resQuery = resQuery.eq('tenant_id', tenantId);
+      }
+      await resQuery;
     }
 
     return NextResponse.json({ success: true });
@@ -90,4 +102,3 @@ export async function DELETE(
     return NextResponse.json({ error: err.message || 'Internal Server Error' }, { status: 500 });
   }
 }
-

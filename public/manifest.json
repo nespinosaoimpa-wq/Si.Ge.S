@@ -2,11 +2,15 @@
   "name": "SIGPAD",
   "short_name": "SIGPAD",
   "description": "SIGPAD - Sistema Inteligente de Gestión y Plataforma Avanzada de Seguridad Dinámica",
+  "id": "/roles",
   "start_url": "/roles",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#0a0a0a",
-  "theme_color": "#0a0a0a",
+  "theme_color": "#0F4C5C",
   "orientation": "portrait-primary",
+  "categories": ["business", "security"],
+  "lang": "es-AR",
   "icons": [
     {
       "src": "/icons/icon-192x192.png",
@@ -25,6 +29,23 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "SIGPAD Dashboard"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Iniciar Sesión",
+      "short_name": "Login",
+      "url": "/login",
+      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
     }
   ]
 }

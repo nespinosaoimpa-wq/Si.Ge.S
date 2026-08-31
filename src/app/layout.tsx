@@ -46,8 +46,9 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
     title: "SIGPAD",
   },
-  other: {
+  other: { 
     'mobile-web-app-capable': 'yes',
+    'privacy-policy': '/legal/privacidad',
   },
 };
 

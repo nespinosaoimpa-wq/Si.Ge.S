@@ -60,6 +60,22 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ['lucide-react', 'framer-motion', 'recharts'],
   },
+
+  // ── Redirects ────────────────────────────────────────────────
+  async redirects() {
+    return [
+      {
+        source: '/legal/privacy',
+        destination: '/legal/privacidad',
+        permanent: true,
+      },
+      {
+        source: '/legal/tos',
+        destination: '/legal/terminos',
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

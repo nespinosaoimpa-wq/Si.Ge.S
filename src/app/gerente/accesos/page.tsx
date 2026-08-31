@@ -10,18 +10,17 @@ import {
   Trash2, 
   CheckCircle2, 
   Clock, 
-  X,
-  UserCheck,
-  UserMinus,
-  AlertCircle,
-  RefreshCw,
-  UserCog,
-  Key
+  X, 
+  UserCheck, 
+  UserMinus, 
+  AlertCircle, 
+  RefreshCw, 
+  UserCog, 
+  Key 
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 
 export default function AuthorizedUsersPage() {
@@ -40,15 +39,13 @@ export default function AuthorizedUsersPage() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('authorized_users')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setUsers(data || []);
+      const res = await fetch('/api/authorized-users');
+      if (!res.ok) throw new Error('Error al cargar usuarios');
+      const data = await res.json();
+      setUsers(Array.isArray(data) ? data : []);
     } catch (err: any) {
       console.error('Error fetching authorized users:', err);
+      setUsers([]);
     } finally {
       setLoading(false);
     }
@@ -61,32 +58,18 @@ export default function AuthorizedUsersPage() {
     const cleanEmail = newEmail.toLowerCase().trim();
 
     try {
-      // 1. UPSERT in authorized_users (prevents duplicate key errors)
-      const { error } = await supabase
-        .from('authorized_users')
-        .upsert({
-          email: cleanEmail,
-          role: newRole,
-          status: 'approved',
-          approved_at: new Date().toISOString(),
-        }, { onConflict: 'email' });
-
-      if (error) throw error;
-
-      // 2. Cascade update resources table if a legajo exists for this email
-      await supabase
-        .from('resources')
-        .update({ 
-          role: newRole === 'gerente' ? 'Gerente' : 'vigilador',
-          status: 'active'
-        })
-        .ilike('email', cleanEmail);
+      const res = await fetch('/api/authorized-users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: cleanEmail, role: newRole, status: 'approved' }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al autorizar usuario');
 
       setNewEmail('');
       setIsAdding(false);
       setStatusMsg({ type: 'success', text: `Acceso asignado como ${newRole.toUpperCase()} con éxito` });
       fetchUsers();
-      
       setTimeout(() => setStatusMsg(null), 3500);
     } catch (err: any) {
       setStatusMsg({ type: 'error', text: err.message || 'Error al autorizar usuario' });
@@ -95,19 +78,15 @@ export default function AuthorizedUsersPage() {
 
   const changeRole = async (userRecord: any, targetRole: string) => {
     try {
-      const { error } = await supabase
-        .from('authorized_users')
-        .update({ role: targetRole })
-        .eq('id', userRecord.id);
-
-      if (error) throw error;
-
-      // Cascade update resources table
-      await supabase
-        .from('resources')
-        .update({ role: targetRole === 'gerente' ? 'Gerente' : 'vigilador' })
-        .ilike('email', userRecord.email);
-
+      const res = await fetch(`/api/authorized-users/${userRecord.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: targetRole }),
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.error || 'Error al cambiar rol');
+      }
       setStatusMsg({ type: 'success', text: `Rol de ${userRecord.email} cambiado a ${targetRole.toUpperCase()}` });
       fetchUsers();
       setTimeout(() => setStatusMsg(null), 3000);
@@ -120,24 +99,23 @@ export default function AuthorizedUsersPage() {
     const newStatus = currentStatus === 'approved' ? 'revoked' : 'approved';
     const approvedAt = newStatus === 'approved' ? new Date().toISOString() : null;
 
-    // Optimistic update
     const previousUsers = [...users];
     setUsers(prev => prev.map(u => u.id === id ? { ...u, status: newStatus, approved_at: approvedAt } : u));
 
     try {
-      const { error } = await supabase
-        .from('authorized_users')
-        .update({ status: newStatus, approved_at: approvedAt })
-        .eq('id', id);
-
-      if (error) {
-        setUsers(previousUsers); // Rollback
-        throw error;
+      const res = await fetch(`/api/authorized-users/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus, approved_at: approvedAt }),
+      });
+      if (!res.ok) {
+        setUsers(previousUsers);
+        const d = await res.json();
+        throw new Error(d.error || 'Error al actualizar estado');
       }
-      
-      setStatusMsg({ 
-        type: 'success', 
-        text: `Acceso ${newStatus === 'approved' ? 'HABILITADO' : 'SUSPENDIDO'} correctamente` 
+      setStatusMsg({
+        type: 'success',
+        text: `Acceso ${newStatus === 'approved' ? 'HABILITADO' : 'SUSPENDIDO'} correctamente`,
       });
       setTimeout(() => setStatusMsg(null), 3000);
     } catch (err: any) {
@@ -173,29 +151,22 @@ export default function AuthorizedUsersPage() {
   const deleteUser = async (userRecord: any) => {
     if (!confirm(`¿Seguro que deseas eliminar la autorización de ${userRecord.email}? Se desvinculará por completo.`)) return;
 
-    // Optimistic update
     const previousUsers = [...users];
     setUsers(prev => prev.filter(u => u.id !== userRecord.id));
 
     try {
-      // 1. Delete from authorized_users
-      const { error: authErr } = await supabase
-        .from('authorized_users')
-        .delete()
-        .eq('id', userRecord.id);
-
-      if (authErr) throw authErr;
-
-      // 2. Cascade delete from resources table if matching email
-      await supabase
-        .from('resources')
-        .delete()
-        .ilike('email', userRecord.email);
-
+      const res = await fetch(`/api/authorized-users/${userRecord.id}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        setUsers(previousUsers);
+        const d = await res.json();
+        throw new Error(d.error || 'Error al eliminar');
+      }
       setStatusMsg({ type: 'success', text: 'Acceso y legajo eliminados correctamente' });
       setTimeout(() => setStatusMsg(null), 3000);
     } catch (err: any) {
-      setUsers(previousUsers); // Rollback
+      setUsers(previousUsers);
       alert('Error eliminando usuario: ' + err.message);
       fetchUsers();
     }

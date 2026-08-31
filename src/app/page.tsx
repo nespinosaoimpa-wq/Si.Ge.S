@@ -787,8 +787,8 @@ export default function RootLandingPage() {
               <p className="text-[9px] uppercase tracking-widest text-zinc-500 font-black mb-4">Legal &amp; Normativa</p>
               <ul className="space-y-2">
                 {[
-                  { label: 'Términos de Servicio', href: '/legal/tos' },
-                  { label: 'Política de Privacidad', href: '/legal/privacy' },
+                  { label: 'Términos de Servicio', href: '/legal/terminos' },
+                  { label: 'Política de Privacidad', href: '/legal/privacidad' },
                 ].map(l => (
                   <li key={l.label}><Link href={l.href} className="text-[11px] text-zinc-400 hover:text-white transition-colors font-medium">{l.label}</Link></li>
                 ))}
