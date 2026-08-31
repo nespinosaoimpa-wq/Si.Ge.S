@@ -174,16 +174,30 @@ export default function InventarioHub() {
 
   const fetchObjectives = async () => {
     try {
-      const { data } = await supabase.from('objectives').select('id, name').eq('is_active', true);
-      if (data) setObjectives(data);
-    } catch (e) {}
+      let { data } = await supabase.from('objectives').select('id, name').order('name', { ascending: true });
+      if (!data || data.length === 0) {
+        const res = await fetch('/api/dashboard/map');
+        const mapData = await res.json();
+        data = mapData.objectives?.map((o: any) => ({ id: o.id, name: o.name })) || [];
+      }
+      if (data && data.length > 0) setObjectives(data);
+    } catch (e) {
+      console.error('[FETCH_OBJECTIVES_ERROR]', e);
+    }
   };
 
   const fetchStaff = async () => {
     try {
-      const { data } = await supabase.from('resources').select('id, name, role').order('name', { ascending: true });
-      if (data) setStaff(data || []);
-    } catch (e) {}
+      let { data } = await supabase.from('resources').select('id, name, role').neq('status', 'baja').neq('status', 'inactivo').order('name', { ascending: true });
+      if (!data || data.length === 0) {
+        const res = await fetch('/api/dashboard/map');
+        const mapData = await res.json();
+        data = mapData.resources?.map((r: any) => ({ id: r.id, name: r.name, role: r.role })) || [];
+      }
+      if (data && data.length > 0) setStaff(data);
+    } catch (e) {
+      console.error('[FETCH_STAFF_ERROR]', e);
+    }
   };
 
   const handleCreate = async () => {
