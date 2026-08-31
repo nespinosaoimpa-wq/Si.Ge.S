@@ -726,13 +726,20 @@ export default function MapView({
   };
 
   const onMapLoad = useCallback(() => {
-    if (mapRef.current) {
-      (mapRef.current as any).setLight({
-        anchor: 'viewport',
-        color: 'white',
-        intensity: 0.45,
-        position: [1.15, 210, 30]
-      });
+    try {
+      if (mapRef.current) {
+        const map = (mapRef.current as any).getMap ? (mapRef.current as any).getMap() : mapRef.current;
+        if (map && typeof (map as any).setLight === 'function') {
+          (map as any).setLight({
+            anchor: 'viewport',
+            color: 'white',
+            intensity: 0.45,
+            position: [1.15, 210, 30]
+          });
+        }
+      }
+    } catch (err) {
+      console.warn('[MapView] setLight notice:', err);
     }
   }, []);
 
