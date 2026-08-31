@@ -295,15 +295,19 @@ export default function FichajePage() {
     if (typeof navigator !== 'undefined' && navigator.geolocation) {
       watchId = navigator.geolocation.watchPosition(
         (pos) => {
-          // Gate: ignore readings coarser than 50m for initial map display
-          // (was 150m — too permissive, caused marker to jump to cell towers)
-          if (pos.coords.accuracy > 50 && location) return;
-          
-          setLocation({
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude,
-            accuracy: pos.coords.accuracy,
-            speed: pos.coords.speed || 0
+          const newLat = pos.coords.latitude;
+          const newLng = pos.coords.longitude;
+          const newAcc = pos.coords.accuracy;
+
+          setLocation((prev) => {
+            if (!prev) {
+              return { lat: newLat, lng: newLng, accuracy: newAcc, speed: pos.coords.speed || 0 };
+            }
+            // Always prefer more accurate fix (smaller accuracy number in meters) or acceptable accuracy fix (<= 80m)
+            if (newAcc <= (prev.accuracy || 9999) || newAcc <= 80) {
+              return { lat: newLat, lng: newLng, accuracy: newAcc, speed: pos.coords.speed || 0 };
+            }
+            return prev;
           });
         },
         (err) => console.warn('[Fichaje] GPS Initial Watch Error:', err.message),

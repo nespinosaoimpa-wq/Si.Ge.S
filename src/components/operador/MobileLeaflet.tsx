@@ -482,14 +482,14 @@ export default function MobileLeaflet({
               pitchAlignment="viewport"
               rotationAlignment="viewport"
             >
-              <div className="flex flex-col items-center pointer-events-none select-none pb-0">
-                {/* Objective Label */}
-                <div className="bg-zinc-950/90 backdrop-blur-sm px-2.5 py-1 rounded-xl shadow-lg border border-[#0F4C5C]/50 mb-1">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-[#0F4C5C] whitespace-nowrap">{dest.name}</p>
+              <div className="relative w-8 h-8 flex items-center justify-center pointer-events-none select-none">
+                {/* Objective Label — Positioned absolutely so it NEVER alters the Marker tip bounding box */}
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 bg-zinc-950/90 backdrop-blur-sm px-2.5 py-1 rounded-xl shadow-lg border border-[#0F4C5C]/50 whitespace-nowrap pointer-events-none z-20">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-[#0F4C5C]">{dest.name}</p>
                 </div>
-                {/* Pin Tip Wrapper */}
-                <div className="relative w-8 h-8 flex items-center justify-center">
-                  <div className="absolute inset-0 bg-[#0F4C5C]/20 rounded-full animate-ping pointer-events-none" style={{ animationDuration: '2.5s' }} />
+                {/* Fixed-Size Pin Tip Wrapper */}
+                <div className="w-8 h-8 flex items-center justify-center relative">
+                  <div className="absolute w-8 h-8 bg-[#0F4C5C]/20 rounded-full animate-ping pointer-events-none" style={{ animationDuration: '2.5s' }} />
                   <MapPin className="relative z-10 w-8 h-8 text-[#0F4C5C] fill-black drop-shadow-md" />
                 </div>
               </div>
