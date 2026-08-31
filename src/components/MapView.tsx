@@ -1050,7 +1050,7 @@ export default function MapView({
               key={`panic-${alert.id || index}`} 
               latitude={Number(alert.latitude)} 
               longitude={Number(alert.longitude)} 
-              anchor="bottom-left"
+              anchor="center"
               rotationAlignment="viewport"
               pitchAlignment="viewport"
               onClick={e => {
@@ -1095,7 +1095,7 @@ export default function MapView({
               key={`inc-${inc.id}`}
               latitude={Number(inc.latitude)}
               longitude={Number(inc.longitude)}
-              anchor="bottom-left"
+              anchor="center"
               rotationAlignment="viewport"
               pitchAlignment="viewport"
               onClick={e => {
