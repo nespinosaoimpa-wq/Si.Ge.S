@@ -202,7 +202,7 @@ export default function GuardiaDashboard() {
     }
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(channelRes);
       if (watchId !== null) navigator.geolocation.clearWatch(watchId);
     };
   }, [OPERATOR_ID]);

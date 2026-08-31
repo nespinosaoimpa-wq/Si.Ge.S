@@ -16,6 +16,7 @@ import { useShift } from '@/components/providers/ShiftProvider';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { supabase } from '@/lib/supabase';
 import GPSConsentModal from '@/components/legal/GPSConsentModal';
+import { DocumentScanner } from '@/components/operador/DocumentScanner';
 const MobileLeaflet = dynamic(() => import('@/components/operador/MobileLeaflet'), { ssr: false });
 import DynamicIsland from '@/components/operador/DynamicIsland';
 import { TacticalSheet } from '@/components/ui/TacticalSheet';
