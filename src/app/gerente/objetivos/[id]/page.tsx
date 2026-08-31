@@ -93,9 +93,21 @@ export default function ObjectiveDetail() {
   const [isInventoryModalOpen, setIsInventoryModalOpen] = useState(false);
   const [unassignedItems, setUnassignedItems] = useState<any[]>([]);
 
-  // Billing state
-  const [billingRate, setBillingRate] = useState<string>('3500');
-  const [isUpdatingRate, setIsUpdatingRate] = useState(false);
+  // Billing & Edit state
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    client_name: '',
+    address: '',
+    contact_phone: '',
+    contact_person: '',
+    geofence_radius: 150,
+    status: 'Activo',
+    notes: ''
+  });
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [observations, setObservations] = useState('');
+  const [isSavingNotes, setIsSavingNotes] = useState(false);
 
   // Shift requirements state
   const [requirements, setRequirements] = useState<any[]>([]);
@@ -154,12 +166,22 @@ export default function ObjectiveDetail() {
         }
         
         setObjective(data.objective);
+        setObservations(data.objective.notes || '');
+        setEditForm({
+          name: data.objective.name || '',
+          client_name: data.objective.client_name || '',
+          address: data.objective.address || '',
+          contact_phone: data.objective.contact_phone || '',
+          contact_person: data.objective.contact_person || '',
+          geofence_radius: data.objective.geofence_radius_meters || data.objective.geofence_radius || 150,
+          status: data.objective.status || 'Activo',
+          notes: data.objective.notes || ''
+        });
         setShifts(Array.isArray(data.shifts) ? data.shifts : []);
         setCheckpoints(Array.isArray(data.checkpoints) ? data.checkpoints : []);
         setPatrolRounds(Array.isArray(data.patrolRounds) ? data.patrolRounds : []);
         setInventory(Array.isArray(data.inventory) ? data.inventory : []);
         setGuardBook(Array.isArray(data.guardBook) ? data.guardBook : []);
-        setBillingRate((data.objective.hourly_billing_rate || 3500).toString());
         
         // Filter programmed shifts from the fetched shifts
         const prog = (Array.isArray(data.shifts) ? data.shifts : []).filter((s: any) => s.status === 'programado' || s.status === 'activo');
@@ -391,22 +413,59 @@ export default function ObjectiveDetail() {
     }
   };
 
-  const handleUpdateRate = async () => {
-    if (!id || !billingRate) return;
-    setIsUpdatingRate(true);
+  const handleSaveNotes = async () => {
+    if (!id) return;
+    setIsSavingNotes(true);
     try {
       const { error } = await supabase
         .from('objectives')
-        .update({ hourly_billing_rate: parseFloat(billingRate) })
+        .update({ notes: observations })
         .eq('id', id);
-      
+
       if (error) throw error;
-      setObjective({ ...objective, hourly_billing_rate: parseFloat(billingRate) });
-      alert("¡Tarifa actualizada con éxito!");
+      setObjective({ ...objective, notes: observations });
+      alert("¡Observaciones guardadas con éxito!");
     } catch (err: any) {
-      alert("Error al actualizar tarifa: " + err.message);
+      alert("Error al guardar observaciones: " + (err.message || err));
     } finally {
-      setIsUpdatingRate(false);
+      setIsSavingNotes(false);
+    }
+  };
+
+  const handleSaveObjectiveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!id || !editForm.name.trim()) return;
+    setIsSavingEdit(true);
+
+    try {
+      const updates = {
+        name: editForm.name.trim(),
+        client_name: editForm.client_name.trim(),
+        address: editForm.address.trim(),
+        contact_phone: editForm.contact_phone.trim(),
+        contact_person: editForm.contact_person.trim(),
+        geofence_radius: Number(editForm.geofence_radius) || 150,
+        geofence_radius_meters: Number(editForm.geofence_radius) || 150,
+        status: editForm.status,
+        notes: editForm.notes.trim()
+      };
+
+      const { error } = await supabase
+        .from('objectives')
+        .update(updates)
+        .eq('id', id);
+
+      if (error) throw error;
+
+      const updatedObj = { ...objective, ...updates };
+      setObjective(updatedObj);
+      setObservations(editForm.notes.trim());
+      setIsEditModalOpen(false);
+      alert("¡Objetivo actualizado con éxito!");
+    } catch (err: any) {
+      alert("Error al actualizar objetivo: " + (err.message || err));
+    } finally {
+      setIsSavingEdit(false);
     }
   };
 
@@ -573,6 +632,25 @@ export default function ObjectiveDetail() {
           </div>
           
           <div className="flex items-center gap-3 w-full sm:w-auto">
+            <Button 
+              variant="outline" 
+              className="flex-1 sm:flex-none h-12 text-[10px] font-black uppercase tracking-widest bg-white border-zinc-200 hover:bg-zinc-50 text-zinc-900 shadow-sm"
+              onClick={() => {
+                setEditForm({
+                  name: objective.name || '',
+                  client_name: objective.client_name || '',
+                  address: objective.address || '',
+                  contact_phone: objective.contact_phone || '',
+                  contact_person: objective.contact_person || '',
+                  geofence_radius: objective.geofence_radius_meters || objective.geofence_radius || 150,
+                  status: objective.status || 'Activo',
+                  notes: objective.notes || observations || ''
+                });
+                setIsEditModalOpen(true);
+              }}
+            >
+              <Hammer size={16} className="mr-2 text-[#0F4C5C]" /> Editar Objetivo
+            </Button>
             <Button variant="outline" className="flex-1 sm:flex-none h-12 text-[10px] font-black uppercase tracking-widest bg-white border-zinc-200">
               <FileText size={16} className="mr-2" /> Contrato
             </Button>
@@ -629,27 +707,27 @@ export default function ObjectiveDetail() {
                     <InfoItem icon={Shield} label="Protocolo" value="ESTÁNDAR" />
                     <InfoItem icon={Calendar} label="Vigencia" value="ACTIVO" />
                     
-                    <div className="pt-4 border-t border-gray-100">
-                      <label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest mb-2 block">Tarifa de Facturación (Hora)</label>
-                      <div className="flex items-center gap-2">
-                        <div className="relative flex-1">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold">$</span>
-                          <Input 
-                            type="number"
-                            value={billingRate}
-                            onChange={(e) => setBillingRate(e.target.value)}
-                            className="pl-7 h-10 text-sm font-black text-gray-900 border-gray-200"
-                          />
-                        </div>
-                        <Button 
-                          onClick={handleUpdateRate}
-                          disabled={isUpdatingRate || parseFloat(billingRate) === objective.hourly_billing_rate}
-                          variant="primary" 
-                          className="h-10 text-[10px] font-black uppercase tracking-widest px-4"
-                        >
-                          {isUpdatingRate ? <Loader2 size={14} className="animate-spin" /> : 'Actualizar'}
-                        </Button>
+                    <div className="pt-4 border-t border-zinc-100 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[10px] font-black uppercase text-zinc-400 tracking-[0.2em] flex items-center gap-1.5">
+                          <BookOpen size={13} className="text-[#0F4C5C]" />
+                          Observaciones del Puesto
+                        </label>
                       </div>
+                      <textarea
+                        value={observations}
+                        onChange={(e) => setObservations(e.target.value)}
+                        placeholder="Ingresar consignas especiales, datos de acceso o información relevante..."
+                        rows={4}
+                        className="w-full p-3 text-xs font-semibold text-zinc-800 bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0F4C5C]/50 resize-none"
+                      />
+                      <Button
+                        onClick={handleSaveNotes}
+                        disabled={isSavingNotes || observations === (objective?.notes || '')}
+                        className="w-full h-10 text-[10px] font-black uppercase tracking-widest bg-zinc-900 text-white hover:bg-black rounded-xl"
+                      >
+                        {isSavingNotes ? <Loader2 size={14} className="animate-spin" /> : '💾 Guardar Observaciones'}
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -1718,11 +1796,127 @@ export default function ObjectiveDetail() {
                       <p className="text-sm font-black uppercase tracking-widest italic">No hay coordenadas registradas</p>
                     </div>
                  )}
-              </div>
+               </div>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
+
+      {/* ====== MODAL: Edición Completa de Objetivo ====== */}
+      <BottomSheet
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title="EDITAR INFORMACIÓN DEL OBJETIVO"
+      >
+        <form onSubmit={handleSaveObjectiveEdit} className="space-y-4 p-2">
+          <div>
+            <label className="text-[10px] font-black uppercase text-zinc-400 tracking-widest block mb-1">Nombre del Objetivo</label>
+            <Input
+              value={editForm.name}
+              onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+              placeholder="Ej: Base de Operaciones / Planta Central"
+              required
+              className="h-11 font-bold border-zinc-200"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-[10px] font-black uppercase text-zinc-400 tracking-widest block mb-1">Cliente / Empresa</label>
+              <Input
+                value={editForm.client_name}
+                onChange={(e) => setEditForm({ ...editForm, client_name: e.target.value })}
+                placeholder="Ej: Grupo Logístico S.A."
+                className="h-11 font-semibold border-zinc-200"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-black uppercase text-zinc-400 tracking-widest block mb-1">Estado Operativo</label>
+              <select
+                value={editForm.status}
+                onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                className="w-full h-11 px-3 bg-white border border-zinc-200 rounded-xl text-xs font-bold text-zinc-900 focus:outline-none"
+              >
+                <option value="Activo">ACTIVO</option>
+                <option value="Inactivo">INACTIVO</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-[10px] font-black uppercase text-zinc-400 tracking-widest block mb-1">Dirección Completa</label>
+            <Input
+              value={editForm.address}
+              onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
+              placeholder="Ej: Av. San Martín 1450, Santa Fe"
+              className="h-11 font-semibold border-zinc-200"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-[10px] font-black uppercase text-zinc-400 tracking-widest block mb-1">Persona de Contacto</label>
+              <Input
+                value={editForm.contact_person}
+                onChange={(e) => setEditForm({ ...editForm, contact_person: e.target.value })}
+                placeholder="Ej: Ing. Carlos Gómez"
+                className="h-11 font-semibold border-zinc-200"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-black uppercase text-zinc-400 tracking-widest block mb-1">Teléfono de Contacto</label>
+              <Input
+                value={editForm.contact_phone}
+                onChange={(e) => setEditForm({ ...editForm, contact_phone: e.target.value })}
+                placeholder="Ej: +54 342 555-1234"
+                className="h-11 font-semibold border-zinc-200"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-[10px] font-black uppercase text-zinc-400 tracking-widest block mb-1">Radio de Geocerca (Metros)</label>
+            <Input
+              type="number"
+              value={editForm.geofence_radius}
+              onChange={(e) => setEditForm({ ...editForm, geofence_radius: Number(e.target.value) })}
+              placeholder="150"
+              min={20}
+              max={2000}
+              className="h-11 font-bold border-zinc-200"
+            />
+          </div>
+
+          <div>
+            <label className="text-[10px] font-black uppercase text-zinc-400 tracking-widest block mb-1">Observaciones / Consignas Tácticas</label>
+            <textarea
+              value={editForm.notes}
+              onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+              placeholder="Información a tener en cuenta para el personal y gerencia..."
+              rows={3}
+              className="w-full p-3 text-xs font-semibold text-zinc-800 bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0F4C5C]/50 resize-none"
+            />
+          </div>
+
+          <div className="flex gap-3 pt-4 border-t border-zinc-100">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsEditModalOpen(false)}
+              className="flex-1 h-12 rounded-xl uppercase text-[10px] font-black tracking-wider"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              disabled={isSavingEdit}
+              className="flex-1 h-12 rounded-xl uppercase text-[10px] font-black tracking-wider bg-zinc-900 text-white hover:bg-black"
+            >
+              {isSavingEdit ? <Loader2 className="animate-spin" size={16} /> : '💾 Guardar Cambios'}
+            </Button>
+          </div>
+        </form>
+      </BottomSheet>
     </div>
   );
 }
