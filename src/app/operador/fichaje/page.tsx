@@ -16,11 +16,39 @@ import { useShift } from '@/components/providers/ShiftProvider';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { supabase } from '@/lib/supabase';
 import GPSConsentModal from '@/components/legal/GPSConsentModal';
-import { DocumentScanner } from '@/components/operador/DocumentScanner';
-
 const MobileLeaflet = dynamic(() => import('@/components/operador/MobileLeaflet'), { ssr: false });
 import DynamicIsland from '@/components/operador/DynamicIsland';
 import { TacticalSheet } from '@/components/ui/TacticalSheet';
+
+class MapErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: any, errorInfo: any) {
+    console.error('[MapErrorBoundary] Map error caught:', error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-900 text-white p-6 text-center space-y-4">
+          <MapPin size={36} className="text-[#0F4C5C] animate-pulse" />
+          <p className="text-xs font-black uppercase tracking-wider">Mapa Táctico</p>
+          <button 
+            onClick={() => this.setState({ hasError: false })} 
+            className="px-4 py-2 bg-[#0F4C5C] text-white text-[10px] font-black uppercase rounded-xl"
+          >
+            Reactivar Mapa
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export default function FichajePage() {
   const { user, loading: authLoading } = useAuth();
@@ -679,7 +707,10 @@ export default function FichajePage() {
 
   const isOutOfRange = !isShiftActive && currentDistance !== null && currentDistance > geofenceRadius;
 
-  let displayLocation = location ? [location.lat, location.lng] : undefined;
+  let displayLocation: [number, number] | undefined = undefined;
+  if (location && !isNaN(Number(location.lat)) && !isNaN(Number(location.lng)) && Number(location.lat) !== 0 && Number(location.lng) !== 0) {
+    displayLocation = [Number(location.lat), Number(location.lng)];
+  }
   let displayAccuracy = location?.accuracy;
   const currentAvatar = isShiftActive ? ((shiftData as any)?.avatar_url || avatarUrl) : avatarUrl;
 
@@ -728,15 +759,17 @@ export default function FichajePage() {
         theme={theme as 'light' | 'dark'}
       />
 
-      {/* MAP: Full Screen */}
+      {/* MAP: Full Screen with Safe ErrorBoundary */}
       <div className="flex-1 relative z-0">
+        <MapErrorBoundary>
           <MobileLeaflet 
-            currentPosition={displayLocation as [number, number] | undefined}
+            currentPosition={displayLocation}
             currentAccuracy={displayAccuracy}
             destinations={destinations}
             avatarUrl={currentAvatar}
             showFloatingOverlay={false}
           />
+        </MapErrorBoundary>
       </div>
 
       {/* TACTICAL BOTTOM SHEET: 3-State Interactive Panel */}

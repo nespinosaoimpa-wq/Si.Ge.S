@@ -244,14 +244,30 @@ export default function MobileLeaflet({
   const [navRoute, setNavRoute] = useState<[number, number][]>([]);
 
   useEffect(() => {
-    if (!currentPosition || destinations.length === 0) {
+    if (
+      !currentPosition || 
+      !Array.isArray(currentPosition) || 
+      !currentPosition[0] || 
+      !currentPosition[1] || 
+      isNaN(Number(currentPosition[0])) || 
+      isNaN(Number(currentPosition[1])) ||
+      !destinations || 
+      !Array.isArray(destinations) ||
+      destinations.length === 0 || 
+      !destinations[0]?.position ||
+      !Array.isArray(destinations[0].position)
+    ) {
       setNavRoute([]);
       return;
     }
     const dest = destinations[0];
     const fetchDirections = async () => {
       try {
-        const url = `https://api.mapbox.com/directions/v5/mapbox/walking/${currentPosition[1]},${currentPosition[0]};${dest.position[1]},${dest.position[0]}?geometries=geojson&access_token=${MAPBOX_TOKEN}`;
+        const destLat = Number(dest.position[0]);
+        const destLng = Number(dest.position[1]);
+        if (isNaN(destLat) || isNaN(destLng)) return;
+
+        const url = `https://api.mapbox.com/directions/v5/mapbox/walking/${currentPosition[1]},${currentPosition[0]};${destLng},${destLat}?geometries=geojson&access_token=${MAPBOX_TOKEN}`;
         const res = await fetch(url);
         const data = await res.json();
         if (data.routes && data.routes[0]) {
@@ -267,13 +283,15 @@ export default function MobileLeaflet({
   }, [currentPosition, destinations]);
 
   const destinationGeofenceData = useMemo(() => {
-    if (!destinations || destinations.length === 0) return null;
+    if (!destinations || !Array.isArray(destinations) || destinations.length === 0) return null;
     const dest = destinations[0];
+    if (!dest || !dest.position || !Array.isArray(dest.position)) return null;
+
     const radiusMeters = (dest as any).radius || 150;
     const lat = Number(dest.position[0]);
     const lng = Number(dest.position[1]);
 
-    if (!lat || !lng || isNaN(lat) || isNaN(lng)) return null;
+    if (!lat || !lng || isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) return null;
 
     const points = 64;
     const coords: [number, number][] = [];
@@ -301,13 +319,19 @@ export default function MobileLeaflet({
   }, [destinations]);
 
   // Uncontrolled viewport configurations: pitch 0 for 100% accurate 2D ortho alignment
-  const initialViewState = useMemo(() => ({
-    latitude: currentPosition?.[0] ?? -31.6350,
-    longitude: currentPosition?.[1] ?? -60.7000,
-    zoom: 16.5,
-    pitch: 0,
-    bearing: 0
-  }), []);
+  const initialViewState = useMemo(() => {
+    const rawLat = currentPosition?.[0];
+    const rawLng = currentPosition?.[1];
+    const validLat = (rawLat && !isNaN(Number(rawLat)) && Number(rawLat) !== 0) ? Number(rawLat) : -31.6350;
+    const validLng = (rawLng && !isNaN(Number(rawLng)) && Number(rawLng) !== 0) ? Number(rawLng) : -60.7000;
+    return {
+      latitude: validLat,
+      longitude: validLng,
+      zoom: 16.5,
+      pitch: 0,
+      bearing: 0
+    };
+  }, []);
 
   const handleInteractionStart = useCallback(() => {
     userInteracting.current = true;
