@@ -2,6 +2,12 @@ import { createServiceClient } from '@/lib/supabase-server';
 import { NextResponse } from 'next/server';
 import { serverCache } from '@/lib/cache';
 
+const ALLOWED_OBJECTIVE_COLUMNS = new Set([
+  'name', 'address', 'client_name', 'contact_phone', 'contact_person',
+  'latitude', 'longitude', 'geofence_radius', 'geofence_radius_meters',
+  'is_active', 'status', 'hourly_billing_rate', 'notes', 'tenant_id', 'updated_at'
+]);
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -27,6 +33,53 @@ export async function GET(
   }
 }
 
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const supabase = createServiceClient();
+    const body = await request.json();
+
+    const cleanedBody: any = {
+      updated_at: new Date().toISOString()
+    };
+
+    for (const [key, value] of Object.entries(body)) {
+      if (ALLOWED_OBJECTIVE_COLUMNS.has(key)) {
+        cleanedBody[key] = value === '' ? null : value;
+      }
+    }
+
+    const { data, error } = await supabase
+      .from('objectives')
+      .update(cleanedBody)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[OBJECTIVE_PATCH_ERROR]', error.message);
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
+    // Invalidate caches
+    const targetTenantId = data?.tenant_id;
+    if (targetTenantId) {
+      serverCache.invalidate(`objectives-${targetTenantId}`);
+      serverCache.invalidate(`dashboard-map-${targetTenantId}`);
+    }
+    serverCache.invalidate(`objectives-super`);
+    serverCache.invalidate(`dashboard-map-super`);
+
+    return NextResponse.json(data);
+  } catch (error: any) {
+    console.error('[OBJECTIVE_PATCH_EXCEPTION]', error);
+    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+  }
+}
+
 export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -44,7 +97,6 @@ export async function DELETE(
 
     if (deleteErr) {
       console.warn("Hard delete failed in SIGPAD, performing soft delete:", deleteErr.message);
-      // Soft delete fallback if foreign keys exist
       await supabase
         .from('objectives')
         .update({ 
@@ -55,7 +107,7 @@ export async function DELETE(
         .eq('id', id);
     }
     
-    // CACHE INVALIDATION: Clean cached objectives & map for this tenant
+    // CACHE INVALIDATION
     const targetTenantId = targetObj?.tenant_id;
     if (targetTenantId) {
       serverCache.invalidate(`objectives-${targetTenantId}`);

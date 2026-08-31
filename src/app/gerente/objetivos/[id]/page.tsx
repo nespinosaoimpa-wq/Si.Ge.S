@@ -389,7 +389,7 @@ export default function ObjectiveDetail() {
   };
 
   const handleGeocode = async () => {
-    if (!objective?.address) return;
+    if (!objective?.address || !id) return;
     setIsUpdating(true);
     try {
       const results = await geocodeForward(objective.address);
@@ -399,17 +399,12 @@ export default function ObjectiveDetail() {
       }
       
       const { lat, lng } = results[0];
-      const { error } = await supabase
-        .from('objectives')
-        .update({ latitude: lat, longitude: lng })
-        .eq('id', id);
-      
-      if (error) throw error;
+      await api.objectives.update(id, { latitude: lat, longitude: lng });
       
       setObjective({ ...objective, latitude: lat, longitude: lng });
       alert("¡Ubicación actualizada con éxito!");
     } catch (err: any) {
-      alert("Error al geolocalizar: " + err.message);
+      alert("Error al geolocalizar: " + (err.message || err));
     } finally {
       setIsUpdating(false);
     }
@@ -419,12 +414,8 @@ export default function ObjectiveDetail() {
     if (!id) return;
     setIsSavingNotes(true);
     try {
-      const { error } = await supabase
-        .from('objectives')
-        .update({ notes: observations })
-        .eq('id', id);
+      await api.objectives.update(id, { notes: observations });
 
-      if (error) throw error;
       setObjective({ ...objective, notes: observations });
       alert("¡Observaciones guardadas con éxito!");
     } catch (err: any) {
@@ -452,12 +443,7 @@ export default function ObjectiveDetail() {
         notes: editForm.notes.trim()
       };
 
-      const { error } = await supabase
-        .from('objectives')
-        .update(updates)
-        .eq('id', id);
-
-      if (error) throw error;
+      await api.objectives.update(id, updates);
 
       const updatedObj = { ...objective, ...updates };
       setObjective(updatedObj);
