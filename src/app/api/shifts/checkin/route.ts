@@ -240,8 +240,7 @@ export async function POST(request: Request) {
       await supabase
         .from('objectives')
         .update({
-          manned_status: 'Cubierto',
-          current_operator_id: finalResourceId
+          manned_status: 'Cubierto'
         })
         .eq('id', objective_id);
     }

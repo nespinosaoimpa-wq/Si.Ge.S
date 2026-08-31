@@ -100,8 +100,11 @@ export async function GET(req: NextRequest) {
       .neq('status', 'baja')
       .neq('status', 'inactivo');
 
+    const last24h = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+
     let guardBookQuery = supabase.from('guard_book_entries')
       .select('*')
+      .gte('created_at', last24h)
       .neq('status', 'resolved')
       .neq('status', 'resuelto')
       .neq('status', 'justificado')
@@ -118,6 +121,7 @@ export async function GET(req: NextRequest) {
 
     let incidentsQuery = supabase.from('incidents')
       .select('*')
+      .gte('created_at', last24h)
       .neq('status', 'resolved')
       .neq('status', 'resuelto')
       .neq('status', 'justificado')
@@ -128,6 +132,7 @@ export async function GET(req: NextRequest) {
 
     let alarmsQuery = supabase.from('alarms')
       .select('*')
+      .gte('created_at', last24h)
       .neq('status', 'resolved')
       .neq('status', 'resuelto')
       .neq('status', 'acknowledged')
@@ -304,7 +309,14 @@ export async function GET(req: NextRequest) {
       ...recentIncidentsFromRawIncidents,
       ...recentIncidentsFromAlarms
     ]
-      .filter((inc, index, self) => self.findIndex(t => t.id === inc.id) === index)
+      .filter((inc) => {
+        const status = (inc.status || '').toLowerCase();
+        return status !== 'resolved' && status !== 'resuelto' && status !== 'justificado' && status !== 'sancionado' && status !== 'atendido' && status !== 'acknowledged';
+      })
+      .filter((inc, index, self) => self.findIndex(t => 
+        t.id === inc.id || 
+        (t.objective_id && t.objective_id === inc.objective_id && t.entry_type === inc.entry_type && Math.abs(new Date(t.created_at).getTime() - new Date(inc.created_at).getTime()) < 120000)
+      ) === index)
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, 20);
 

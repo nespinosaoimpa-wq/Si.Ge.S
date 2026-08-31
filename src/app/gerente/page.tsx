@@ -135,17 +135,20 @@ export default function AdminDashboard() {
   // --- MEMOIZED DATA (Optimization) ---
   const enrichedObjectives = useMemo(() => {
     return (data.objectives || []).map((obj: any) => {
-      // Find if anyone is currently at this objective in the resources list (more up-to-date via pulses)
-      const occupant = (data.resources || []).find((r: any) => r.current_objective_id === obj.id);
-      
-      // Merge: Prioritize occupant from resources (live pulses), fallback to deep join from DB
+      // Find all occupants currently at this objective in the resources list (live pulses)
+      const liveOccupants = (data.resources || []).filter((r: any) => r.current_objective_id === obj.id);
       const dbPersonnel = obj.assigned_personnel || [];
-      const finalPersonnel = occupant ? [occupant] : dbPersonnel;
+
+      // Combine DB personnel and live occupants without duplicate IDs
+      const personnelMap = new Map();
+      dbPersonnel.forEach((p: any) => personnelMap.set(p.id, p));
+      liveOccupants.forEach((p: any) => personnelMap.set(p.id, p));
+      const finalPersonnel = Array.from(personnelMap.values());
 
       return {
         ...obj,
-        occupant_name: occupant?.name || (dbPersonnel.length > 0 ? dbPersonnel[0].name : null),
-        is_manned: !!occupant || dbPersonnel.length > 0,
+        occupant_name: finalPersonnel.map((p: any) => p.name).filter(Boolean).join(', ') || null,
+        is_manned: finalPersonnel.length > 0,
         assigned_personnel: finalPersonnel
       };
     });
@@ -457,8 +460,12 @@ export default function AdminDashboard() {
   const handleResolveIncident = async (id: string) => {
     if (!id) return;
     try {
+      // Find correlated objective ID before filtering out from state
+      const targetInc = (data.recentIncidents || []).find((inc: any) => inc.id === id);
+      const targetObjId = targetInc?.objective_id;
+
       // 1. Actualización optimista inmediata en interfaz y cierre de sirena/modal (0ms)
-      setActiveEmergency(prev => (prev?.id === id ? null : prev));
+      setActiveEmergency(prev => (prev?.id === id || (targetObjId && prev?.objective_id === targetObjId) ? null : prev));
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current.currentTime = 0;
@@ -466,18 +473,29 @@ export default function AdminDashboard() {
 
       setData((prev: any) => ({
         ...prev,
-        recentIncidents: (prev.recentIncidents || []).filter((inc: any) => inc.id !== id)
+        recentIncidents: (prev.recentIncidents || []).filter((inc: any) => inc.id !== id && (!targetObjId || inc.objective_id !== targetObjId))
       }));
 
       const now = new Date().toISOString();
 
-      // 2. Actualización DIRECTA en Supabase (0 llamadas a Vercel)
-      await Promise.allSettled([
+      // 2. Actualización DIRECTA en Supabase en todas las tablas vinculadas
+      const promises: Promise<any>[] = [
         supabase.from('incidents').update({ status: 'resolved', resolved_at: now }).eq('id', id),
         supabase.from('alarms').update({ status: 'resolved', acknowledged_at: now, resolved_at: now }).eq('id', id),
         supabase.from('guard_book_entries').update({ status: 'resolved', resolved_at: now }).eq('id', id),
         supabase.from('geofencing_incidents').update({ status: 'resuelto', return_at: now }).eq('id', id)
-      ]);
+      ];
+
+      if (targetObjId) {
+        promises.push(
+          supabase.from('incidents').update({ status: 'resolved', resolved_at: now }).eq('objective_id', targetObjId).neq('status', 'resolved'),
+          supabase.from('alarms').update({ status: 'resolved', acknowledged_at: now, resolved_at: now }).eq('objective_id', targetObjId).neq('status', 'resolved'),
+          supabase.from('guard_book_entries').update({ status: 'resolved', resolved_at: now }).eq('objective_id', targetObjId).in('entry_type', ['panic', 'emergencia', 'alerta']).neq('status', 'resolved'),
+          supabase.from('geofencing_incidents').update({ status: 'resuelto', return_at: now }).eq('objective_id', targetObjId).neq('status', 'resuelto')
+        );
+      }
+
+      await Promise.allSettled(promises);
 
       // 3. Fallback no bloqueante a la API (Service Role bypass)
       fetch(`/api/tracking/incidents/${encodeURIComponent(id)}/resolve`, {

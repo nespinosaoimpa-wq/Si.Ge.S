@@ -190,7 +190,7 @@ function OperatorLocationGroup({
           pitchAlignment="viewport"
           rotationAlignment="viewport"
         >
-          <div className="relative w-12 h-12 flex items-center justify-center pointer-events-none select-none">
+          <div className="relative w-12 h-12 flex items-center justify-center pointer-events-none select-none transform-gpu will-change-transform">
             {/* Heading Chevron */}
             <div 
               className="absolute inset-0 flex items-center justify-center"
@@ -384,6 +384,10 @@ export default function MobileLeaflet({
         onDragEnd={handleInteractionEnd}
         onZoomStart={handleInteractionStart}
         onZoomEnd={handleInteractionEnd}
+        onTouchStart={(e) => {
+          if (e.points && e.points.length >= 2) handleInteractionStart();
+        }}
+        onTouchEnd={() => handleInteractionEnd()}
         mapStyle={MAP_STYLES[activeStyle]}
         mapboxAccessToken={MAPBOX_TOKEN}
         style={{ width: '100%', height: '100%' }}
@@ -512,7 +516,7 @@ export default function MobileLeaflet({
               pitchAlignment="viewport"
               rotationAlignment="viewport"
             >
-              <div className="relative flex flex-col items-center pointer-events-none select-none">
+              <div className="relative flex flex-col items-center pointer-events-none select-none transform-gpu will-change-transform">
                 {/* Objective Label — Floating absolutely so it NEVER distorts Marker box */}
                 <div className="absolute -top-9 left-1/2 -translate-x-1/2 bg-zinc-950/90 backdrop-blur-sm px-2.5 py-1 rounded-xl shadow-lg border border-[#0F4C5C]/50 whitespace-nowrap pointer-events-none z-20">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-[#0F4C5C]">{dest.name}</p>

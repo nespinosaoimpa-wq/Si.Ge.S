@@ -105,49 +105,53 @@ export function ObjectiveDetailPanel({
           {/* Guard on duty / Assignment */}
           <div className="p-4 bg-zinc-50 rounded-2xl mb-6 border border-zinc-200 shadow-sm">
             {(() => {
-              // Priority 1: Guard with live pulse at this objective
-              let assignedGuard = activeGuards.find(g => g.current_objective_id === selectedObjective.id);
-              
-              // Priority 2: Guard assigned via deep join (even if no live pulse yet)
-              if (!assignedGuard && selectedObjective.assigned_personnel?.length > 0) {
-                assignedGuard = selectedObjective.assigned_personnel[0];
-              }
- 
-              const activeShift = activeShifts.find(s => s.objective_id === selectedObjective.id || (assignedGuard && s.operator_id === assignedGuard.id));
- 
-              if (assignedGuard) {
+              const liveGuards = activeGuards.filter((g: any) => g.current_objective_id === selectedObjective.id);
+              const dbGuards = selectedObjective.assigned_personnel || [];
+              const guardsMap = new Map();
+              dbGuards.forEach((g: any) => guardsMap.set(g.id, g));
+              liveGuards.forEach((g: any) => guardsMap.set(g.id, g));
+              const allGuards = Array.from(guardsMap.values());
+
+              if (allGuards.length > 0) {
                 return (
-                  <div className="flex items-center gap-4">
-                    <div className={cn(
-                      "w-12 h-12 rounded-full flex items-center justify-center shrink-0 overflow-hidden border transition-all shadow-sm", 
-                      activeShift ? "border-[#0F4C5C] bg-white" : "bg-white border-zinc-200"
-                    )}>
-                      {assignedGuard.profiles?.avatar_url || assignedGuard.avatar_url ? (
-                        <img src={assignedGuard.profiles?.avatar_url || assignedGuard.avatar_url} className="w-full h-full object-cover" alt={assignedGuard.name} />
-                      ) : (
-                        <User size={24} className="text-zinc-400" />
-                      )}
-                    </div>
- 
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                         <p className="text-sm font-bold text-zinc-900 tracking-tight">{assignedGuard.name}</p>
-                         {activeShift && (
-                           <div className="w-2 h-2 rounded-full bg-teal-500" title="En servicio activo" />
-                         )}
-                      </div>
-                      <p className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider mt-0.5">
-                        {activeShift ? 'Puesto Cubierto' : 'Asignación Pendiente'}
-                      </p>
-                    </div>
-                    {onAssignOperator && (
-                      <button 
-                        className="text-xs font-semibold text-zinc-400 hover:text-red-500 transition-colors" 
-                        onClick={() => onAssignOperator(selectedObjective.id, '')}
-                      >
-                        Liberar
-                      </button>
-                    )}
+                  <div className="space-y-3">
+                    {allGuards.map((guard: any) => {
+                      const activeShift = activeShifts.find((s: any) => s.objective_id === selectedObjective.id || s.operator_id === guard.id);
+                      return (
+                        <div key={guard.id} className="flex items-center gap-4 border-b border-zinc-100 pb-2.5 last:border-0 last:pb-0">
+                          <div className={cn(
+                            "w-10 h-10 rounded-full flex items-center justify-center shrink-0 overflow-hidden border transition-all shadow-sm", 
+                            activeShift ? "border-[#0F4C5C] bg-white" : "bg-white border-zinc-200"
+                          )}>
+                            {guard.profiles?.avatar_url || guard.avatar_url ? (
+                              <img src={guard.profiles?.avatar_url || guard.avatar_url} className="w-full h-full object-cover" alt={guard.name} />
+                            ) : (
+                              <User size={20} className="text-zinc-400" />
+                            )}
+                          </div>
+       
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-bold text-zinc-900 tracking-tight">{guard.name}</p>
+                              {activeShift && (
+                                <div className="w-2 h-2 rounded-full bg-teal-500" title="En servicio activo" />
+                              )}
+                            </div>
+                            <p className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider mt-0.5">
+                              {activeShift ? 'Puesto Cubierto' : 'Asignación Pendiente'}
+                            </p>
+                          </div>
+                          {onAssignOperator && (
+                            <button 
+                              className="text-xs font-semibold text-zinc-400 hover:text-red-500 transition-colors" 
+                              onClick={() => onAssignOperator(selectedObjective.id, '')}
+                            >
+                              Liberar
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 );
               }

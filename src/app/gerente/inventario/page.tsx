@@ -259,7 +259,7 @@ export default function InventarioHub() {
 
   const handleAssignObjective = async (itemId: string, objId: string) => {
     try {
-      const targetObjId = objId || null;
+      const targetObjId = (objId && String(objId).trim() !== '' && objId !== 'null') ? objId : null;
       const res = await fetch('/api/inventory', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -280,18 +280,25 @@ export default function InventarioHub() {
 
   const handleAssignResource = async (itemId: string, resId: string) => {
     try {
-      const targetResId = resId || null;
+      const targetResId = (resId && String(resId).trim() !== '' && resId !== 'null') ? resId : null;
       const res = await fetch('/api/inventory', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: itemId, resource_id: targetResId }),
+        body: JSON.stringify({ id: itemId, resource_id: targetResId, assigned_to: targetResId }),
       });
 
       if (!res.ok) {
-        await supabase
-          .from('resource_inventory')
-          .update({ resource_id: targetResId } as any)
-          .eq('id', itemId);
+        try {
+          await supabase
+            .from('resource_inventory')
+            .update({ resource_id: targetResId, assigned_to: targetResId } as any)
+            .eq('id', itemId);
+        } catch (e) {
+          await supabase
+            .from('resource_inventory')
+            .update({ resource_id: targetResId } as any)
+            .eq('id', itemId);
+        }
       }
       fetchInventory();
     } catch (e: any) {
@@ -303,6 +310,9 @@ export default function InventarioHub() {
     if (!selectedEditItem || !selectedEditItem.item_name) return;
     try {
       setLoading(true);
+      const targetObjId = (selectedEditItem.objective_id && String(selectedEditItem.objective_id).trim() !== '' && selectedEditItem.objective_id !== 'null') ? selectedEditItem.objective_id : null;
+      const targetResId = (selectedEditItem.resource_id && String(selectedEditItem.resource_id).trim() !== '' && selectedEditItem.resource_id !== 'null') ? selectedEditItem.resource_id : null;
+
       const res = await fetch('/api/inventory', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -312,24 +322,40 @@ export default function InventarioHub() {
           category: selectedEditItem.category,
           serial_number: selectedEditItem.serial_number ? selectedEditItem.serial_number.trim() : null,
           status: selectedEditItem.status,
-          objective_id: selectedEditItem.objective_id || null,
-          resource_id: selectedEditItem.resource_id || null,
+          objective_id: targetObjId,
+          resource_id: targetResId,
+          assigned_to: targetResId,
           notes: selectedEditItem.notes ? selectedEditItem.notes.trim() : null,
         }),
       });
 
       if (!res.ok) {
-        await supabase
-          .from('resource_inventory')
-          .update({
-            item_name: selectedEditItem.item_name.trim(),
-            category: selectedEditItem.category,
-            serial_number: selectedEditItem.serial_number ? selectedEditItem.serial_number.trim() : null,
-            status: selectedEditItem.status,
-            objective_id: selectedEditItem.objective_id || null,
-            resource_id: selectedEditItem.resource_id || null,
-          } as any)
-          .eq('id', selectedEditItem.id);
+        try {
+          await supabase
+            .from('resource_inventory')
+            .update({
+              item_name: selectedEditItem.item_name.trim(),
+              category: selectedEditItem.category,
+              serial_number: selectedEditItem.serial_number ? selectedEditItem.serial_number.trim() : null,
+              status: selectedEditItem.status,
+              objective_id: targetObjId,
+              resource_id: targetResId,
+              assigned_to: targetResId,
+            } as any)
+            .eq('id', selectedEditItem.id);
+        } catch (e) {
+          await supabase
+            .from('resource_inventory')
+            .update({
+              item_name: selectedEditItem.item_name.trim(),
+              category: selectedEditItem.category,
+              serial_number: selectedEditItem.serial_number ? selectedEditItem.serial_number.trim() : null,
+              status: selectedEditItem.status,
+              objective_id: targetObjId,
+              resource_id: targetResId,
+            } as any)
+            .eq('id', selectedEditItem.id);
+        }
       }
 
       setIsEditSheetOpen(false);

@@ -122,15 +122,25 @@ export async function POST(request: Request) {
       } catch (e) {}
     }
 
-    // 4. Update objective to clear coverage status
+    // 4. Update objective to clear coverage status only if no remaining active shifts
     if (currentShift?.objective_id) {
-      await supabase
-        .from('objectives')
-        .update({
-          manned_status: 'Activo',
-          current_operator_id: null
-        })
-        .eq('id', currentShift.objective_id);
+      const { data: remainingShifts } = await supabase
+        .from('guard_shifts')
+        .select('id')
+        .eq('objective_id', currentShift.objective_id)
+        .is('checkout_time', null)
+        .neq('id', targetShiftId || '');
+
+      const isStillManned = remainingShifts && remainingShifts.length > 0;
+      if (!isStillManned) {
+        await supabase
+          .from('objectives')
+          .update({
+            manned_status: 'Activo',
+            current_operator_id: null
+          })
+          .eq('id', currentShift.objective_id);
+      }
     }
 
     // 5. Update resource back to disponible

@@ -775,7 +775,7 @@ export default function FichajePage() {
 
       {/* TACTICAL BOTTOM SHEET: 3-State Interactive Panel */}
       <TacticalSheet
-        snapPoints={[0.14, 0.48, 0.85]}
+        snapPoints={[0.22, 0.52, 0.85]}
         initialSnap={isShiftActive ? 1 : 0}
         theme="light"
         onSnapChange={(i) => {

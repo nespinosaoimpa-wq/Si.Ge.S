@@ -31,7 +31,13 @@ export async function GET(request: NextRequest) {
     }
 
     if (objectiveId) query = query.eq('objective_id', objectiveId);
-    if (resourceId) query = query.eq('resource_id', resourceId);
+    if (resourceId) {
+      try {
+        query = query.or(`resource_id.eq.${resourceId},assigned_to.eq.${resourceId}`);
+      } catch (e) {
+        query = query.eq('resource_id', resourceId);
+      }
+    }
     if (category) query = query.eq('category', category);
     if (status) query = query.eq('status', status);
 
@@ -68,12 +74,20 @@ export async function POST(request: NextRequest) {
         status: body.status || 'operativo',
         objective_id: objective_id,
         resource_id: resource_id,
+        assigned_to: resource_id,
         notes: body.notes || null,
         tenant_id: tenantId
       });
     }
 
-    const { data, error } = await supabase.from('resource_inventory').insert(itemsToInsert as any).select();
+    let { data, error } = await supabase.from('resource_inventory').insert(itemsToInsert as any).select();
+
+    if (error && (error.message?.includes('assigned_to') || error.code === 'PGRST204')) {
+      const fallbackItems = itemsToInsert.map(({ assigned_to, ...rest }) => rest);
+      const fb = await supabase.from('resource_inventory').insert(fallbackItems as any).select();
+      data = fb.data;
+      error = fb.error;
+    }
 
     if (error) {
       console.error('[INVENTORY_POST_ERROR] Supabase error:', error);
@@ -103,13 +117,25 @@ export async function PATCH(request: NextRequest) {
       }
     }
 
-    if (updates.resource_id !== undefined) {
-      if (!updates.resource_id || String(updates.resource_id).trim() === '' || updates.resource_id === 'null') {
+    if (updates.resource_id !== undefined || updates.assigned_to !== undefined) {
+      const val = updates.resource_id ?? updates.assigned_to;
+      if (!val || String(val).trim() === '' || val === 'null') {
         updates.resource_id = null;
+        updates.assigned_to = null;
+      } else {
+        updates.resource_id = val;
+        updates.assigned_to = val;
       }
     }
 
-    const { data, error } = await supabase.from('resource_inventory').update(updates as any).eq('id', id).select();
+    let { data, error } = await supabase.from('resource_inventory').update(updates as any).eq('id', id).select();
+
+    if (error && (error.message?.includes('assigned_to') || error.code === 'PGRST204')) {
+      delete updates.assigned_to;
+      const fb = await supabase.from('resource_inventory').update(updates as any).eq('id', id).select();
+      data = fb.data;
+      error = fb.error;
+    }
 
     if (error) {
       console.error('[INVENTORY_PATCH_ERROR] Supabase error:', error);

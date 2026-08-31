@@ -26,7 +26,7 @@ export interface TacticalSheetProps {
 
 export const TacticalSheet = forwardRef<TacticalSheetRef, TacticalSheetProps>(function TacticalSheet(
   {
-    snapPoints = [0.12, 0.50, 0.88],
+    snapPoints = [0.22, 0.52, 0.88],
     initialSnap = 0,
     onSnapChange,
     children,
@@ -95,7 +95,7 @@ export const TacticalSheet = forwardRef<TacticalSheetRef, TacticalSheetProps>(fu
 
       let targetIndex: number;
 
-      if (Math.abs(velocity) > 400) {
+      if (Math.abs(velocity) > 250) {
         // Velocity-based: snap in swipe direction
         if (velocity < 0) {
           // Swiping UP → larger sheet → find closest snap above current
@@ -134,14 +134,14 @@ export const TacticalSheet = forwardRef<TacticalSheetRef, TacticalSheetProps>(fu
     <>
       {/* Backdrop */}
       <motion.div
-        className="fixed inset-0 bg-black pointer-events-none z-[49]"
+        className="fixed inset-0 bg-black pointer-events-none z-[109]"
         style={{ opacity: backdropOpacity }}
       />
 
       {/* Sheet */}
       <motion.div
         className={cn(
-          'fixed left-0 right-0 z-[50] flex flex-col will-change-transform',
+          'fixed left-0 right-0 z-[110] flex flex-col will-change-transform',
           isDark
             ? 'bg-[#0a0a0a]/[0.97] backdrop-blur-3xl border-t border-white/[0.06]'
             : 'bg-white/[0.97] backdrop-blur-3xl border-t border-black/[0.04]',
@@ -161,7 +161,7 @@ export const TacticalSheet = forwardRef<TacticalSheetRef, TacticalSheetProps>(fu
           top: fractionToY(snapPoints[snapPoints.length - 1]),
           bottom: fractionToY(snapPoints[0]),
         }}
-        dragElastic={0.04}
+        dragElastic={0.15}
         dragMomentum={false}
         onDragEnd={handleDragEnd}
       >
