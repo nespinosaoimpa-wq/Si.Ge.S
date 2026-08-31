@@ -1135,52 +1135,52 @@ export default function FichajePage() {
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-end"
+            className="fixed inset-0 z-[200] bg-black/75 backdrop-blur-md flex items-end justify-center p-0 sm:p-4"
           >
             <div className={cn(
-              "w-full max-h-[85vh] rounded-t-[4rem] shadow-tactical p-10 pb-16 overflow-y-auto",
+              "w-full max-w-lg max-h-[85vh] rounded-t-[3rem] sm:rounded-[3rem] shadow-2xl p-6 sm:p-10 pb-16 overflow-y-auto border border-white/10",
               theme === 'dark' ? "bg-[#0a0a0a]" : "bg-white"
             )}>
-              <div className="flex justify-between items-center mb-10">
+              <div className="flex justify-between items-center mb-8">
                 <div>
-                  <h2 className={cn("text-3xl text-premium tracking-tight", theme === 'dark' ? "text-white" : "text-gray-900")}>Reporte Final</h2>
-                  <p className="text-[10px] text-blue-600 font-black uppercase mt-2 tracking-[0.2em] opacity-60">Control de Inventario Operativo</p>
+                  <h2 className={cn("text-2xl sm:text-3xl font-black uppercase tracking-tight", theme === 'dark' ? "text-white" : "text-gray-900")}>Reporte Final de Turno</h2>
+                  <p className="text-[10px] text-blue-500 font-black uppercase mt-1 tracking-[0.2em] opacity-80">Control e Inventario Operativo</p>
                 </div>
-                <button onClick={() => setShowHandoffModal(false)} className={cn("w-14 h-14 rounded-2xl flex items-center justify-center transition-all", theme === 'dark' ? "bg-white/5 text-white" : "bg-gray-100 text-gray-400")}>
-                  <X size={28} />
+                <button onClick={() => setShowHandoffModal(false)} className={cn("w-12 h-12 rounded-2xl flex items-center justify-center transition-all", theme === 'dark' ? "bg-white/10 text-white hover:bg-white/20" : "bg-gray-100 text-gray-600 hover:bg-gray-200")}>
+                  <X size={24} />
                 </button>
               </div>
 
-              <div className="space-y-6 mb-12">
+              <div className="space-y-4 mb-8">
                 {objectiveItems.length === 0 ? (
-                  <div className="p-16 text-center bg-gray-50 dark:bg-white/5 rounded-[3rem] border border-dashed border-gray-200 dark:border-white/5">
-                     <CheckSquare size={48} className="text-blue-500 mx-auto mb-6 opacity-30" />
-                     <p className="text-xs text-premium text-gray-500 tracking-widest">Sin elementos asignados</p>
+                  <div className="p-10 text-center bg-gray-50 dark:bg-white/5 rounded-[2rem] border border-dashed border-gray-200 dark:border-white/10">
+                     <CheckSquare size={40} className="text-blue-500 mx-auto mb-4 opacity-40" />
+                     <p className="text-xs font-black uppercase text-gray-500 tracking-widest">Sin elementos asignados en este objetivo</p>
                   </div>
                 ) : objectiveItems.map((item) => (
-                  <div key={item.id} className={cn("p-8 rounded-[2.5rem] border transition-all", theme === 'dark' ? "bg-zinc-900/40 border-white/5" : "bg-gray-50 border-gray-100")}>
-                    <div className="flex justify-between items-center mb-6">
+                  <div key={item.id} className={cn("p-5 rounded-[2rem] border transition-all", theme === 'dark' ? "bg-zinc-900/60 border-white/10" : "bg-gray-50 border-gray-200")}>
+                    <div className="flex justify-between items-center mb-4">
                       <div>
-                        <p className={cn("text-lg text-premium", theme === 'dark' ? "text-white" : "text-gray-800")}>{item.name}</p>
-                        <p className="text-[10px] text-gray-400 font-bold mt-1 uppercase tracking-wider">SN: {item.serial_number || 'REG-SIGPAD-AUTO'}</p>
+                        <p className={cn("text-base font-black uppercase tracking-tight", theme === 'dark' ? "text-white" : "text-gray-900")}>{item.item_name || item.name || item.title || item.category || 'Elemento de Inventario'}</p>
+                        <p className="text-[10px] text-gray-400 font-mono font-bold mt-0.5 uppercase tracking-wider">SN: {item.serial_number || item.code || 'REG-SIGPAD-AUTO'}</p>
                       </div>
-                      <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center">
-                        <Package size={22} className="text-blue-500" />
+                      <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                        <Package size={20} className="text-blue-500" />
                       </div>
                     </div>
                     
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-3 gap-2">
                       {['operativo', 'roto', 'faltante'].map((cond) => (
                         <button 
                           key={cond}
                           onClick={() => setItemConditions(prev => ({...prev, [item.id]: cond}))}
                           className={cn(
-                            "py-4 rounded-2xl text-[10px] text-premium tracking-widest transition-all",
+                            "py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border",
                             itemConditions[item.id] === cond 
-                              ? (cond === 'operativo' ? "bg-green-500 text-black shadow-lg shadow-green-500/20" : 
-                                 cond === 'roto' ? "bg-red-500 text-white shadow-lg shadow-red-500/20" : 
-                                 "bg-amber-500 text-white shadow-lg shadow-amber-500/20")
-                              : (theme === 'dark' ? "bg-white/5 text-gray-500 border border-white/5" : "bg-white text-gray-400 border border-gray-100")
+                              ? (cond === 'operativo' ? "bg-green-500 text-black border-green-500 shadow-md" : 
+                                 cond === 'roto' ? "bg-red-600 text-white border-red-600 shadow-md" : 
+                                 "bg-amber-500 text-white border-amber-500 shadow-md")
+                              : (theme === 'dark' ? "bg-white/5 text-gray-400 border-white/10 hover:bg-white/10" : "bg-white text-gray-600 border-gray-200 hover:bg-gray-100")
                           )}
                         >
                           {cond}
@@ -1192,11 +1192,11 @@ export default function FichajePage() {
               </div>
 
               <Button 
-                className="w-full h-20 rounded-[2rem] text-[12px] text-premium tracking-[0.3em] shadow-2xl btn-premium border-none"
+                className="w-full h-16 rounded-2xl text-[11px] font-black uppercase tracking-[0.25em] shadow-xl bg-[#0F4C5C] hover:bg-[#b8952b] text-white border-none"
                 onClick={submitHandoffAndCheckout}
                 disabled={isSubmitting}
               >
-                {isSubmitting ? 'Procesando...' : 'Finalizar y Salir'}
+                {isSubmitting ? 'Procesando...' : '✅ Confirmar y Finalizar Turno'}
               </Button>
             </div>
           </motion.div>
@@ -1208,23 +1208,23 @@ export default function FichajePage() {
         {showInventoryCheck && (
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-[200] bg-black/80 flex items-center justify-center p-4 backdrop-blur-md"
           >
             <motion.div
               initial={{ scale: 0.95 }} animate={{ scale: 1 }}
               className={cn(
-                "w-full max-w-sm rounded-3xl p-6 border",
-                theme === 'dark' ? "bg-zinc-900 border-zinc-800 text-white" : "bg-white border-gray-200"
+                "w-full max-w-sm rounded-3xl p-6 border shadow-2xl",
+                theme === 'dark' ? "bg-zinc-900 border-zinc-800 text-white" : "bg-white border-gray-200 text-gray-900"
               )}
             >
-              <h2 className="text-xl font-black uppercase tracking-tighter mb-4 text-[#0F4C5C]">Checklist de Inventario</h2>
+              <h2 className="text-xl font-black uppercase tracking-tighter mb-2 text-[#0F4C5C]">Checklist de Inventario</h2>
               <p className="text-xs text-gray-400 mb-4 font-bold uppercase tracking-widest">Verificá los elementos asignados antes de iniciar el turno.</p>
               
               <div className="space-y-3 mb-6 max-h-[50vh] overflow-y-auto">
                 {inventoryItems.map(item => (
                   <div key={item.id} className="p-3 bg-white/5 border border-white/10 rounded-xl">
-                    <p className="font-bold text-sm uppercase">{item.item_name}</p>
-                    <p className="text-xs text-gray-500 font-mono mb-2">SN: {item.serial_number || 'N/A'}</p>
+                    <p className="font-bold text-sm uppercase">{item.item_name || item.name || item.title || item.category || 'Elemento de Inventario'}</p>
+                    <p className="text-xs text-gray-500 font-mono mb-2">SN: {item.serial_number || item.code || 'N/A'}</p>
                     <div className="flex gap-2">
                       {['Operativo', 'Dañado', 'Faltante'].map(st => (
                         <button
@@ -1247,7 +1247,7 @@ export default function FichajePage() {
 
               <button
                 onClick={confirmInventoryCheck}
-                className="w-full py-4 bg-[#0F4C5C] hover:bg-[#b8952b] text-zinc-950 font-black uppercase tracking-widest rounded-2xl"
+                className="w-full py-4 bg-[#0F4C5C] hover:bg-[#b8952b] text-white font-black uppercase tracking-widest rounded-2xl shadow-lg"
               >
                 Confirmar e Iniciar Turno
               </button>
