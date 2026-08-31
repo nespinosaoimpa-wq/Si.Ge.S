@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import Map, { Marker, Source, Layer, NavigationControl, GeolocateControl, MapRef } from 'react-map-gl/mapbox';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { User, MapPin, Layers } from 'lucide-react';
+import { User, MapPin, Layers, Building2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAnimatedPosition } from '@/hooks/useAnimatedPosition';
@@ -502,19 +502,19 @@ export default function MobileLeaflet({
               key={dest.id} 
               latitude={lat} 
               longitude={lng}
-              anchor="bottom"
+              anchor="center"
               pitchAlignment="viewport"
               rotationAlignment="viewport"
             >
-              <div className="relative w-8 h-8 flex items-center justify-center pointer-events-none select-none">
-                {/* Objective Label — Positioned absolutely so it NEVER alters the Marker tip bounding box */}
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 bg-zinc-950/90 backdrop-blur-sm px-2.5 py-1 rounded-xl shadow-lg border border-[#0F4C5C]/50 whitespace-nowrap pointer-events-none z-20">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-[#0F4C5C]">{dest.name}</p>
+              <div className="relative flex flex-col items-center pointer-events-none select-none">
+                {/* Objective Label — Floating absolutely so it NEVER distorts Marker box */}
+                <div className="absolute -top-9 left-1/2 -translate-x-1/2 bg-zinc-950/90 backdrop-blur-sm px-2.5 py-1 rounded-xl shadow-lg border border-[#0F4C5C]/50 whitespace-nowrap pointer-events-none z-20">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#0F4C5C]">{dest.name}</p>
                 </div>
-                {/* Fixed-Size Pin Tip Wrapper */}
-                <div className="w-8 h-8 flex items-center justify-center relative">
-                  <div className="absolute w-8 h-8 bg-[#0F4C5C]/20 rounded-full animate-ping pointer-events-none" style={{ animationDuration: '2.5s' }} />
-                  <MapPin className="relative z-10 w-8 h-8 text-[#0F4C5C] fill-black drop-shadow-md" />
+                {/* Fixed-Size Tactical Obsidian Card (Identical to Manager MapView) */}
+                <div className="w-10 h-10 rounded-xl bg-zinc-950 border-2 border-[#0F4C5C] shadow-[0_6px_20px_rgba(0,0,0,0.5)] flex items-center justify-center relative">
+                  <div className="absolute inset-0 bg-[#0F4C5C]/20 rounded-xl animate-ping pointer-events-none" style={{ animationDuration: '2.5s' }} />
+                  <Building2 className="w-5 h-5 text-[#0F4C5C] relative z-10" />
                 </div>
               </div>
             </Marker>
