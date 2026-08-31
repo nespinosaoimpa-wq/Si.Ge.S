@@ -180,7 +180,17 @@ export default function AdminDashboard() {
 
   const activeGuards = useMemo(() => {
     const guardsList = (data.resources || []).map((r: any) => {
-      const activeShift = (data.activeShifts || []).find((s: any) => s.operator_id === r.id);
+      const activeShift = (data.activeShifts || []).find((s: any) => 
+        (s.operator_id === r.id || s.operator_id === r.assigned_to) && 
+        !s.checkout_time && 
+        s.status !== 'completado'
+      );
+      
+      // If operator is NOT on an active shift, exclude from live map markers
+      if (!activeShift && r.status !== 'en_turno' && r.status !== 'activo') {
+        return null;
+      }
+      
       const isAbandoned = activeShift?.status === 'abandoned' || activeShift?.geofence_status === 'out' || activeShift?.geofence_status === 'outside';
       
       // Calculate offline status (no GPS updates for more than 3 minutes while on an active shift)
@@ -192,7 +202,7 @@ export default function AdminDashboard() {
       let lng = r.longitude;
       const hasCoords = lat !== null && lat !== undefined && lng !== null && lng !== undefined && !isNaN(Number(lat)) && !isNaN(Number(lng)) && Number(lat) !== 0 && Number(lng) !== 0;
 
-      const targetObjId = r.current_objective_id || activeShift?.objective_id;
+      const targetObjId = activeShift?.objective_id || r.current_objective_id;
       if (!hasCoords && targetObjId) {
         const targetObj = (data.objectives || []).find((o: any) => o.id === targetObjId);
         if (targetObj?.latitude && targetObj?.longitude) {
@@ -208,11 +218,11 @@ export default function AdminDashboard() {
         latitude: lat,
         longitude: lng,
         avatar_url: avatarUrl,
-        isOnShift: !!activeShift || !!r.current_objective_id,
+        isOnShift: true,
         shiftId: activeShift?.id,
         status: isAbandoned ? 'abandoned' : (isOffline ? 'offline' : (r.status || 'activo'))
       };
-    }).filter((r: any) => r.status !== 'baja' && r.status !== 'inactivo');
+    }).filter((r: any) => r !== null && r.status !== 'baja' && r.status !== 'inactivo');
 
     // Add tiny spatial jitter offset for guards sharing exact objective coordinates so markers don't overlap
     const coordCounts: Record<string, number> = {};
