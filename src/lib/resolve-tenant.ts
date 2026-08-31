@@ -66,9 +66,9 @@ export async function resolveTenantFromRequest(req: NextRequest): Promise<Resolv
     };
   }
 
-  // Paso 1: Tenant de la cookie (solo si no es el maestro)
+  // Paso 1: Tenant de la cookie
   const cookieTenantId = cookieUser?.tenant_id || cookieUser?.user_metadata?.tenant_id || null;
-  if (cookieTenantId && cookieTenantId !== MASTER_TENANT_ID && isValidUUID(cookieTenantId)) {
+  if (cookieTenantId && isValidUUID(cookieTenantId)) {
     return {
       tenantId: cookieTenantId,
       isSuper: false,
@@ -92,7 +92,6 @@ export async function resolveTenantFromRequest(req: NextRequest): Promise<Resolv
         .select('tenant_id')
         .ilike('email', userEmail)
         .not('tenant_id', 'is', null)
-        .neq('tenant_id', MASTER_TENANT_ID)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -108,7 +107,6 @@ export async function resolveTenantFromRequest(req: NextRequest): Promise<Resolv
         .select('tenant_id')
         .ilike('email', userEmail)
         .not('tenant_id', 'is', null)
-        .neq('tenant_id', MASTER_TENANT_ID)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -124,7 +122,6 @@ export async function resolveTenantFromRequest(req: NextRequest): Promise<Resolv
         .select('tenant_id')
         .eq('id', userId)
         .not('tenant_id', 'is', null)
-        .neq('tenant_id', MASTER_TENANT_ID)
         .maybeSingle();
       if (dbUser?.tenant_id && isValidUUID(dbUser.tenant_id)) {
         return { tenantId: dbUser.tenant_id, isSuper: false, userId, userEmail, userRole, userName };
