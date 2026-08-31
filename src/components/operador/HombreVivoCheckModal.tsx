@@ -52,26 +52,43 @@ export default function HombreVivoCheckModal({
 
   const isTargetOperator = useCallback((alarm: any) => {
     const targetId = alarm?.operator_id || alarm?.resource_id;
-    // If no target ID specified in alarm, it's a global check for all active operators
-    if (!targetId) return true;
+    // If no target ID specified in alarm or target is 'all', it's for all active operators
+    if (!targetId || targetId === 'all') return true;
 
     const myIds = [
       operatorId,
       user?.id,
       userResourceRef.current?.id,
       userResourceRef.current?.user_id,
-      userResourceRef.current?.profile_id
+      userResourceRef.current?.profile_id,
+      userResourceRef.current?.assigned_to
     ].filter(Boolean);
 
-    if (myIds.includes(targetId)) return true;
+    if (myIds.some(id => String(id) === String(targetId))) return true;
 
-    if (alarm?.operator_name && userResourceRef.current?.name && 
-        alarm.operator_name.toLowerCase().trim() === userResourceRef.current.name.toLowerCase().trim()) {
+    // Name matching fallback
+    if (alarm?.operator_name && userResourceRef.current?.name) {
+      const alarmName = alarm.operator_name.toLowerCase().trim();
+      const myName = userResourceRef.current.name.toLowerCase().trim();
+      if (alarmName.includes(myName) || myName.includes(alarmName)) {
+        return true;
+      }
+    }
+
+    // Email matching fallback
+    if (alarm?.operator_email && user?.email) {
+      if (alarm.operator_email.toLowerCase().trim() === user.email.toLowerCase().trim()) {
+        return true;
+      }
+    }
+
+    // Objective matching fallback
+    if (objectiveId && alarm?.objective_id && String(alarm.objective_id) === String(objectiveId)) {
       return true;
     }
 
     return false;
-  }, [operatorId, user?.id]);
+  }, [operatorId, user?.id, user?.email, objectiveId]);
 
   const triggerCheckModal = useCallback((alarm: any) => {
     if (!alarm) return;
@@ -79,18 +96,12 @@ export default function HombreVivoCheckModal({
     if (alarm?.id && lastSeenAlarmRef.current === alarm.id) return;
     if (alarm?.id) lastSeenAlarmRef.current = alarm.id;
 
-    console.log('[HombreVivo] ✅ CHECK RECIBIDO - Mostrando modal al operador', alarm);
+    console.log('[HombreVivo] 🚨 CHECK HOMBRE VIVO RECIBIDO - Desplegando modal emergente al instante:', alarm);
 
     setActiveCheck(alarm);
     setCountdown(180);
     setAnsweredSuccess(false);
-
-    unlockAudioContext();
     startCrazyHombreVivoAlarm();
-
-    if (typeof navigator !== 'undefined' && navigator.vibrate) {
-      navigator.vibrate([500, 150, 500, 150, 800, 150, 500]);
-    }
 
     if (timerRef.current) clearInterval(timerRef.current);
 
@@ -153,7 +164,7 @@ export default function HombreVivoCheckModal({
     };
   }, [triggerCheckModal, isTargetOperator]);
 
-  // ═══════════ STRATEGY 3: Polling fallback every 3 seconds ═══════════
+  // ═══════════ STRATEGY 3: Ultra-fast Polling fallback every 2.5 seconds ═══════════
   useEffect(() => {
     const checkForPendingAlarms = async () => {
       if (activeCheck) return;
@@ -161,7 +172,7 @@ export default function HombreVivoCheckModal({
       try {
         const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
         
-        // 1. Query alarms table
+        // 1. Query alarms table for active hombre_vivo checks
         const { data: alarmsData } = await supabase
           .from('alarms')
           .select('*')
@@ -213,7 +224,7 @@ export default function HombreVivoCheckModal({
     };
 
     checkForPendingAlarms();
-    pollingRef.current = setInterval(checkForPendingAlarms, 30000);
+    pollingRef.current = setInterval(checkForPendingAlarms, 2500);
 
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
