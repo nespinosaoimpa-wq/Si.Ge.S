@@ -4,9 +4,11 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Activity, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { playAlertTone, startCrazyHombreVivoAlarm, stopCrazyHombreVivoAlarm, unlockAudioContext } from '@/lib/push-notifications';
+import { playAlertTone, startCrazyHombreVivoAlarm, stopCrazyHombreVivoAlarm } from '@/lib/push-notifications';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/components/providers/AuthProvider';
+
+import { useShift } from '@/components/providers/ShiftProvider';
 
 interface HombreVivoCheckModalProps {
   operatorId?: string;
@@ -22,28 +24,55 @@ export default function HombreVivoCheckModal({
   isShiftActive
 }: HombreVivoCheckModalProps) {
   const { user } = useAuth();
+  const { shiftData } = useShift();
   const [activeCheck, setActiveCheck] = useState<any | null>(null);
   const [countdown, setCountdown] = useState(180);
   const [isAnswering, setIsAnswering] = useState(false);
   const [answeredSuccess, setAnsweredSuccess] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const lastSeenAlarmRef = useRef<string | null>(null);
+  const answeredAlarmIdsRef = useRef<Set<string>>(new Set());
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const broadcastChannelRef = useRef<any>(null);
   const userResourceRef = useRef<any>(null);
+
+  // Load answered alarm IDs from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('704_answered_hombre_vivo_ids');
+      if (saved) {
+        const ids = JSON.parse(saved);
+        if (Array.isArray(ids)) {
+          ids.forEach((id: string) => answeredAlarmIdsRef.current.add(id));
+        }
+      }
+    } catch (e) {}
+  }, []);
 
   // Fetch operator's resource details to match operator_id accurately
   useEffect(() => {
     const fetchUserResource = async () => {
       if (!user?.id && !user?.email) return;
       try {
-        const { data } = await supabase
+        const { data: res1 } = await supabase
           .from('resources')
-          .select('id, name, user_id, profile_id')
-          .or(`id.eq.${user?.id},user_id.eq.${user?.id},profile_id.eq.${user?.id},email.eq.${user?.email}`)
-          .limit(1);
-        if (data && data.length > 0) {
-          userResourceRef.current = data[0];
+          .select('id, name, user_id, profile_id, assigned_to, email')
+          .or(`id.eq.${user.id},assigned_to.eq.${user.id},user_id.eq.${user.id},profile_id.eq.${user.id}`);
+
+        if (res1 && res1.length > 0) {
+          userResourceRef.current = res1[0];
+          return;
+        }
+
+        if (user?.email) {
+          const { data: res2 } = await supabase
+            .from('resources')
+            .select('id, name, user_id, profile_id, assigned_to, email')
+            .eq('email', user.email);
+
+          if (res2 && res2.length > 0) {
+            userResourceRef.current = res2[0];
+          }
         }
       } catch (e) {}
     };
@@ -51,20 +80,33 @@ export default function HombreVivoCheckModal({
   }, [user?.id, user?.email]);
 
   const isTargetOperator = useCallback((alarm: any) => {
+    if (!alarm) return false;
     const targetId = alarm?.operator_id || alarm?.resource_id;
+
     // If no target ID specified in alarm or target is 'all', it's for all active operators
     if (!targetId || targetId === 'all') return true;
 
-    const myIds = [
-      operatorId,
-      user?.id,
-      userResourceRef.current?.id,
-      userResourceRef.current?.user_id,
-      userResourceRef.current?.profile_id,
-      userResourceRef.current?.assigned_to
-    ].filter(Boolean);
+    const myIds = new Set<string>();
+    if (operatorId) myIds.add(String(operatorId));
+    if (user?.id) myIds.add(String(user.id));
+    if (user?.email) myIds.add(String(user.email).toLowerCase());
+    if (shiftData?.operator_id) myIds.add(String(shiftData.operator_id));
+    if (shiftData?.resource_id) myIds.add(String(shiftData.resource_id));
 
-    if (myIds.some(id => String(id) === String(targetId))) return true;
+    if (userResourceRef.current) {
+      const r = userResourceRef.current;
+      if (r.id) myIds.add(String(r.id));
+      if (r.user_id) myIds.add(String(r.user_id));
+      if (r.profile_id) myIds.add(String(r.profile_id));
+      if (r.assigned_to) myIds.add(String(r.assigned_to));
+      if (r.email) myIds.add(String(r.email).toLowerCase());
+    }
+
+    const targetStr = String(targetId).toLowerCase();
+
+    for (const myId of Array.from(myIds)) {
+      if (myId.toLowerCase() === targetStr) return true;
+    }
 
     // Name matching fallback
     if (alarm?.operator_name && userResourceRef.current?.name) {
@@ -88,11 +130,12 @@ export default function HombreVivoCheckModal({
     }
 
     return false;
-  }, [operatorId, user?.id, user?.email, objectiveId]);
+  }, [operatorId, user?.id, user?.email, objectiveId, shiftData]);
 
   const triggerCheckModal = useCallback((alarm: any) => {
     if (!alarm) return;
-    // Prevent duplicate triggers for the same alarm
+    // Prevent duplicate triggers or re-triggering already answered alarms
+    if (alarm?.id && answeredAlarmIdsRef.current.has(alarm.id)) return;
     if (alarm?.id && lastSeenAlarmRef.current === alarm.id) return;
     if (alarm?.id) lastSeenAlarmRef.current = alarm.id;
 
@@ -116,6 +159,33 @@ export default function HombreVivoCheckModal({
       });
     }, 1000);
   }, []);
+
+  // ═══════════ STRATEGY 0: Web Push Service Worker Message (Direct from SW) ═══════════
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
+
+    const handleSWMessage = (event: MessageEvent) => {
+      const data = event.data;
+      if (data?.type === 'PUSH_RECEIVED' || data?.type === 'NOTIFICATION_CLICKED') {
+        console.log('[HombreVivo] 🔔 Service Worker Push Message recibido:', data);
+        const payload = data.payload || {};
+        if (isTargetOperator(payload)) {
+          triggerCheckModal({
+            id: payload.alarm_id || 'push-' + Date.now(),
+            operator_id: payload.operator_id || operatorId,
+            alarm_type: 'hombre_vivo_solicitud',
+            message: payload.body || 'Control de Hombre Vivo',
+            created_at: new Date().toISOString()
+          });
+        }
+      }
+    };
+
+    navigator.serviceWorker.addEventListener('message', handleSWMessage);
+    return () => {
+      navigator.serviceWorker.removeEventListener('message', handleSWMessage);
+    };
+  }, [triggerCheckModal, isTargetOperator, operatorId]);
 
   // ═══════════ STRATEGY 1: Supabase Realtime Broadcast (instant) ═══════════
   useEffect(() => {
@@ -164,7 +234,7 @@ export default function HombreVivoCheckModal({
     };
   }, [triggerCheckModal, isTargetOperator]);
 
-  // ═══════════ STRATEGY 3: Ultra-fast Polling fallback every 2.5 seconds ═══════════
+  // ═══════════ STRATEGY 3: Polling fallback for active alarms every 3 seconds ═══════════
   useEffect(() => {
     const checkForPendingAlarms = async () => {
       if (activeCheck) return;
@@ -172,7 +242,7 @@ export default function HombreVivoCheckModal({
       try {
         const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
         
-        // 1. Query alarms table for active hombre_vivo checks
+        // Query alarms table ONLY for active status hombre_vivo checks
         const { data: alarmsData } = await supabase
           .from('alarms')
           .select('*')
@@ -184,36 +254,9 @@ export default function HombreVivoCheckModal({
 
         if (alarmsData && alarmsData.length > 0) {
           for (const alarm of alarmsData) {
-            if (alarm.id !== lastSeenAlarmRef.current && isTargetOperator(alarm)) {
+            if (!answeredAlarmIdsRef.current.has(alarm.id) && alarm.id !== lastSeenAlarmRef.current && isTargetOperator(alarm)) {
               console.log('[HombreVivo] 🔄 POLLING encontró alarma activa para operador:', alarm);
               triggerCheckModal(alarm);
-              return;
-            }
-          }
-        }
-
-        // 2. Fallback check on guard_book_entries if alarms table RLS restricted
-        const { data: bookData } = await supabase
-          .from('guard_book_entries')
-          .select('*')
-          .eq('entry_type', 'hombre_vivo')
-          .ilike('content', '%Pendiente de confirmación%')
-          .gte('created_at', tenMinutesAgo)
-          .order('created_at', { ascending: false })
-          .limit(5);
-
-        if (bookData && bookData.length > 0) {
-          for (const entry of bookData) {
-            if (entry.id !== lastSeenAlarmRef.current && isTargetOperator(entry)) {
-              console.log('[HombreVivo] 🔄 POLLING encontró guard_book_entry activa:', entry);
-              triggerCheckModal({
-                id: entry.id,
-                operator_id: entry.operator_id,
-                objective_id: entry.objective_id,
-                alarm_type: 'hombre_vivo_solicitud',
-                message: entry.content,
-                created_at: entry.created_at
-              });
               return;
             }
           }
@@ -224,23 +267,18 @@ export default function HombreVivoCheckModal({
     };
 
     checkForPendingAlarms();
-    pollingRef.current = setInterval(checkForPendingAlarms, 2500);
+    pollingRef.current = setInterval(checkForPendingAlarms, 3000);
 
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
     };
   }, [activeCheck, triggerCheckModal, isTargetOperator]);
 
-  // Loop tactical vibration every 3 seconds while modal is active and unanswered
+  // Loop crazy siren and vibration while modal is active and unanswered
   useEffect(() => {
     if (activeCheck && !answeredSuccess) {
-      const soundInterval = setInterval(() => {
-        if (typeof navigator !== 'undefined' && navigator.vibrate) {
-          navigator.vibrate([500, 150, 500, 150, 800, 150, 500]);
-        }
-      }, 3000);
+      startCrazyHombreVivoAlarm();
       return () => {
-        clearInterval(soundInterval);
         stopCrazyHombreVivoAlarm();
       };
     } else {
@@ -249,6 +287,7 @@ export default function HombreVivoCheckModal({
   }, [activeCheck?.id, answeredSuccess]);
 
   const handleTimeExpired = async (alarm: any) => {
+    stopCrazyHombreVivoAlarm();
     try {
       let lat = location?.lat || 0;
       let lng = location?.lng || 0;
@@ -284,19 +323,35 @@ export default function HombreVivoCheckModal({
     }
   };
 
+  const markAlarmAnswered = (id: string) => {
+    if (!id) return;
+    answeredAlarmIdsRef.current.add(id);
+    lastSeenAlarmRef.current = id;
+    try {
+      const currentList = Array.from(answeredAlarmIdsRef.current).slice(-100);
+      localStorage.setItem('704_answered_hombre_vivo_ids', JSON.stringify(currentList));
+    } catch (e) {}
+  };
+
   const handleConfirmPresence = async () => {
     if (!activeCheck) return;
+    stopCrazyHombreVivoAlarm();
     try {
       setIsAnswering(true);
       if (timerRef.current) clearInterval(timerRef.current);
 
+      if (activeCheck?.id) {
+        markAlarmAnswered(activeCheck.id);
+      }
+
       let lat = location?.lat || 0;
       let lng = location?.lng || 0;
+      const opId = operatorId || user?.id || userResourceRef.current?.id;
 
       // 1. Log answered check in guard book
       await supabase.from('guard_book_entries').insert({
         objective_id: objectiveId || null,
-        operator_id: operatorId || user?.id,
+        operator_id: opId,
         entry_type: 'hombre_vivo',
         content: `✅ CONTROL HOMBRE VIVO RESPONDIDO OK - PRESENCIA CONFIRMADA`,
         latitude: lat,
@@ -304,23 +359,37 @@ export default function HombreVivoCheckModal({
         urgency: 'normal'
       });
 
-      // 2. Mark alarm request as acknowledged
-      if (activeCheck.id) {
+      // 2. Mark alarm request as acknowledged in DB for this operator
+      if (activeCheck.id && !activeCheck.id.startsWith('manual-') && !activeCheck.id.startsWith('push-')) {
         await supabase.from('alarms').update({
           status: 'acknowledged',
           acknowledged_at: new Date().toISOString()
         }).eq('id', activeCheck.id);
       }
 
+      if (opId) {
+        await supabase.from('alarms').update({
+          status: 'acknowledged',
+          acknowledged_at: new Date().toISOString()
+        })
+        .eq('status', 'active')
+        .in('alarm_type', ['hombre_vivo_solicitud', 'hombre_vivo'])
+        .or(`operator_id.eq.${opId},triggered_by.eq.${opId}`);
+      }
+
       setAnsweredSuccess(true);
+      stopCrazyHombreVivoAlarm();
+
       setTimeout(() => {
         setActiveCheck(null);
         setIsAnswering(false);
-      }, 1500);
+        stopCrazyHombreVivoAlarm();
+      }, 1800);
     } catch (e) {
       console.error('[HombreVivoModal] Answer error:', e);
     } finally {
       setIsAnswering(false);
+      stopCrazyHombreVivoAlarm();
     }
   };
 

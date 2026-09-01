@@ -1,94 +1,30 @@
-// SIGPAD Tactical Service Worker — V6 (Cache-First Map Tiles + Network-First Static + Keepalive)
-const CACHE_NAME = 'sigpad-static-v6';
-const TILE_CACHE_NAME = 'sigpad-map-tiles-v1';
-const MAX_TILE_ENTRIES = 5000;
+// SIGPAD Service Worker — V8 (Web Push + Mapbox Cache-First + Background Wake)
+const CACHE_NAME = 'sigpad-v8';
 
-// Minimal list of critical static assets
 const ASSETS_TO_CACHE = [
-  '/icons/icon-192x192.png',
-  '/icons/apple-touch-icon.png',
   '/Logo SIGPAD.png'
 ];
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS_TO_CACHE).catch(() => console.warn('SW Install: partial asset cache failure')))
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS_TO_CACHE).catch(() => {}))
   );
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => Promise.all(
-      keys.filter(k => k !== CACHE_NAME && k !== TILE_CACHE_NAME).map(k => caches.delete(k))
+      keys.filter(k => k !== CACHE_NAME && k !== 'mapbox-tiles-v2').map(k => caches.delete(k))
     )).then(() => self.clients.claim())
   );
 });
 
-// Helper: Trim tile cache if it exceeds MAX_TILE_ENTRIES
-async function trimTileCache() {
-  try {
-    const cache = await caches.open(TILE_CACHE_NAME);
-    const keys = await cache.keys();
-    if (keys.length > MAX_TILE_ENTRIES) {
-      const keysToDelete = keys.slice(0, keys.length - MAX_TILE_ENTRIES);
-      await Promise.all(keysToDelete.map(k => cache.delete(k)));
-    }
-  } catch (e) {}
-}
-
 self.addEventListener('fetch', (event) => {
-  // Only intercept GET requests
   if (event.request.method !== 'GET') return;
   
   const url = new URL(event.request.url);
-
-  // 1. TACTICAL BLUEPRINT REQUIREMENT: Map Tile Interception (Cache-First)
-  // Intercept map tiles from Mapbox, OpenStreetMap, CartoDB, Thunderforest, Stamen
-  const isMapTile = (
-    url.hostname.includes('mapbox.com') ||
-    url.hostname.includes('openstreetmap.org') ||
-    url.hostname.includes('basemaps.cartocdn.com') ||
-    url.hostname.includes('thunderforest.com') ||
-    url.pathname.includes('/tiles/') ||
-    url.pathname.endsWith('.pbf') ||
-    url.pathname.endsWith('.mvt')
-  ) && (
-    url.pathname.includes('/v4/') ||
-    url.pathname.includes('/styles/') ||
-    url.pathname.includes('/tiles/') ||
-    url.pathname.endsWith('.png') ||
-    url.pathname.endsWith('.webp') ||
-    url.pathname.endsWith('.pbf') ||
-    url.pathname.endsWith('.mvt') ||
-    url.hostname.includes('tile')
-  );
-
-  if (isMapTile) {
-    event.respondWith(
-      caches.open(TILE_CACHE_NAME).then(async (cache) => {
-        const cachedResponse = await cache.match(event.request);
-        if (cachedResponse) {
-          // Serve from local device cache instantly (0 mobile data consumed)
-          return cachedResponse;
-        }
-
-        try {
-          const networkResponse = await fetch(event.request);
-          if (networkResponse.status === 200 || networkResponse.type === 'opaque') {
-            cache.put(event.request, networkResponse.clone());
-            trimTileCache();
-          }
-          return networkResponse;
-        } catch (e) {
-          return new Response('', { status: 404 });
-        }
-      })
-    );
-    return;
-  }
   
-  // NEVER intercept API, auth, Next.js internal calls, or navigation requests.
   if (
     url.pathname.startsWith('/api/') || 
     url.pathname.includes('auth') || 
@@ -98,7 +34,23 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Network-first for generic static assets
+  // Cache-First for Mapbox Tiles
+  if (url.hostname.includes('mapbox.com') && (url.pathname.includes('/tiles/') || url.pathname.includes('/fonts/'))) {
+    event.respondWith(
+      caches.open('mapbox-tiles-v2').then((cache) => {
+        return cache.match(event.request).then((cached) => {
+          if (cached) return cached;
+          return fetch(event.request).then((res) => {
+            if (res.status === 200) cache.put(event.request, res.clone());
+            return res;
+          }).catch(() => new Response('', { status: 404 }));
+        });
+      })
+    );
+    return;
+  }
+
+  // Network-first for static assets
   event.respondWith(
     fetch(event.request)
       .then((res) => {
@@ -109,6 +61,84 @@ self.addEventListener('fetch', (event) => {
         return res;
       })
       .catch(() => caches.match(event.request).then(m => m || new Response('', { status: 404 })))
+  );
+});
+
+// ─── WEB PUSH NOTIFICATION HANDLER (Wakes the phone from background!) ───
+self.addEventListener('push', (event) => {
+  let data = {};
+  if (event.data) {
+    try { data = event.data.json(); } 
+    catch (e) { data = { body: event.data.text() }; }
+  }
+
+  const title = data.title || '⚡ CONTROL DE HOMBRE VIVO';
+  const options = {
+    body: data.body || 'Gerencia requiere tu verificación de presencia inmediata. Toca para responder.',
+    icon: data.icon || '/Logo SIGPAD.png',
+    image: data.image || undefined,
+    badge: '/Logo SIGPAD.png',
+    vibrate: data.vibrate || [500, 150, 500, 150, 500, 150, 800],
+    tag: data.tag || 'sigpad-hombre-vivo-' + Date.now(),
+    renotify: true,
+    requireInteraction: data.requireInteraction !== false,
+    silent: false,
+    data: {
+      url: data.url || '/operador',
+      type: data.data?.type || 'push',
+      alarm_id: data.data?.alarm_id || null,
+      operator_id: data.data?.operator_id || null,
+      timestamp: Date.now()
+    }
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(title, options).then(() => {
+      // Forward push data to any open client tabs so the HombreVivo modal opens immediately
+      return self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+        windowClients.forEach((client) => {
+          client.postMessage({
+            type: 'PUSH_RECEIVED',
+            payload: {
+              title,
+              body: options.body,
+              alarm_id: options.data.alarm_id,
+              operator_id: options.data.operator_id,
+              pushType: options.data.type,
+              timestamp: options.data.timestamp
+            }
+          });
+        });
+      });
+    })
+  );
+});
+
+// ─── NOTIFICATION CLICK: Focus or open the app ───
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+
+  const targetUrl = event.notification.data?.url || '/operador';
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      // Try to focus an existing tab
+      for (const client of clientList) {
+        if ('focus' in client) {
+          client.focus();
+          // Send message to trigger the HombreVivo modal
+          client.postMessage({
+            type: 'NOTIFICATION_CLICKED',
+            payload: event.notification.data
+          });
+          return;
+        }
+      }
+      // No open tab, open a new window
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(targetUrl);
+      }
+    })
   );
 });
 

@@ -207,49 +207,61 @@ export default function GuardiaDashboard() {
     };
   }, [OPERATOR_ID]);
 
-  // Check DB for active shifts (handles cross-device sync)
+  // Check DB for active shifts (only when no shift is active in memory)
   useEffect(() => {
     const checkActiveShift = async () => {
       if (!user || isShiftActive) return;
       try {
-        const { data: resource } = await supabase
+        const candidateIds = new Set<string>();
+        if (user.id) candidateIds.add(String(user.id));
+        if (user.email) candidateIds.add(String(user.email).toLowerCase());
+
+        const { data: resData } = await supabase
           .from('resources')
-          .select('id')
-          .eq('assigned_to', user.id)
-          .limit(1)
-          .maybeSingle();
+          .select('id, user_id, profile_id, assigned_to, email')
+          .or(`id.eq.${user.id},assigned_to.eq.${user.id},user_id.eq.${user.id},profile_id.eq.${user.id}`);
 
-        let query = supabase
-          .from('guard_shifts')
-          .select('*')
-          .in('status', ['activo', 'active']);
-
-        if (resource?.id) {
-          const isResourceUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resource.id);
-          let orClause = `operator_id.eq.${user.id}`;
-          if (isResourceUUID) {
-            orClause += `,operator_id.eq.${resource.id}`;
-          } else {
-            orClause += `,operator_id.eq."${resource.id}"`;
-          }
-          query = query.or(orClause);
-        } else {
-          query = query.eq('operator_id', user.id);
+        if (resData && resData.length > 0) {
+          resData.forEach((r: any) => {
+            if (r.id) candidateIds.add(String(r.id));
+            if (r.user_id) candidateIds.add(String(r.user_id));
+            if (r.profile_id) candidateIds.add(String(r.profile_id));
+            if (r.assigned_to) candidateIds.add(String(r.assigned_to));
+            if (r.email) candidateIds.add(String(r.email).toLowerCase());
+          });
         }
 
-        const { data: activeShift, error } = await query
+        if (user.email) {
+          const { data: resByEmail } = await supabase
+            .from('resources')
+            .select('id, user_id, profile_id, assigned_to')
+            .eq('email', user.email);
+          if (resByEmail) {
+            resByEmail.forEach((r: any) => {
+              if (r.id) candidateIds.add(String(r.id));
+            });
+          }
+        }
+
+        const { data: activeShifts, error } = await supabase
+          .from('guard_shifts')
           .select('*, objectives:objective_id(latitude, longitude, geofence_radius, name)')
-          .limit(1)
-          .maybeSingle();
+          .in('status', ['activo', 'active'])
+          .order('created_at', { ascending: false });
+
+        const activeShift = (activeShifts || []).find((s: any) => 
+          Array.from(candidateIds).some(cid => cid === String(s.operator_id) || cid.toLowerCase() === String(s.operator_id).toLowerCase())
+        );
 
         if (activeShift && !error) {
+          const realStartTime = activeShift.checkin_time ? new Date(activeShift.checkin_time) : new Date();
           const objLoc = activeShift.objectives?.latitude && activeShift.objectives?.longitude
             ? { lat: Number(activeShift.objectives.latitude), lng: Number(activeShift.objectives.longitude) }
             : undefined;
 
           startShift({
-            time: new Date(activeShift.checkin_time),
-            startTime: new Date(activeShift.checkin_time),
+            time: realStartTime,
+            startTime: realStartTime,
             location: { lat: activeShift.checkin_latitude, lng: activeShift.checkin_longitude },
             operator_id: activeShift.operator_id,
             objective_id: activeShift.objective_id,

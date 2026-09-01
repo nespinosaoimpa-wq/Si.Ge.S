@@ -1,8 +1,10 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode, useRef, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { ShieldAlert, Fingerprint } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+
+import { useAuth } from '@/components/providers/AuthProvider';
 
 interface ShiftContextType {
   isShiftActive: boolean;
@@ -15,15 +17,24 @@ interface ShiftContextType {
   theme: 'light' | 'dark';
   toggleTheme: () => void;
   setHighFrequencyMode: (enabled: boolean, roundId?: string) => void;
-  getGpsPosition: () => { lat: number; lng: number; accuracy?: number; speed?: number | null } | null;
 }
 
 const ShiftContext = createContext<ShiftContextType | undefined>(undefined);
 
 export function ShiftProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const [isShiftActive, setIsShiftActive] = useState(false);
   const [shiftData, setShiftData] = useState<any | null>(null);
   const [shiftId, setShiftId] = useState<string | null>(null);
+  
+  // Refs to prevent stale closures in background callbacks
+  const isShiftActiveRef = React.useRef(isShiftActive);
+  const shiftIdRef = React.useRef(shiftId);
+
+  useEffect(() => {
+    isShiftActiveRef.current = isShiftActive;
+    shiftIdRef.current = shiftId;
+  }, [isShiftActive, shiftId]);
   
   // Man Alive state
   const [showManAliveDialog, setShowManAliveDialog] = useState(false);
@@ -32,61 +43,101 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
   
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
-  // ── GPS Position Ref (no state) ──────────────────────────────────────────
-  // CRÍTICO PARA RENDIMIENTO: La posición GPS se actualiza cada 3-5 segundos.
-  // Si se guardara en estado del contexto, TODOS los consumidores de useShift()
-  // se re-renderizarían continuamente. En cambio, usamos un ref mutable:
-  // los componentes que necesiten la posición en tiempo real la leen con getGpsPosition().
-  const gpsPositionRef = useRef<{ lat: number; lng: number; accuracy?: number; speed?: number | null } | null>(null);
-  const getGpsPosition = useCallback(() => gpsPositionRef.current, []);
-
-  // Persistence for Theme & Shift
+  // Persistence for Theme & Shift with Operator Validation
   useEffect(() => {
-    const savedTheme = localStorage.getItem('SIGPAD_ui_theme') as 'light' | 'dark';
+    const savedTheme = localStorage.getItem('704_ui_theme') as 'light' | 'dark';
     if (savedTheme) setTheme(savedTheme);
 
-    const savedShift = localStorage.getItem('SIGPAD_active_shift');
-    if (savedShift) {
-      try {
-        const parsed = JSON.parse(savedShift);
+    const savedShift = localStorage.getItem('704_active_shift');
+    if (!savedShift) return;
+
+    if (!user) {
+      // User is logged out -> Do not activate any shift
+      setIsShiftActive(false);
+      setShiftData(null);
+      setShiftId(null);
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(savedShift);
+      const storedUserId = parsed.data?.user_id;
+      const storedEmail = parsed.data?.operator_email;
+
+      // Only reject ownership if BOTH user_id and email explicitly belong to ANOTHER user
+      const isDifferentUser = (storedUserId && user.id && String(storedUserId) !== String(user.id)) &&
+                              (storedEmail && user.email && String(storedEmail).toLowerCase() !== String(user.email).toLowerCase());
+
+      if (isDifferentUser) {
+        console.warn('[ShiftProvider] 🧹 El turno guardado pertenece a otro usuario. Limpiando caché de turno...');
+        localStorage.removeItem('704_active_shift');
+        setIsShiftActive(false);
+        setShiftData(null);
+        setShiftId(null);
+      } else {
         setIsShiftActive(true);
         setShiftData(parsed.data);
         setShiftId(parsed.id);
-      } catch (e) {}
+      }
+    } catch (e) {
+      localStorage.removeItem('704_active_shift');
     }
-  }, []);
+  }, [user?.id, user?.email]);
 
   const toggleTheme = () => {
     const newTheme = theme === 'light' ? 'dark' : 'light';
     setTheme(newTheme);
-    localStorage.setItem('SIGPAD_ui_theme', newTheme);
+    localStorage.setItem('704_ui_theme', newTheme);
   };
   
   const startShift = (data: any, id: string | null = null) => {
+    const enrichedData = {
+      ...data,
+      user_id: user?.id || data?.user_id,
+      operator_email: user?.email || data?.operator_email
+    };
     setIsShiftActive(true);
-    setShiftData(data);
+    setShiftData(enrichedData);
     const sid = id || (data as any)?.id || null;
     setShiftId(sid);
-    localStorage.setItem('SIGPAD_active_shift', JSON.stringify({ id: sid, data }));
+    try {
+      localStorage.setItem('704_active_shift', JSON.stringify({ id: sid, data: enrichedData }));
+    } catch (e) {
+      console.warn('[704 Shift] localStorage write failed:', e);
+    }
     resetManAlive();
   };
 
-  const updateShiftData = useCallback((newData: Partial<any>) => {
+  const updateShiftData = (newData: Partial<any>) => {
+    // If shift is no longer active according to the latest ref state, do not write
+    if (!isShiftActiveRef.current) return;
+
     setShiftData((prev: any) => {
+      if (!prev) return null;
       const updated = { ...prev, ...newData };
-      // Also update localStorage so it persists on refresh
-      if (shiftId) {
-        localStorage.setItem('SIGPAD_active_shift', JSON.stringify({ id: shiftId, data: updated }));
+      // Also update localStorage so it persists on refresh using latest ref ID
+      if (shiftIdRef.current) {
+        try {
+          if (localStorage.getItem('704_active_shift')) {
+            localStorage.setItem('704_active_shift', JSON.stringify({ id: shiftIdRef.current, data: updated }));
+          }
+        } catch (e) {
+          console.warn('[704 Shift] localStorage update failed:', e);
+        }
       }
       return updated;
     });
-  }, [shiftId]);
+  };
 
   const endShift = () => {
     setIsShiftActive(false);
     setShiftData(null);
     setShiftId(null);
-    localStorage.removeItem('SIGPAD_active_shift');
+    try {
+      localStorage.removeItem('704_active_shift');
+    } catch (e) {
+      console.warn('[704 Shift] localStorage remove failed:', e);
+    }
     if (manAliveTimer) clearTimeout(manAliveTimer);
     setShowManAliveDialog(false);
   };
@@ -152,20 +203,44 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
             shiftId || (shiftData as any)?.id,
             resolvedResourceId,
             async (pos) => {
-               // Actualizar SOLO el ref GPS — no setState para evitar re-renders globales.
-               // El mapa y otros componentes pueden leer la posición via getGpsPosition().
-               gpsPositionRef.current = { lat: pos.latitude, lng: pos.longitude, accuracy: pos.accuracy, speed: pos.speed };
+               // Calculate distance to objective if objectiveLocation exists
+               let isOutside = Boolean(pos.isOutside);
+               let distToObj = pos.distanceToObjective;
+
+               if (shiftData?.objectiveLocation?.lat && pos.latitude) {
+                 const R = 6371e3;
+                 const φ1 = pos.latitude * Math.PI / 180;
+                 const φ2 = shiftData.objectiveLocation.lat * Math.PI / 180;
+                 const Δφ = (shiftData.objectiveLocation.lat - pos.latitude) * Math.PI / 180;
+                 const Δλ = (shiftData.objectiveLocation.lng - pos.longitude) * Math.PI / 180;
+                 const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+                 const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                 const calcDist = R * c;
+
+                 distToObj = calcDist;
+                 if (calcDist > (shiftData.geofenceRadius || 100)) {
+                   isOutside = true;
+                 }
+               }
+
+               // Notify UI for live updates
+               updateShiftData({ 
+                 location: { lat: pos.latitude, lng: pos.longitude, accuracy: pos.accuracy, speed: pos.speed },
+                 isOutside: isOutside,
+                 isAbandoned: isOutside,
+                 distanceToObjective: distToObj
+               });
             },
-            (err) => console.warn('[SIGPAD Tracker] Background Error:', err),
-            shiftData?.objectiveLocation ? {
-              location: shiftData.objectiveLocation,
+            (err) => console.warn('[704 Tracker] Background Error:', err),
+            shiftData?.objectiveLocation || shiftData?.objective_id ? {
+              location: shiftData.objectiveLocation || { lat: 0, lng: 0 },
               radius: shiftData.geofenceRadius || 100,
               id: shiftData.objective_id
             } : undefined
           );
           trackerRef.current.start();
         } catch (e) {
-          console.error("[SIGPAD Tracker] Failed to start:", e);
+          console.error("[704 Tracker] Failed to start:", e);
         }
       };
       startTracking();
@@ -191,24 +266,19 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // Memoizar el valor del contexto: solo cambia cuando cambian los estados reales
-  // (isShiftActive, shiftId, theme), NO cuando llega una posición GPS.
-  const contextValue = useMemo(() => ({
-    isShiftActive,
-    shiftData,
-    shiftId,
-    startShift,
-    endShift,
-    triggerManAlive,
-    updateShiftData,
-    theme,
-    toggleTheme,
-    setHighFrequencyMode,
-    getGpsPosition, // Exponer getter de posición GPS sin re-renders
-  }), [isShiftActive, shiftData, shiftId, theme, updateShiftData, getGpsPosition]);
-
   return (
-    <ShiftContext.Provider value={contextValue}>
+    <ShiftContext.Provider value={{ 
+      isShiftActive, 
+      shiftData, 
+      shiftId, 
+      startShift, 
+      endShift, 
+      triggerManAlive,
+      updateShiftData,
+      theme,
+      toggleTheme,
+      setHighFrequencyMode
+    }}>
       {children}
 
       {showManAliveDialog && (
