@@ -10,17 +10,18 @@ import {
   Trash2, 
   CheckCircle2, 
   Clock, 
-  X, 
-  UserCheck, 
-  UserMinus, 
-  AlertCircle, 
-  RefreshCw, 
-  UserCog, 
-  Key 
+  X,
+  UserCheck,
+  UserMinus,
+  AlertCircle,
+  RefreshCw,
+  UserCog,
+  Key
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 
 export default function AuthorizedUsersPage() {
@@ -39,13 +40,15 @@ export default function AuthorizedUsersPage() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/authorized-users');
-      if (!res.ok) throw new Error('Error al cargar usuarios');
+      const res = await fetch('/api/accesos');
       const data = await res.json();
-      setUsers(Array.isArray(data) ? data : []);
+      if (Array.isArray(data)) {
+        setUsers(data);
+      } else {
+        setUsers([]);
+      }
     } catch (err: any) {
       console.error('Error fetching authorized users:', err);
-      setUsers([]);
     } finally {
       setLoading(false);
     }
@@ -58,18 +61,19 @@ export default function AuthorizedUsersPage() {
     const cleanEmail = newEmail.toLowerCase().trim();
 
     try {
-      const res = await fetch('/api/authorized-users', {
+      const res = await fetch('/api/accesos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: cleanEmail, role: newRole, status: 'approved' }),
+        body: JSON.stringify({ email: cleanEmail, role: newRole })
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Error al autorizar usuario');
+      if (!res.ok || data.error) throw new Error(data.error || 'Error al autorizar usuario');
 
       setNewEmail('');
       setIsAdding(false);
       setStatusMsg({ type: 'success', text: `Acceso asignado como ${newRole.toUpperCase()} con éxito` });
       fetchUsers();
+      
       setTimeout(() => setStatusMsg(null), 3500);
     } catch (err: any) {
       setStatusMsg({ type: 'error', text: err.message || 'Error al autorizar usuario' });
@@ -78,15 +82,14 @@ export default function AuthorizedUsersPage() {
 
   const changeRole = async (userRecord: any, targetRole: string) => {
     try {
-      const res = await fetch(`/api/authorized-users/${userRecord.id}`, {
+      const res = await fetch('/api/accesos', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: targetRole }),
+        body: JSON.stringify({ email: userRecord.email, id: userRecord.id, role: targetRole })
       });
-      if (!res.ok) {
-        const d = await res.json();
-        throw new Error(d.error || 'Error al cambiar rol');
-      }
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || 'Error al cambiar rol');
+
       setStatusMsg({ type: 'success', text: `Rol de ${userRecord.email} cambiado a ${targetRole.toUpperCase()}` });
       fetchUsers();
       setTimeout(() => setStatusMsg(null), 3000);
@@ -95,27 +98,29 @@ export default function AuthorizedUsersPage() {
     }
   };
 
-  const toggleStatus = async (id: string, currentStatus: string) => {
+  const toggleStatus = async (id: string, currentStatus: string, email?: string) => {
     const newStatus = currentStatus === 'approved' ? 'revoked' : 'approved';
     const approvedAt = newStatus === 'approved' ? new Date().toISOString() : null;
 
+    // Optimistic update
     const previousUsers = [...users];
-    setUsers(prev => prev.map(u => u.id === id ? { ...u, status: newStatus, approved_at: approvedAt } : u));
+    setUsers(prev => prev.map(u => (u.id === id || u.email === email) ? { ...u, status: newStatus, approved_at: approvedAt } : u));
 
     try {
-      const res = await fetch(`/api/authorized-users/${id}`, {
+      const res = await fetch('/api/accesos', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus, approved_at: approvedAt }),
+        body: JSON.stringify({ id, email, status: newStatus })
       });
-      if (!res.ok) {
-        setUsers(previousUsers);
-        const d = await res.json();
-        throw new Error(d.error || 'Error al actualizar estado');
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        setUsers(previousUsers); // Rollback
+        throw new Error(data.error || 'Error al actualizar estado');
       }
-      setStatusMsg({
-        type: 'success',
-        text: `Acceso ${newStatus === 'approved' ? 'HABILITADO' : 'SUSPENDIDO'} correctamente`,
+      
+      setStatusMsg({ 
+        type: 'success', 
+        text: `Acceso ${newStatus === 'approved' ? 'HABILITADO' : 'SUSPENDIDO'} correctamente` 
       });
       setTimeout(() => setStatusMsg(null), 3000);
     } catch (err: any) {
@@ -151,29 +156,33 @@ export default function AuthorizedUsersPage() {
   const deleteUser = async (userRecord: any) => {
     if (!confirm(`¿Seguro que deseas eliminar la autorización de ${userRecord.email}? Se desvinculará por completo.`)) return;
 
+    // Optimistic update
     const previousUsers = [...users];
-    setUsers(prev => prev.filter(u => u.id !== userRecord.id));
+    setUsers(prev => prev.filter(u => u.email !== userRecord.email && u.id !== userRecord.id));
 
     try {
-      const res = await fetch(`/api/authorized-users/${userRecord.id}`, {
+      const res = await fetch('/api/accesos', {
         method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: userRecord.id, email: userRecord.email })
       });
-      if (!res.ok) {
-        setUsers(previousUsers);
-        const d = await res.json();
-        throw new Error(d.error || 'Error al eliminar');
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        setUsers(previousUsers); // Rollback
+        throw new Error(data.error || 'Error eliminando usuario');
       }
+
       setStatusMsg({ type: 'success', text: 'Acceso y legajo eliminados correctamente' });
       setTimeout(() => setStatusMsg(null), 3000);
     } catch (err: any) {
-      setUsers(previousUsers);
+      setUsers(previousUsers); // Rollback
       alert('Error eliminando usuario: ' + err.message);
       fetchUsers();
     }
   };
 
   const filteredUsers = users.filter(u => 
-    u.email.toLowerCase().includes(searchTerm.toLowerCase())
+    (u?.email || '').toLowerCase().includes((searchTerm || '').toLowerCase())
   );
 
   return (
@@ -182,7 +191,7 @@ export default function AuthorizedUsersPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-[#0F4C5C]/10 text-[#0F4C5C] rounded-xl flex items-center justify-center">
+            <div className="w-10 h-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center">
               <Shield size={24} />
             </div>
             <h1 className="text-3xl font-black text-gray-900 tracking-tighter uppercase italic">Control de Accesos</h1>
@@ -192,7 +201,7 @@ export default function AuthorizedUsersPage() {
         <Button 
           variant="primary" 
           onClick={() => setIsAdding(true)}
-          className="h-12 px-6 rounded-2xl shadow-lg shadow-[#0F4C5C]/20 bg-[#0F4C5C] text-white uppercase font-black text-xs tracking-widest gap-2"
+          className="h-12 px-6 rounded-2xl shadow-lg shadow-primary/20 uppercase font-black text-xs tracking-widest gap-2"
         >
           <Plus size={18} /> Autorizar Email
         </Button>
@@ -228,7 +237,7 @@ export default function AuthorizedUsersPage() {
         <div className="divide-y divide-gray-50">
           {loading ? (
              <div className="p-20 flex flex-col items-center justify-center gap-4">
-                <div className="w-10 h-10 border-3 border-gray-100 border-t-[#0F4C5C] rounded-full animate-spin" />
+                <div className="w-10 h-10 border-3 border-gray-100 border-t-primary rounded-full animate-spin" />
                 <p className="text-xs font-bold text-gray-300 uppercase tracking-widest">Sincronizando Whitelist...</p>
              </div>
           ) : filteredUsers.length === 0 ? (
@@ -241,7 +250,7 @@ export default function AuthorizedUsersPage() {
           ) : (
             filteredUsers.map((user, i) => (
               <motion.div 
-                key={user.id}
+                key={user?.id || `user-access-${i}`}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: i * 0.05 }}
@@ -293,7 +302,7 @@ export default function AuthorizedUsersPage() {
                   </button>
 
                   <button 
-                    onClick={() => toggleStatus(user.id, user.status)}
+                    onClick={() => toggleStatus(user.id, user.status, user.email)}
                     className={cn(
                       "flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border-2",
                       user.status === 'approved' 
@@ -336,7 +345,7 @@ export default function AuthorizedUsersPage() {
               exit={{ scale: 0.95, y: 20 }}
               className="relative w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl p-8 lg:p-12 overflow-hidden"
             >
-              <div className="absolute top-0 left-0 w-full h-2 bg-[#0F4C5C]" />
+              <div className="absolute top-0 left-0 w-full h-2 bg-primary" />
               <div className="flex justify-between items-start mb-8">
                 <div>
                   <h3 className="text-2xl font-black text-gray-900 uppercase tracking-tighter italic">Autorizar Acceso</h3>
@@ -363,7 +372,7 @@ export default function AuthorizedUsersPage() {
                 <div className="space-y-2">
                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Nivel de Operación</label>
                    <select 
-                    className="w-full h-14 bg-gray-50 border border-gray-100 rounded-2xl px-4 text-sm font-bold uppercase tracking-tight focus:outline-none focus:ring-2 focus:ring-[#0F4C5C]/20 appearance-none cursor-pointer"
+                    className="w-full h-14 bg-gray-50 border border-gray-100 rounded-2xl px-4 text-sm font-bold uppercase tracking-tight focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer"
                     value={newRole}
                     onChange={(e) => setNewRole(e.target.value)}
                     style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%23a1a1aa\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem center', backgroundSize: '1rem' }}
@@ -385,7 +394,7 @@ export default function AuthorizedUsersPage() {
                    </Button>
                    <Button 
                     type="submit" 
-                    className="flex-1 h-14 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-[#0F4C5C] text-white shadow-xl shadow-[#0F4C5C]/20"
+                    className="flex-1 h-14 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-primary/20"
                    >
                      Confirmar Alta
                    </Button>
