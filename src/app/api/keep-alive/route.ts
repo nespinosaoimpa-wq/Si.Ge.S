@@ -24,6 +24,15 @@ export async function GET() {
       .select('id')
       .limit(1);
 
+    // Auto-Purge Telemetry: Purga automática de telemetría de más de 7 días (garantiza espacio libre permanente)
+    let purgeExecuted = false;
+    try {
+      await supabase.rpc('sigpad_auto_purge_telemetry');
+      purgeExecuted = true;
+    } catch (purgeErr) {
+      // Non-blocking catch if RPC isn't deployed yet
+    }
+
     if (error) {
       console.error('[Health-Check Error]:', error.message);
       return NextResponse.json({
@@ -36,10 +45,11 @@ export async function GET() {
 
     return NextResponse.json({
       status: 'ok',
-      message: '✅ SIGPAD operativo. Supabase Pro activo.',
+      message: '✅ SIGPAD operativo. Supabase Pro activo. Retención de telemetría optimizada.',
       tenantsReachable: (data?.length ?? 0) >= 0,
+      autoPurgeActive: purgeExecuted,
       timestamp: new Date().toISOString(),
-      plan: 'Supabase Pro (sin auto-pausa)'
+      plan: 'Supabase Pro (Optimizaciones de cuota activadas)'
     });
   } catch (err: any) {
     console.error('[Health-Check Exception]:', err);
