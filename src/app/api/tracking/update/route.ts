@@ -18,10 +18,13 @@ export async function POST(request: Request) {
     // RESOLVE: Find actual resource ID and status
     let finalResourceId = operator_id;
     let resourceStatus = '';
+    let prevLat = 0;
+    let prevLng = 0;
+    let lastUpdateMs = 0;
     
     const { data: res } = await supabase
       .from('resources')
-      .select('id, status')
+      .select('id, status, latitude, longitude, last_gps_update')
       .or(`id.eq.${operator_id},assigned_to.eq.${operator_id}`)
       .limit(1)
       .maybeSingle();
@@ -29,6 +32,9 @@ export async function POST(request: Request) {
     if (res) {
       finalResourceId = res.id;
       resourceStatus = res.status;
+      prevLat = Number(res.latitude || 0);
+      prevLng = Number(res.longitude || 0);
+      lastUpdateMs = res.last_gps_update ? new Date(res.last_gps_update).getTime() : 0;
     }
 
     if (resourceStatus === 'baja') {
@@ -48,7 +54,6 @@ export async function POST(request: Request) {
 
     if (shiftError || !activeShift) {
       // PRIVACY ENFORCEMENT: DO NOT log any points if the resource is not on an active shift.
-      // This protects the operator's privacy outside of working hours.
       return NextResponse.json({ 
         success: false, 
         warning: 'Transmission ignored: No active shift found for this resource. Privacy protected.' 
@@ -61,17 +66,26 @@ export async function POST(request: Request) {
     // 1. Prepare async tasks without awaiting them sequentially
     const tasks: any[] = [];
 
-    // Track the log entry silently (no select needed)
-    tasks.push(
-      supabase.from('gps_tracking').insert({
-        operator_id: finalResourceId,
-        latitude,
-        longitude,
-        accuracy,
-        objective_id: finalObjectiveId,
-        recorded_at: new Date().toISOString()
-      })
-    );
+    // Deduplicate identical stationary points: insert into gps_tracking only if moved or 5 min elapsed
+    const isStationary = 
+      prevLat !== 0 && 
+      prevLng !== 0 && 
+      Math.abs(latitude - prevLat) < 0.00005 && 
+      Math.abs(longitude - prevLng) < 0.00005 && 
+      (Date.now() - lastUpdateMs < 5 * 60 * 1000);
+
+    if (!isStationary) {
+      tasks.push(
+        supabase.from('gps_tracking').insert({
+          operator_id: finalResourceId,
+          latitude,
+          longitude,
+          accuracy,
+          objective_id: finalObjectiveId,
+          recorded_at: new Date().toISOString()
+        })
+      );
+    }
 
     // 2. Update resource status and position for live map display
     const updatePayload: any = { 

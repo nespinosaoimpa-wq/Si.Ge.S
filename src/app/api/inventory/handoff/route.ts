@@ -20,18 +20,21 @@ export async function POST(request: Request) {
 
     if (handoffError) throw handoffError;
 
-    // 2. Actualizar el estado de los items en el inventario principal
-    // (Optimizamos haciendo update masivo de a uno por simplicidad, o podríamos hacer bulk)
+    // 2. Actualizar el estado de los items en paralelo y registrar incidentes en bulk
+    const updatePromises: Promise<any>[] = [];
+    const incidentsToInsert: any[] = [];
+
     for (const item of items) {
       if (item.condition) {
-        await supabase
-          .from('resource_inventory')
-          .update({ status: item.condition, updated_at: new Date().toISOString() })
-          .eq('id', item.item_id);
+        updatePromises.push(
+          supabase
+            .from('resource_inventory')
+            .update({ status: item.condition, updated_at: new Date().toISOString() })
+            .eq('id', item.item_id)
+        );
           
-        // Si el estado es roto o faltante, generamos un incidente en el libro de guardia
         if (item.condition === 'roto' || item.condition === 'faltante') {
-           await supabase.from('guard_book_entries').insert({
+           incidentsToInsert.push({
              objective_id,
              operator_id: resource_id,
              entry_type: 'incidente',
@@ -40,6 +43,13 @@ export async function POST(request: Request) {
            });
         }
       }
+    }
+
+    if (updatePromises.length > 0) {
+      await Promise.all(updatePromises);
+    }
+    if (incidentsToInsert.length > 0) {
+      await supabase.from('guard_book_entries').insert(incidentsToInsert);
     }
 
     return NextResponse.json({ success: true, handoff });

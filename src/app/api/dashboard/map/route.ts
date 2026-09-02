@@ -48,32 +48,37 @@ export async function GET(req: NextRequest) {
       const { data: unassignedReqs } = await unassignedQuery;
 
       if (unassignedReqs && unassignedReqs.length > 0) {
-        for (const req of unassignedReqs) {
-          let alarmCheck = supabase
-            .from('alarms')
-            .select('id')
-            .eq('objective_id', req.objective_id)
-            .eq('alarm_type', 'cobertura_pendiente')
-            .eq('status', 'active')
-            .limit(1);
+        const objIds = Array.from(new Set(unassignedReqs.map((r: any) => r.objective_id).filter(Boolean)));
+        let alarmCheck = supabase
+          .from('alarms')
+          .select('objective_id')
+          .in('objective_id', objIds)
+          .eq('alarm_type', 'cobertura_pendiente')
+          .eq('status', 'active');
 
-          if (!isSuper && tenantId) {
-            alarmCheck = alarmCheck.eq('tenant_id', tenantId);
-          }
+        if (!isSuper && tenantId) {
+          alarmCheck = alarmCheck.eq('tenant_id', tenantId);
+        }
 
-          const { data: existingAlarm } = await alarmCheck;
+        const { data: existingAlarms } = await alarmCheck;
+        const existingObjIds = new Set((existingAlarms || []).map((a: any) => a.objective_id));
 
-          if (!existingAlarm || existingAlarm.length === 0) {
+        const alarmsToInsert = unassignedReqs
+          .filter((req: any) => !existingObjIds.has(req.objective_id))
+          .map((req: any) => {
             const formattedTime = new Date(req.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            await supabase.from('alarms').insert({
+            return {
               triggered_by: 'system_scheduler',
               objective_id: req.objective_id,
               alarm_type: 'cobertura_pendiente',
               message: `🚨 ALERTA COBERTURA: Falta asignar personal para el turno de las ${formattedTime} hs en ${req.objectives?.name || 'objetivo'}`,
               status: 'active',
               tenant_id: tenantId
-            });
-          }
+            };
+          });
+
+        if (alarmsToInsert.length > 0) {
+          await supabase.from('alarms').insert(alarmsToInsert);
         }
       }
     } catch (e) {

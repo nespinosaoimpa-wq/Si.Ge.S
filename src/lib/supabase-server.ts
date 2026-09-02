@@ -9,7 +9,11 @@ import { createClient } from '@supabase/supabase-js';
 const FALLBACK_URL = 'https://xgzkudwuukctaldwcekr.supabase.co';
 const FALLBACK_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhnemt1ZHd1dWtjdGFsZHdjZWtyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2NjIzMzcsImV4cCI6MjA5OTIzODMzN30.ELmTZRPoXjOXi5p8D_g1yQs925oak7oz1BYasLhJ7yc';
 
+let cachedServiceClient: any = null;
+
 export function createServiceClient() {
+  if (cachedServiceClient) return cachedServiceClient;
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || FALLBACK_URL;
 
   const hasServiceKey = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -18,8 +22,6 @@ export function createServiceClient() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
     FALLBACK_ANON;
 
-  // ⚠️ Si no hay service role key, las escrituras serán bloqueadas por RLS
-  // porque auth.uid() === null en contexto serverless sin sesión activa.
   if (!hasServiceKey) {
     console.error(
       '[SIGPAD][SUPABASE] ⛔ SUPABASE_SERVICE_ROLE_KEY no está configurada.' +
@@ -29,18 +31,19 @@ export function createServiceClient() {
     );
   }
 
-  return createClient(supabaseUrl, supabaseServiceKey, {
+  cachedServiceClient = createClient(supabaseUrl, supabaseServiceKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
     },
     global: {
       headers: {
-        // Identificador para trazabilidad en logs de Supabase
         'x-sigpad-client': 'server-api',
       },
     },
   }) as any;
+
+  return cachedServiceClient;
 }
 
 /**
