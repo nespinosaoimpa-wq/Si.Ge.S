@@ -178,22 +178,7 @@ export default function PanicTriggerModal({
           latitude: lat,
           longitude: lng,
           tenant_id: tenantId
-        }) : Promise.resolve(),
-        // Also call Server API route for fallback server-side atomic insertion with Service Role
-        fetch('/api/guard-book', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            objective_id: resolvedObjectiveId,
-            resource_id: operatorId || 'op_demo',
-            entry_type: 'emergencia',
-            urgency: 'critica',
-            content: `🚨 ¡ALERTA DE PÁNICO S.O.S ACTIVADA! ${operatorName} en situación de emergencia.`,
-            latitude: lat,
-            longitude: lng,
-            tenant_id: tenantId
-          })
-        }).catch(() => {})
+        }) : Promise.resolve()
       ]);
 
       // 4. Trigger Server Web Push Notification (requireInteraction: true)
