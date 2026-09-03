@@ -1,3 +1,4 @@
+// @ts-ignore
 import webpush from 'web-push';
 import { createServiceClient } from '@/lib/supabase-server';
 
