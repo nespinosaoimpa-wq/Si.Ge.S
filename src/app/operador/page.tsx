@@ -16,6 +16,7 @@ import Link from 'next/link';
 
 import { useShift } from '@/components/providers/ShiftProvider';
 import { supabase } from '@/lib/supabase';
+import { resolveOperatorProfileDirect } from '@/lib/profile-resolver';
 import { useAuth } from '@/components/providers/AuthProvider';
 import PanicTriggerModal from '@/components/operador/PanicTriggerModal';
 
@@ -125,46 +126,21 @@ export default function GuardiaDashboard() {
     const fetchObjective = async () => {
       setLoading(true);
       try {
-        if (OPERATOR_ID !== 'recurso_demo' || user?.email) {
-          const params = new URLSearchParams();
-          if (OPERATOR_ID !== 'recurso_demo') params.append('id', OPERATOR_ID);
-          if (user?.email) params.append('email', user.email || '');
+        const profile = await resolveOperatorProfileDirect(OPERATOR_ID, user?.email);
+        if (profile) {
+          setAssignedObjective(profile.assignedObjective);
 
-          const response = await fetch(`/api/resources/profile?${params.toString()}`);
-          const res = await response.json();
-          
-          if (res && !res.error) {
-            let targetObj = res.objectives 
-              ? (Array.isArray(res.objectives) ? res.objectives[0] : res.objectives)
-              : null;
-
-            if (!targetObj && res.current_objective_id) {
-              const { data: directObj } = await supabase
-                .from('objectives')
-                .select('*')
-                .eq('id', res.current_objective_id)
-                .maybeSingle();
-              if (directObj) targetObj = directObj;
-            }
-
-            setAssignedObjective(targetObj);
-
-            // Fetch scheduled or active shifts for this operator
-            const { data: programmed } = await supabase
-              .from('guard_shifts')
-              .select('*, objectives(*)')
-              .or(`operator_id.eq.${res.id || OPERATOR_ID},resource_id.eq.${res.id || OPERATOR_ID}`)
-              .in('status', ['programado', 'activo', 'active'])
-              .order('checkin_time', { ascending: false })
-              .limit(1)
-              .maybeSingle();
+          // Fetch scheduled or active shifts for this operator
+          const { data: programmed } = await supabase
+            .from('guard_shifts')
+            .select('*, objectives(*)')
+            .or(`operator_id.eq.${profile.resource_id},operator_id.eq.${OPERATOR_ID}`)
+            .in('status', ['programado', 'activo', 'active'])
+            .order('checkin_time', { ascending: false })
+            .limit(1)
+            .maybeSingle();
             
             if (programmed) setScheduledShift(programmed);
-          } else if (res?.isRecovering) {
-            setLinkageError('Tu cuenta de correo no coincide con ningún legajo. Pídele al Gerente Operativo que ingrese tu email exacto en tu perfil.');
-            setLinkageDebug(res.debug);
-            setAssignedObjective(null);
-          }
         }
       } catch (e) {
         console.error(e);

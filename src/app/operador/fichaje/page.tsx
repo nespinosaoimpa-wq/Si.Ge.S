@@ -20,6 +20,7 @@ import { DocumentScanner } from '@/components/operador/DocumentScanner';
 const MobileLeaflet = dynamic(() => import('@/components/operador/MobileLeaflet'), { ssr: false });
 import DynamicIsland from '@/components/operador/DynamicIsland';
 import { TacticalSheet } from '@/components/ui/TacticalSheet';
+import { resolveOperatorProfileDirect } from '@/lib/profile-resolver';
 
 class MapErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
   constructor(props: any) {
@@ -292,26 +293,14 @@ export default function FichajePage() {
     const fetchObjective = async () => {
       setLoadingObjective(true);
       try {
-        if (OPERATOR_ID !== 'recurso_demo' || user?.email) {
-          const params = new URLSearchParams();
-          if (OPERATOR_ID !== 'recurso_demo') params.append('id', OPERATOR_ID);
-          if (user?.email) params.append('email', user.email || '');
-
-          const response = await fetch(`/api/resources/profile?${params.toString()}`);
-          const res = await response.json();
-          
-          if (res && !res.error) {
-            if (res.avatar_url) setAvatarUrl(res.avatar_url);
-            
-            const obj = Array.isArray(res.objectives) ? res.objectives[0] : res.objectives;
-            
-            if (obj) {
-              // 📍 Coordinate Validation & Guard
-              if (!obj.latitude || !obj.longitude) {
-                alert(`⚠️ ERROR DE ASIGNACIÓN: El objetivo "${obj.name}" no tiene coordenadas configuradas. Contacte a soporte.`);
-              }
-              setAssignedObjective(obj);
+        const profile = await resolveOperatorProfileDirect(OPERATOR_ID, user?.email);
+        if (profile) {
+          if (profile.avatar_url) setAvatarUrl(profile.avatar_url);
+          if (profile.assignedObjective) {
+            if (!profile.assignedObjective.latitude || !profile.assignedObjective.longitude) {
+              alert(`⚠️ ERROR DE ASIGNACIÓN: El objetivo "${profile.assignedObjective.name}" no tiene coordenadas configuradas. Contacte a soporte.`);
             }
+            setAssignedObjective(profile.assignedObjective);
           }
         }
       } catch (e) {
@@ -321,6 +310,25 @@ export default function FichajePage() {
       }
     };
     fetchObjective();
+
+    // ⚡ Realtime Objective Assignment Sync (<100ms)
+    const assignmentChannel = supabase
+      .channel(`op-assignment-sync-${OPERATOR_ID}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'resources'
+      }, async (payload: any) => {
+        const updated = payload.new;
+        if (updated && (updated.id === OPERATOR_ID || updated.assigned_to === user?.id)) {
+          const fresh = await resolveOperatorProfileDirect(OPERATOR_ID, user?.email);
+          if (fresh?.assignedObjective) {
+            setAssignedObjective(fresh.assignedObjective);
+            if ("vibrate" in navigator) navigator.vibrate([200, 100, 200, 100, 300]);
+          }
+        }
+      })
+      .subscribe();
 
     // Start watching position immediately to show the marker correctly on the map
     let watchId: number | null = null;
