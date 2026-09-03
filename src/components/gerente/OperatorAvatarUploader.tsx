@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Camera, User, Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { uploadImageToStorage } from '@/lib/storage-utils';
 
 interface OperatorAvatarUploaderProps {
   operatorId: string;
@@ -24,20 +25,16 @@ export function OperatorAvatarUploader({
 
     try {
       setUploading(true);
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64Data = reader.result as string;
-        setAvatarUrl(base64Data);
+      const cdnUrl = await uploadImageToStorage(file, 'avatars', 'operators');
+      setAvatarUrl(cdnUrl);
 
-        // Update in Supabase resources table
-        const { error } = await supabase
-          .from('resources')
-          .update({ avatar_url: base64Data })
-          .eq('id', operatorId);
+      // Update in Supabase resources table with 50-byte CDN URL
+      const { error } = await supabase
+        .from('resources')
+        .update({ avatar_url: cdnUrl })
+        .eq('id', operatorId);
 
-        if (error) throw error;
-      };
-      reader.readAsDataURL(file);
+      if (error) throw error;
     } catch (err: any) {
       alert('Error al actualizar la foto: ' + (err?.message || err));
     } finally {
