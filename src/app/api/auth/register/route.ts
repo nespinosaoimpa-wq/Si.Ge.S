@@ -125,8 +125,8 @@ export async function POST(request: Request) {
     }
 
     // 4. CREATE USER — Try Admin API, fallback to signUp, fallback to DB direct provisioning
-    const finalRole = requestedRole === 'gerente' ? 'gerente' : (resourceData.role?.toLowerCase() || 'operador');
-    const finalName = fullName || resourceData.name || 'Usuario SIGPAD';
+    const finalRole = requestedRole === 'operador' ? 'operador' : (requestedRole === 'gerente' ? 'gerente' : (resourceData?.role?.toLowerCase().includes('gerente') ? 'gerente' : 'operador'));
+    const finalName = fullName || resourceData?.name || 'Usuario SIGPAD';
     // Usar tenant_id del recurso encontrado; null si no tiene empresa asignada todavía
     const targetTenantId: string | null = (resourceData.tenant_id && resourceData.tenant_id !== MASTER_TENANT_ID)
       ? resourceData.tenant_id
