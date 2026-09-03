@@ -73,15 +73,12 @@ export default function NovedadesPage() {
 
   const selectedData = quickButtons.find(b => b.id === selectedIncident);
 
-  // Upload a single file to Supabase Storage via /api/upload
+  // Direct Browser-to-Supabase Storage Uploader (0 Vercel Origin Bytes)
   const uploadFile = async (file: File): Promise<string | null> => {
     try {
-      const form = new FormData();
-      form.append('file', file);
-      const res = await fetch('/api/upload', { method: 'POST', body: form });
-      if (!res.ok) return null;
-      const { url } = await res.json();
-      return url as string;
+      const { uploadMediaDirect } = await import('@/lib/storage-direct');
+      const res = await uploadMediaDirect(file);
+      return res.url;
     } catch {
       return null;
     }
@@ -93,61 +90,55 @@ export default function NovedadesPage() {
     setErrorMsg('');
     
     try {
+      const { supabase } = await import('@/lib/supabase');
+      const objectiveId = (shiftData as any)?.objective_id || (shiftData as any)?.current_objective_id;
+      const resourceId = (shiftData as any)?.operator_id || (shiftData as any)?.resource_id || (shiftData as any)?.id;
+
+      if (!objectiveId && selectedData.id !== 'falla_equipo') {
+        setErrorMsg('No se detectó el vínculo con tu legajo. Por favor, cerrá sesión y volvé a entrar o consultá con el gerente.');
+        return;
+      }
+
+      // 🖼️ Upload multimedia to Supabase Storage directly from browser
+      let image_url: string | null = null;
+      let audio_url: string | null = null;
+      if (attachedImage) image_url = await uploadFile(attachedImage);
+      if (attachedAudio) audio_url = await uploadFile(attachedAudio);
+
       if (selectedData.id === 'falla_equipo' && selectedItemId) {
         // Special case: Inventory Damage
-        const objectiveId = (shiftData as any)?.objective_id || (shiftData as any)?.current_objective_id;
-        const resourceId = (shiftData as any)?.operator_id || (shiftData as any)?.resource_id;
+        const { error: damErr } = await supabase.from('incidents').insert({
+          objective_id: objectiveId || null,
+          operator_id: resourceId,
+          entry_type: 'novedad',
+          urgency: 'alta',
+          content: `📦 FALLA DE EQUIPAMIENTO: ${comment || 'Falla de equipo reportada.'}`,
+          status: 'abierto',
+          created_at: new Date().toISOString()
+        } as any);
 
-        const response = await fetch('/api/inventory/report-damage', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            item_id: selectedItemId,
-            condition: 'roto',
-            notes: comment,
-            objective_id: objectiveId,
-            resource_id: resourceId
-          }),
-        });
-        if (!response.ok) throw new Error('Error al reportar falla de inventario');
+        if (damErr) throw damErr;
       } else {
         // Normal case: Guard Book Entry
         const entryType = selectedData.id === 'puesto' ? 'libro_guardia' 
           : selectedData.id === 'emergencia' ? 'emergencia' 
           : 'incidente';
 
-        const objectiveId = (shiftData as any)?.objective_id || (shiftData as any)?.current_objective_id;
-        const resourceId = (shiftData as any)?.operator_id || (shiftData as any)?.resource_id;
+        const { error: gbErr } = await supabase.from('guard_book_entries').insert({
+          objective_id: objectiveId,
+          resource_id: resourceId,
+          operator_id: resourceId,
+          entry_type: entryType,
+          content: `${selectedData.label.toUpperCase()}: ${comment || 'Sin detalles adicionales'}`,
+          latitude: shiftData?.location?.lat || 0,
+          longitude: shiftData?.location?.lng || 0,
+          urgency: selectedData.urgency,
+          image_url,
+          audio_url,
+          created_at: new Date().toISOString()
+        } as any);
 
-        if (!objectiveId || !resourceId) {
-          setErrorMsg('No se detectó el vínculo con tu legajo. Por favor, cerrá sesión y volvé a entrar o consultá con el gerente.');
-          return;
-        }
-
-        // 🖼️ Upload multimedia to Supabase Storage before posting
-        let image_url: string | null = null;
-        let audio_url: string | null = null;
-        if (attachedImage) image_url = await uploadFile(attachedImage);
-        if (attachedAudio) audio_url = await uploadFile(attachedAudio);
-        
-        const response = await fetch('/api/guard-book', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            objective_id: objectiveId,
-            resource_id: resourceId,
-            entry_type: entryType,
-            content: `${selectedData.label.toUpperCase()}: ${comment || 'Sin detalles adicionales'}`,
-            latitude: shiftData?.location?.lat,
-            longitude: shiftData?.location?.lng,
-            urgency: selectedData.urgency,
-            image_url,
-            audio_url,
-          }),
-        });
-
-        const result = await response.json();
-        if (!response.ok) throw new Error(result.error || 'Error al enviar');
+        if (gbErr) throw gbErr;
       }
       
       setSuccess(true);
