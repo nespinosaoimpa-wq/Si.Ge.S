@@ -115,24 +115,17 @@ export default function GuardBookPage() {
     setSubmitError(null);
 
     try {
-      const res = await fetch('/api/guard-book', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          objective_id: objectiveId,
-          resource_id:  resourceId || user?.id,
-          entry_type:   newType,
-          content:      newContent.trim(),
-          urgency:      newType === 'emergencia' ? 'critica' : newType === 'incidente' ? 'alta' : 'normal',
-          latitude:     null,
-          longitude:    null,
-        }),
+      const { error: dbErr } = await supabase.from('guard_book_entries').insert({
+        objective_id: objectiveId,
+        resource_id: resourceId || user?.id,
+        operator_id: resourceId || user?.id,
+        entry_type: newType,
+        content: newContent.trim(),
+        urgency: newType === 'emergencia' ? 'critica' : newType === 'incidente' ? 'alta' : 'normal',
+        created_at: new Date().toISOString()
       });
 
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error(j.error || `HTTP ${res.status}`);
-      }
+      if (dbErr) throw dbErr;
 
       setNewContent('');
       // Entry will appear via Realtime subscription — no manual state update needed
