@@ -275,10 +275,10 @@ const GuardMarkerContent = React.memo(({
         )}
       </div>
 
-      {/* Direction Pointer - Only show if moving */}
-      {hasHeading && speed && speed > 0.5 && (
+      {/* Direction Pointer - Only show if actively moving (speed > 1.5 km/h) */}
+      {hasHeading && speed !== undefined && speed !== null && (speed * 3.6) > 1.5 && (
         <div 
-          className="absolute w-2.5 h-2.5 bg-black rotate-45 border-r border-b border-white/50 -bottom-1.5 z-[-1] transition-all duration-[2500ms] ease-linear"
+          className="absolute w-3 h-3 bg-[#D4AF37] rotate-45 border-r border-b border-black -bottom-2 z-10 transition-all duration-[2500ms] ease-linear shadow-md"
           style={{ transform: `rotate(${heading}deg) translateY(18px) rotate(45deg)` }}
         />
       )}
