@@ -46,9 +46,14 @@ export default function AuthorizedUsersPage() {
         setUsers(data);
       } else {
         setUsers([]);
+        if (data?.error) {
+          setStatusMsg({ type: 'error', text: `Error al cargar accesos: ${data.error}` });
+        }
       }
     } catch (err: any) {
       console.error('Error fetching authorized users:', err);
+      setStatusMsg({ type: 'error', text: `Error de conexión: ${err.message || 'No se pudo obtener la lista'}` });
+      setUsers([]);
     } finally {
       setLoading(false);
     }
