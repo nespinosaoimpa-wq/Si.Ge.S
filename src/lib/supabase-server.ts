@@ -18,10 +18,7 @@ export function createServiceClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || FALLBACK_URL;
 
   const hasServiceKey = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const supabaseServiceKey =
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    FALLBACK_SERVICE;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || FALLBACK_SERVICE;
 
   if (!hasServiceKey) {
     console.error(
