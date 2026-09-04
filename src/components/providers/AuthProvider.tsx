@@ -27,7 +27,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 1. Get initial session
+    // 1. Instant local hydration for mobile (<5ms FCP)
+    if (typeof window !== 'undefined') {
+      try {
+        const localUserJson = localStorage.getItem('SIGPAD_user');
+        if (localUserJson) {
+          const localUser = JSON.parse(localUserJson);
+          setUser(localUser);
+          setRole(localUser.role || localUser.user_metadata?.role || null);
+          setLoading(false);
+        }
+      } catch (e) {}
+    }
+
+    // 2. Get initial session
     const initAuth = async () => {
       // 🛡️ TACTICAL BRIDGE: Check for temporary auth cookie from OAuth callback
       const getCookie = (name: string) => {

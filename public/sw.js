@@ -63,7 +63,7 @@ self.addEventListener('fetch', (event) => {
           return fetch(event.request).then((res) => {
             if (res.status === 200) cache.put(event.request, res.clone());
             return res;
-          });
+          }).catch(() => new Response('', { status: 404 }));
         });
       })
     );
