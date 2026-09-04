@@ -1,21 +1,13 @@
 import { createServiceClient } from '@/lib/supabase-server';
 import { NextRequest, NextResponse } from 'next/server';
-
-function getTenantId(request: NextRequest): string | null {
-  const userCookie = request.cookies.get('SIGPAD_user');
-  if (userCookie) {
-    try {
-      const u = JSON.parse(decodeURIComponent(userCookie.value));
-      return u.tenant_id || u.user_metadata?.tenant_id || null;
-    } catch (e) {
-      console.error('[INVENTORY_GET_TENANT_ERROR]', e);
-    }
-  }
-  return null;
-}
+import { resolveTenantFromRequest } from '@/lib/resolve-tenant';
 
 export async function GET(request: NextRequest) {
   try {
+    const ctx = await resolveTenantFromRequest(request);
+    const tenantId = ctx?.tenantId || null;
+    const isSuper = ctx?.isSuper || false;
+
     const { searchParams } = new URL(request.url);
     const objectiveId = searchParams.get('objective_id');
     const resourceId = searchParams.get('resource_id') || searchParams.get('operator_id');
@@ -25,8 +17,7 @@ export async function GET(request: NextRequest) {
     const supabase = createServiceClient();
     let query = supabase.from('resource_inventory').select('*').order('created_at', { ascending: false });
 
-    const tenantId = getTenantId(request);
-    if (tenantId) {
+    if (!isSuper && tenantId) {
       query = query.eq('tenant_id', tenantId);
     }
 
@@ -57,10 +48,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const ctx = await resolveTenantFromRequest(request);
+    const tenantId = ctx?.tenantId || null;
+
     const supabase = createServiceClient();
     const body = await request.json();
-
-    const tenantId = getTenantId(request);
     const quantity = Math.max(1, parseInt(body.quantity) || 1);
     const objective_id = (body.objective_id && String(body.objective_id).trim() !== '' && body.objective_id !== 'null') ? body.objective_id : null;
     const resource_id = (body.resource_id && String(body.resource_id).trim() !== '' && body.resource_id !== 'null') ? body.resource_id : null;

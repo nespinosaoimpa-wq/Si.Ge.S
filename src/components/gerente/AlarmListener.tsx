@@ -28,13 +28,29 @@ export function AlarmListener() {
   const [soundEnabled, setSoundEnabled] = useState(true);
 
   useEffect(() => {
+    let currentTenantId: string | null = null;
+    if (typeof document !== 'undefined') {
+      try {
+        const cookieStr = document.cookie.split('; ').find(row => row.startsWith('SIGPAD_user='));
+        if (cookieStr) {
+          const u = JSON.parse(decodeURIComponent(cookieStr.split('=')[1]));
+          currentTenantId = u.tenant_id || u.user_metadata?.tenant_id || null;
+        }
+      } catch (e) {}
+    }
+
     // 1. Initial fetch of active alarms to handle any missed while offline
     const fetchActiveAlarms = async () => {
-      const { data } = await supabase
+      let query = supabase
         .from('alarms')
         .select('*')
-        .eq('status', 'active')
-        .order('created_at', { ascending: false });
+        .eq('status', 'active');
+
+      if (currentTenantId) {
+        query = query.eq('tenant_id', currentTenantId);
+      }
+
+      const { data } = await query.order('created_at', { ascending: false });
       
       if (data && data.length > 0) {
         const panic = data.find(a => a.alarm_type === 'panico' || a.alarm_type === 'emergencia');
@@ -52,7 +68,10 @@ export function AlarmListener() {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'alarms' },
         (payload) => {
-          const newAlarm = payload.new as Alarm;
+          const newAlarm = payload.new as any;
+          if (currentTenantId && newAlarm.tenant_id && newAlarm.tenant_id !== currentTenantId) {
+            return; // Ignore alarms belonging to another tenant
+          }
           console.log('Tactical Alarm Received:', newAlarm);
           
           if (newAlarm.alarm_type === 'panico' || newAlarm.alarm_type === 'emergencia') {
@@ -69,7 +88,10 @@ export function AlarmListener() {
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'alarms' },
         (payload) => {
-          const updated = payload.new as Alarm;
+          const updated = payload.new as any;
+          if (currentTenantId && updated.tenant_id && updated.tenant_id !== currentTenantId) {
+            return;
+          }
           if (updated.status === 'acknowledged' || updated.status === 'resolved') {
             if (panicAlarm?.id === updated.id) setPanicAlarm(null);
             setAlarms(prev => prev.filter(a => a.id !== updated.id));
@@ -80,7 +102,10 @@ export function AlarmListener() {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'incidents' },
         (payload) => {
-          const newIncident = payload.new;
+          const newIncident = payload.new as any;
+          if (currentTenantId && newIncident.tenant_id && newIncident.tenant_id !== currentTenantId) {
+            return;
+          }
           if (newIncident.entry_type === 'panic' || newIncident.entry_type === 'emergencia') {
              console.log('🚨 TACTICAL PANIC RECEIVED (INCIDENTS TABLE):', newIncident);
              setPanicAlarm({

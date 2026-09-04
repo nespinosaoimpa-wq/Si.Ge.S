@@ -1,18 +1,29 @@
-import { createClient } from '@/lib/supabase';
-import { NextResponse } from 'next/server';
+import { createServiceClient } from '@/lib/supabase-server';
+import { NextRequest, NextResponse } from 'next/server';
+import { resolveTenantFromRequest } from '@/lib/resolve-tenant';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const ctx = await resolveTenantFromRequest(request);
+    const tenantId = ctx?.tenantId || null;
+    const isSuper = ctx?.isSuper || false;
 
-    const { data: cameras, error } = await supabase
+    const supabase = createServiceClient();
+
+    let query = supabase
       .from('cameras')
       .select('*')
       .eq('status', 'activa');
 
+    if (!isSuper && tenantId) {
+      query = query.or(`tenant_id.eq.${tenantId},tenant_id.is.null`);
+    }
+
+    const { data: cameras, error } = await query;
+
     if (error) throw error;
 
-    return NextResponse.json(cameras);
+    return NextResponse.json(cameras || []);
   } catch (error: any) {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
@@ -21,7 +32,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const { latitude, longitude, radius } = await request.json();
-    const supabase = createClient();
+    const supabase = createServiceClient();
 
     const { data, error } = await supabase.rpc('find_escape_route_cameras', {
       p_lat: latitude,

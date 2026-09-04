@@ -32,7 +32,8 @@ export async function getAuthUser(request: NextRequest): Promise<AuthenticatedUs
 
   let tenantId: string | null = parsedUser.tenant_id || parsedUser.user_metadata?.tenant_id || null;
   const role: string = parsedUser.role || parsedUser.user_metadata?.role || 'operador';
-  const isSuperAdmin: boolean = role === 'superadmin' || parsedUser.user_metadata?.role === 'superadmin';
+  const userEmail = (parsedUser.email || '').toLowerCase().trim();
+  const isSuperAdmin: boolean = (role === 'superadmin' || parsedUser.user_metadata?.role === 'superadmin') && userEmail === 'sigpad.info@gmail.com';
 
   // Si no se encontró tenant_id en la cookie y no es superadmin, consultar en DB
   if (!tenantId && !isSuperAdmin && parsedUser.id) {

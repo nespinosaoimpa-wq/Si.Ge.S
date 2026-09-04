@@ -44,7 +44,7 @@ export async function resolveOperatorProfileDirect(
 
     // 2. Query resources table with fallback filters
     const orConditions: string[] = [];
-    if (userId && userId !== 'recurso_demo') {
+    if (userId) {
       orConditions.push(`assigned_to.eq.${userId}`);
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
       if (isUUID) orConditions.push(`id.eq.${userId}`);

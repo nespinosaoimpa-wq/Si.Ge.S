@@ -1,8 +1,13 @@
 import { createServiceClient } from '@/lib/supabase-server';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { resolveTenantFromRequest } from '@/lib/resolve-tenant';
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
+    const ctx = await resolveTenantFromRequest(request);
+    const tenantId = ctx?.tenantId || null;
+    const isSuper = ctx?.isSuper || false;
+
     const { searchParams } = new URL(request.url);
     const roundId = searchParams.get('round_id');
     const userId = searchParams.get('user_id');
@@ -17,25 +22,34 @@ export async function GET(request: Request) {
 
     if (roundId) {
       // High resolution patrol-specific points from patrol_trace
-      const { data, error } = await supabase
+      let query = supabase
         .from('patrol_trace')
         .select('latitude, longitude, created_at')
-        .eq('round_id', roundId)
-        .order('created_at', { ascending: true });
+        .eq('round_id', roundId);
+
+      if (!isSuper && tenantId) {
+        query = query.or(`tenant_id.eq.${tenantId},tenant_id.is.null`);
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: true });
       
       if (error) throw error;
-      // Map created_at to recorded_at for frontend compatibility if needed, or just return as is
       return NextResponse.json(data || []);
     }
 
     // General GPS logs
-    const { data, error } = await supabase
+    let query = supabase
       .from('gps_tracking')
       .select('latitude, longitude, recorded_at')
       .eq('operator_id', userId)
       .gte('recorded_at', from)
-      .lte('recorded_at', to)
-      .order('recorded_at', { ascending: true });
+      .lte('recorded_at', to);
+
+    if (!isSuper && tenantId) {
+      query = query.or(`tenant_id.eq.${tenantId},tenant_id.is.null`);
+    }
+
+    const { data, error } = await query.order('recorded_at', { ascending: true });
 
     if (error) throw error;
 

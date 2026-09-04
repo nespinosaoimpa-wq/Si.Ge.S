@@ -96,7 +96,7 @@ export default function PanicTriggerModal({
       }
 
       // 2. Fetch operator details (name, tenant_id, current_objective_id)
-      if (operatorId && operatorId !== 'recurso_demo') {
+      if (operatorId) {
         try {
           const { data: res } = await supabase
             .from('resources')
@@ -138,9 +138,9 @@ export default function PanicTriggerModal({
       }
 
       const panicPayload = {
-        operator_id: operatorId || 'op_demo',
+        operator_id: operatorId || null,
         operator_name: operatorName,
-        triggered_by: operatorId || 'op_demo',
+        triggered_by: operatorId || null,
         objective_id: resolvedObjectiveId,
         alarm_type: 'sos_panic',
         severity: 'critica',
@@ -157,7 +157,7 @@ export default function PanicTriggerModal({
         supabase.from('alarms').insert(panicPayload),
         supabase.from('incidents').insert({
           objective_id: resolvedObjectiveId,
-          operator_id: operatorId || 'op_demo',
+          operator_id: operatorId || null,
           operator_name: operatorName,
           entry_type: 'panic',
           urgency: 'critica',
@@ -170,8 +170,8 @@ export default function PanicTriggerModal({
         } as any),
         resolvedObjectiveId ? supabase.from('guard_book_entries').insert({
           objective_id: resolvedObjectiveId,
-          operator_id: operatorId || 'op_demo',
-          resource_id: operatorId || 'op_demo',
+          operator_id: operatorId || null,
+          resource_id: operatorId || null,
           entry_type: 'incidente',
           content: `🚨 ALERTA DE PÁNICO SOS DESPACHADA DESDE APP OPERADOR - ${operatorName}`,
           urgency: 'critica',
