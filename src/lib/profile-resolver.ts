@@ -48,7 +48,51 @@ export async function resolveOperatorProfileDirect(
   try {
     if (!userId && !userEmail) return cached;
 
-    // 2. Query resources table with fallback filters
+    // 1.5 Primary Source of Truth: Call Server API /api/resources/profile (Service Role Admin Bypass)
+    if (typeof window !== 'undefined') {
+      try {
+        const params = new URLSearchParams();
+        if (userId && userId !== 'recurso_demo') params.append('id', userId);
+        if (cleanEmail) params.append('email', cleanEmail);
+
+        if (params.toString()) {
+          const apiRes = await fetch(`/api/resources/profile?${params.toString()}`);
+          if (apiRes.ok) {
+            const resData = await apiRes.json();
+            if (resData && resData.id && !resData.error) {
+              const apiObjective = resData.objectives ? {
+                id: resData.objectives.id,
+                name: resData.objectives.name,
+                address: resData.objectives.address || null,
+                latitude: Number(resData.objectives.latitude || 0),
+                longitude: Number(resData.objectives.longitude || 0),
+                geofence_radius: Number(resData.objectives.geofence_radius_meters || resData.objectives.geofence_radius || 150),
+                geofence_radius_meters: Number(resData.objectives.geofence_radius_meters || resData.objectives.geofence_radius || 150)
+              } : null;
+
+              const apiProfile: OperatorProfile = {
+                resource_id: resData.id,
+                name: resData.name,
+                email: resData.email || cleanEmail,
+                avatar_url: resData.avatar_url || null,
+                status: resData.status || 'active',
+                assignedObjective: apiObjective
+              };
+
+              try {
+                localStorage.setItem(cacheKey, JSON.stringify(apiProfile));
+              } catch (e) {}
+
+              return apiProfile;
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('[ProfileResolverDirect] API fetch fallback to direct query:', e);
+      }
+    }
+
+    // 2. Direct Supabase Query Fallback (for offline or SSR)
     const orConditions: string[] = [];
     if (userId) {
       orConditions.push(`assigned_to.eq.${userId}`);

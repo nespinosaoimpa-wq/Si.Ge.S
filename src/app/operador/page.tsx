@@ -181,7 +181,7 @@ export default function GuardiaDashboard() {
       supabase.removeChannel(channelRes);
       if (watchId !== null) navigator.geolocation.clearWatch(watchId);
     };
-  }, [OPERATOR_ID]);
+  }, [OPERATOR_ID, user?.email]);
 
   // Check DB for active shifts (only when no shift is active in memory)
   useEffect(() => {
