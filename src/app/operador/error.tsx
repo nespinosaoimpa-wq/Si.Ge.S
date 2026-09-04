@@ -52,7 +52,7 @@ export default function OperadorErrorBoundary({
     <div className="min-h-screen bg-zinc-950 text-white flex flex-col items-center justify-center p-6 text-center">
       {/* Brand Header */}
       <div className="w-16 h-16 bg-zinc-900 border border-[#D4AF37]/30 rounded-2xl flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(212,175,55,0.15)] overflow-hidden">
-        <img src="/logo_704.jpeg" alt="SIGPAD OS" className="w-full h-full object-cover" />
+        <img src="/logo_sigpad.png" alt="SIGPAD OS" className="w-full h-full object-cover" />
       </div>
 
       <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#D4AF37] mb-1">
