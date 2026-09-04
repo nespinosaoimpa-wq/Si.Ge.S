@@ -15,11 +15,13 @@ export async function GET() {
   try {
     const supabase = createServiceClient();
 
-    const [authRes, resRes, usersRes] = await Promise.all([
-      supabase.from('authorized_users').select('*').order('created_at', { ascending: false }),
-      supabase.from('resources').select('id, name, email, role, status, created_at').order('created_at', { ascending: false }),
-      supabase.from('users').select('id, email, role').order('created_at', { ascending: false }).catch(() => ({ data: [] }))
-    ]);
+    const authRes = await supabase.from('authorized_users').select('*').order('created_at', { ascending: false });
+    const resRes = await supabase.from('resources').select('id, name, email, role, status, created_at').order('created_at', { ascending: false });
+    
+    let usersRes: any = { data: [] };
+    try {
+      usersRes = await supabase.from('users').select('id, email, role').order('created_at', { ascending: false });
+    } catch (e) {}
 
     const emailMap = new Map<string, any>();
 
