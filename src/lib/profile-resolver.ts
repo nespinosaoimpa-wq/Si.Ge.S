@@ -28,13 +28,19 @@ export async function resolveOperatorProfileDirect(
   userId: string,
   userEmail?: string | null
 ): Promise<OperatorProfile | null> {
-  // 1. Instant Cache Retrieval (0ms UX)
+  const cleanEmail = userEmail ? userEmail.toLowerCase().trim() : null;
+  const cacheKey = `sigpad_operator_profile_v4_${cleanEmail || userId || 'guest'}`;
+
+  // 1. User-Specific Cache Retrieval (0ms UX)
   let cached: OperatorProfile | null = null;
   if (typeof window !== 'undefined') {
     try {
-      const raw = localStorage.getItem(CACHE_KEY);
+      const raw = localStorage.getItem(cacheKey);
       if (raw) {
-        cached = JSON.parse(raw);
+        const parsed = JSON.parse(raw);
+        if ((cleanEmail && parsed?.email?.toLowerCase().trim() === cleanEmail) || (userId && (parsed?.resource_id === userId || parsed?.assigned_to === userId))) {
+          cached = parsed;
+        }
       }
     } catch (e) {}
   }
@@ -168,10 +174,10 @@ export async function resolveOperatorProfileDirect(
       assignedObjective
     };
 
-    // Save to local cache
+    // Save to user-specific local cache
     if (typeof window !== 'undefined') {
       try {
-        localStorage.setItem(CACHE_KEY, JSON.stringify(freshProfile));
+        localStorage.setItem(cacheKey, JSON.stringify(freshProfile));
       } catch (e) {}
     }
 
