@@ -1,5 +1,6 @@
 import { createServiceClient } from '@/lib/supabase-server';
-import { NextResponse } from 'next/server';
+import { resolveTenantFromRequest } from '@/lib/resolve-tenant';
+import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,17 +12,30 @@ function normalizeRole(r?: string): string {
   return 'operador';
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const supabase = createServiceClient();
+    const tenant = await resolveTenantFromRequest(req);
 
-    const authRes = await supabase.from('authorized_users').select('*').order('created_at', { ascending: false });
-    const resRes = await supabase.from('resources').select('id, name, email, role, status, created_at').order('created_at', { ascending: false });
-    
-    let usersRes: any = { data: [] };
-    try {
-      usersRes = await supabase.from('users').select('id, email, role').order('created_at', { ascending: false });
-    } catch (e) {}
+    let authQuery = supabase.from('authorized_users').select('*').order('created_at', { ascending: false });
+    let resQuery = supabase.from('resources').select('id, name, email, role, status, created_at, tenant_id').order('created_at', { ascending: false });
+    let usersQuery = supabase.from('users').select('id, email, role, tenant_id').order('created_at', { ascending: false });
+
+    // Enforce strict tenant separation for non-super managers
+    if (tenant && !tenant.isSuper) {
+      if (!tenant.tenantId) {
+        return NextResponse.json([]);
+      }
+      authQuery = authQuery.eq('tenant_id', tenant.tenantId);
+      resQuery = resQuery.eq('tenant_id', tenant.tenantId);
+      usersQuery = usersQuery.eq('tenant_id', tenant.tenantId);
+    }
+
+    const [authRes, resRes, usersRes] = await Promise.all([
+      authQuery,
+      resQuery,
+      usersQuery.catch(() => ({ data: [], error: null }))
+    ]);
 
     const emailMap = new Map<string, any>();
 
@@ -35,6 +49,7 @@ export async function GET() {
           name: u.email.split('@')[0],
           role: normalizeRole(u.role),
           status: u.status || 'approved',
+          tenant_id: u.tenant_id,
           source: 'authorized_users',
           created_at: u.created_at || new Date().toISOString()
         });
@@ -52,6 +67,7 @@ export async function GET() {
             name: r.name || r.email.split('@')[0],
             role: normalizeRole(r.role),
             status: r.status === 'inactive' || r.status === 'baja' ? 'revoked' : 'approved',
+            tenant_id: r.tenant_id,
             source: 'resources',
             created_at: r.created_at || new Date().toISOString()
           });
@@ -73,6 +89,7 @@ export async function GET() {
             name: u.email.split('@')[0],
             role: normalizeRole(u.role),
             status: 'approved',
+            tenant_id: u.tenant_id,
             source: 'users',
             created_at: new Date().toISOString()
           });
@@ -88,9 +105,10 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const supabase = createServiceClient();
+    const tenant = await resolveTenantFromRequest(request);
     const { email, role } = await request.json();
 
     if (!email) {
@@ -100,32 +118,39 @@ export async function POST(request: Request) {
     const cleanEmail = email.toLowerCase().trim();
     const targetRole = normalizeRole(role);
     const dbResRole = targetRole === 'gerente' ? 'Gerente' : 'vigilador';
+    const activeTenantId = (tenant && tenant.tenantId) ? tenant.tenantId : '7f1fd036-6a82-47ab-aa2a-964c081e285b';
 
     // 1. Upsert into authorized_users
-    const { data: authData } = await supabase
+    const { data: authData, error: authError } = await supabase
       .from('authorized_users')
       .upsert({
         email: cleanEmail,
         role: targetRole,
         status: 'approved',
+        tenant_id: activeTenantId,
         approved_at: new Date().toISOString()
       }, { onConflict: 'email' })
       .select()
       .single();
+
+    if (authError) {
+      console.error('[ACCESOS_POST] authorized_users error:', authError);
+    }
 
     // 2. Update resources table
     await supabase
       .from('resources')
       .update({
         role: dbResRole,
-        status: 'active'
+        status: 'active',
+        tenant_id: activeTenantId
       })
       .ilike('email', cleanEmail);
 
     // 3. Update users table if user registered previously
     await supabase
       .from('users')
-      .update({ role: targetRole })
+      .update({ role: targetRole, tenant_id: activeTenantId })
       .ilike('email', cleanEmail);
 
     // 4. Update Supabase Auth user metadata
@@ -134,7 +159,7 @@ export async function POST(request: Request) {
       const authUser = authUsers?.users?.find(u => u.email?.toLowerCase().trim() === cleanEmail);
       if (authUser?.id) {
         await supabase.auth.admin.updateUserById(authUser.id, {
-          user_metadata: { ...authUser.user_metadata, role: targetRole }
+          user_metadata: { ...authUser.user_metadata, role: targetRole, tenant_id: activeTenantId }
         });
       }
     } catch (e) {}
@@ -146,9 +171,10 @@ export async function POST(request: Request) {
   }
 }
 
-export async function PATCH(request: Request) {
+export async function PATCH(request: NextRequest) {
   try {
     const supabase = createServiceClient();
+    const tenant = await resolveTenantFromRequest(request);
     const { email, id, role, status } = await request.json();
 
     if (!email && !id) {
@@ -157,7 +183,6 @@ export async function PATCH(request: Request) {
 
     let cleanEmail = email ? email.toLowerCase().trim() : null;
 
-    // If email is missing, resolve email from authorized_users or resources by ID
     if (!cleanEmail && id) {
       const { data: aUser } = await supabase.from('authorized_users').select('email').eq('id', id).maybeSingle();
       if (aUser?.email) cleanEmail = aUser.email.toLowerCase().trim();
@@ -170,7 +195,6 @@ export async function PATCH(request: Request) {
     const targetRole = role ? normalizeRole(role) : undefined;
     const dbResRole = targetRole ? (targetRole === 'gerente' ? 'Gerente' : 'vigilador') : undefined;
 
-    // 1. Update authorized_users
     const authUpdateData: any = {};
     if (targetRole) authUpdateData.role = targetRole;
     if (status !== undefined) {
@@ -178,27 +202,34 @@ export async function PATCH(request: Request) {
       if (status === 'approved') authUpdateData.approved_at = new Date().toISOString();
     }
 
-    if (id) {
-      await supabase.from('authorized_users').update(authUpdateData).eq('id', id);
+    let authQuery = supabase.from('authorized_users').update(authUpdateData);
+    if (tenant && !tenant.isSuper && tenant.tenantId) {
+      authQuery = authQuery.eq('tenant_id', tenant.tenantId);
     }
-    if (cleanEmail) {
-      await supabase.from('authorized_users').update(authUpdateData).ilike('email', cleanEmail);
+    if (id) {
+      await authQuery.eq('id', id);
+    } else if (cleanEmail) {
+      await authQuery.ilike('email', cleanEmail);
     }
 
-    // 2. Update resources table
     if (cleanEmail) {
       const resUpdate: any = {};
       if (dbResRole) resUpdate.role = dbResRole;
       if (status !== undefined) resUpdate.status = status === 'approved' ? 'active' : 'inactive';
-      await supabase.from('resources').update(resUpdate).ilike('email', cleanEmail);
+
+      let resQuery = supabase.from('resources').update(resUpdate).ilike('email', cleanEmail);
+      if (tenant && !tenant.isSuper && tenant.tenantId) {
+        resQuery = resQuery.eq('tenant_id', tenant.tenantId);
+      }
+      await resQuery;
+
+      let userQuery = supabase.from('users').update({ role: targetRole }).ilike('email', cleanEmail);
+      if (tenant && !tenant.isSuper && tenant.tenantId) {
+        userQuery = userQuery.eq('tenant_id', tenant.tenantId);
+      }
+      await userQuery;
     }
 
-    // 3. Update public.users table
-    if (cleanEmail && targetRole) {
-      await supabase.from('users').update({ role: targetRole }).ilike('email', cleanEmail);
-    }
-
-    // 4. Sync Supabase Auth User metadata
     if (cleanEmail && targetRole) {
       try {
         const { data: authUsers } = await supabase.auth.admin.listUsers();
@@ -218,20 +249,33 @@ export async function PATCH(request: Request) {
   }
 }
 
-export async function DELETE(request: Request) {
+export async function DELETE(request: NextRequest) {
   try {
     const supabase = createServiceClient();
+    const tenant = await resolveTenantFromRequest(request);
     const { email, id } = await request.json();
 
     let cleanEmail = email ? email.toLowerCase().trim() : null;
 
     if (id) {
-      await supabase.from('authorized_users').delete().eq('id', id);
+      let q = supabase.from('authorized_users').delete().eq('id', id);
+      if (tenant && !tenant.isSuper && tenant.tenantId) {
+        q = q.eq('tenant_id', tenant.tenantId);
+      }
+      await q;
     }
     if (cleanEmail) {
-      await supabase.from('authorized_users').delete().ilike('email', cleanEmail);
-      await supabase.from('resources').delete().ilike('email', cleanEmail);
-      await supabase.from('users').delete().ilike('email', cleanEmail);
+      let q1 = supabase.from('authorized_users').delete().ilike('email', cleanEmail);
+      let q2 = supabase.from('resources').delete().ilike('email', cleanEmail);
+      let q3 = supabase.from('users').delete().ilike('email', cleanEmail);
+
+      if (tenant && !tenant.isSuper && tenant.tenantId) {
+        q1 = q1.eq('tenant_id', tenant.tenantId);
+        q2 = q2.eq('tenant_id', tenant.tenantId);
+        q3 = q3.eq('tenant_id', tenant.tenantId);
+      }
+
+      await Promise.all([q1, q2, q3]);
     }
 
     return NextResponse.json({ success: true });
@@ -240,3 +284,4 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
