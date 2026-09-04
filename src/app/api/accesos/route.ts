@@ -98,7 +98,13 @@ export async function GET(req: NextRequest) {
     });
 
     const combinedUsers = Array.from(emailMap.values());
-    return NextResponse.json(combinedUsers);
+    return NextResponse.json(combinedUsers, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      }
+    });
   } catch (error: any) {
     console.error('[ACCESOS_GET_ERROR]', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
