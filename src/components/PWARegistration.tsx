@@ -13,6 +13,22 @@ export default function PWARegistration() {
   const [activeTab, setActiveTab] = useState<'ios' | 'android' | 'pc'>('ios');
 
   useEffect(() => {
+    // Global unhandledrejection listener for ChunkLoadError during Vercel deployment updates
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      const msg = event.reason?.message || String(event.reason || '');
+      const isChunkError = msg.includes('Loading chunk') || 
+                           msg.includes('ChunkLoadError') || 
+                           event.reason?.name === 'ChunkLoadError';
+      if (isChunkError) {
+        event.preventDefault();
+        const lastReload = sessionStorage.getItem('sigpad_chunk_reload');
+        if (!lastReload || Date.now() - Number(lastReload) > 10000) {
+          sessionStorage.setItem('sigpad_chunk_reload', String(Date.now()));
+          window.location.reload();
+        }
+      }
+    };
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
     // 1. Check if already running as installed PWA
     const standalone = window.matchMedia('(display-mode: standalone)').matches
       || (window.navigator as any).standalone === true;
@@ -95,6 +111,7 @@ export default function PWARegistration() {
     window.addEventListener('trigger-pwa-install', handleTriggerInstall);
 
     return () => {
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
       window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
       window.removeEventListener('trigger-pwa-install', handleTriggerInstall);
     };
