@@ -40,7 +40,10 @@ export default function AuthorizedUsersPage() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/accesos');
+      const res = await fetch(`/api/accesos?t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
+      });
       const data = await res.json();
       if (Array.isArray(data)) {
         setUsers(data);
