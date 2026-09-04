@@ -10,26 +10,11 @@ const FALLBACK_URL = 'https://xgzkudwuukctaldwcekr.supabase.co';
 const FALLBACK_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhnemt1ZHd1dWtjdGFsZHdjZWtyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2NjIzMzcsImV4cCI6MjA5OTIzODMzN30.ELmTZRPoXjOXi5p8D_g1yQs925oak7oz1BYasLhJ7yc';
 const FALLBACK_SERVICE = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhnemt1ZHd1dWtjdGFsZHdjZWtyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MzY2MjMzNywiZXhwIjoyMDk5MjM4MzM3fQ.ECHgqrp1hXeemc4v-66CoC3HbwaCM1SbU09HdOO2QmI';
 
-let cachedServiceClient: any = null;
-
 export function createServiceClient() {
-  if (cachedServiceClient) return cachedServiceClient;
-
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || FALLBACK_URL;
-
-  const hasServiceKey = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || FALLBACK_SERVICE;
 
-  if (!hasServiceKey) {
-    console.error(
-      '[SIGPAD][SUPABASE] ⛔ SUPABASE_SERVICE_ROLE_KEY no está configurada.' +
-      ' El cliente usará el anon key — RLS NO será bypasseado.' +
-      ' Las inserciones/actualizaciones en tablas con tenant_isolation RLS FALLARÁN.' +
-      ' Configura SUPABASE_SERVICE_ROLE_KEY en las variables de entorno de Vercel.'
-    );
-  }
-
-  cachedServiceClient = createClient(supabaseUrl, supabaseServiceKey, {
+  return createClient(supabaseUrl, supabaseServiceKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
@@ -40,8 +25,6 @@ export function createServiceClient() {
       },
     },
   }) as any;
-
-  return cachedServiceClient;
 }
 
 /**
