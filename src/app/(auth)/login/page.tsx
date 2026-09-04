@@ -46,6 +46,22 @@ export default function LoginPage() {
     try {
       setError(null);
       
+      // 🛡️ ATOMIC HANDOVER PURGE: Clear previous guard session and shift keys before authenticating new user
+      try {
+        await supabase.auth.signOut();
+      } catch (e) {}
+
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('SIGPAD_user');
+        localStorage.removeItem('704_user');
+        localStorage.removeItem('704_active_shift');
+        localStorage.removeItem('704_current_shift');
+        localStorage.removeItem('704_shift_start_time');
+        localStorage.removeItem('704_shift_id');
+        localStorage.removeItem('704_operator_id');
+        sessionStorage.clear();
+      }
+
       const result = await api.auth.login({
         email: email.toLowerCase().trim(),
         password,

@@ -66,6 +66,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       const { data: { session: supabaseSession } } = await supabase.auth.getSession();
+      const localUserJson = typeof window !== 'undefined' ? localStorage.getItem('SIGPAD_user') : null;
+      const localUser = localUserJson ? JSON.parse(localUserJson) : null;
+
+      // 🛡️ HANDOVER SAFEGUARD: Prevent Guard A's stale Supabase session from bleeding into Guard B's login
+      if (supabaseSession && localUser) {
+        const sessionEmail = supabaseSession.user?.email?.toLowerCase().trim();
+        const localEmail = localUser.email?.toLowerCase().trim();
+        if (sessionEmail && localEmail && sessionEmail !== localEmail) {
+          console.warn('[AuthProvider] Handover identity mismatch detected! Clearing stale session:', sessionEmail);
+          await supabase.auth.signOut().catch(() => {});
+          setUser(localUser);
+          setRole(localUser.role || localUser.user_metadata?.role || null);
+          setLoading(false);
+          return;
+        }
+      }
       
       if (supabaseSession) {
         setSession(supabaseSession);
@@ -75,7 +91,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           .from('users')
           .select('role, tenant_id')
           .eq('id', supabaseSession.user.id)
-          .single();
+          .maybeSingle();
         
         const finalRole = profile?.role || (supabaseSession.user.user_metadata?.role as string) || null;
         setRole(finalRole);
@@ -93,21 +109,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         localStorage.setItem('SIGPAD_user', JSON.stringify(userData));
         document.cookie = `SIGPAD_user=${encodeURIComponent(JSON.stringify(userData))}; path=/; max-age=2592000`;
         document.cookie = "SIGPAD_bypass_active=true; path=/; max-age=2592000";
-      } else {
-        // 🛡️ TACTICAL FALLBACK: Check localStorage for Master PIN sessions
-        const localUserJson = localStorage.getItem('SIGPAD_user');
-        if (localUserJson) {
-          try {
-            const localUser = JSON.parse(localUserJson);
-            setUser(localUser);
-            setRole(localUser.role || localUser.user_metadata?.role || null);
-            console.log('[Tactical Auth] Session restored from physical storage. Syncing cookies...');
-            document.cookie = `SIGPAD_user=${encodeURIComponent(JSON.stringify(localUser))}; path=/; max-age=2592000`;
-            document.cookie = "SIGPAD_bypass_active=true; path=/; max-age=2592000";
-          } catch (e) {
-            console.error('[Tactical Auth] Failed to restore session:', e);
-          }
-        }
+      } else if (localUser) {
+        setUser(localUser);
+        setRole(localUser.role || localUser.user_metadata?.role || null);
+        document.cookie = `SIGPAD_user=${encodeURIComponent(JSON.stringify(localUser))}; path=/; max-age=2592000`;
+        document.cookie = "SIGPAD_bypass_active=true; path=/; max-age=2592000";
       }
       
       setLoading(false);
