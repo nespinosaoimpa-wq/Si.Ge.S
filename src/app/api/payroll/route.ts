@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     let isSuper = ctx?.isSuper || false;
 
     if (!tenantId && !isSuper) {
-      tenantId = 'a1b2c3d4-0001-0001-0001-000000000001';
+      tenantId = '7f1fd036-6a82-47ab-aa2a-964c081e285b';
     }
 
     let query = supabase
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
       .order('checkin_time', { ascending: false });
 
     if (!isSuper && tenantId) {
-      query = query.or(`tenant_id.eq.${tenantId},tenant_id.is.null`);
+      query = query.eq('tenant_id', tenantId);
     }
 
     if (operatorId) query = query.eq('operator_id', operatorId);

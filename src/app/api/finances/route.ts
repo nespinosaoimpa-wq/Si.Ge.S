@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
         userEmail = user?.email;
         tenantId = user?.tenant_id || user?.user_metadata?.tenant_id;
         const userRole = (user?.role || user?.user_metadata?.role || '').toLowerCase();
-        isSuper = (userRole === 'superadmin') && (!tenantId || tenantId === 'a1b2c3d4-0001-0001-0001-000000000001');
+        isSuper = (userRole === 'superadmin') && (userEmail === 'sigpad.info@gmail.com');
       } catch (e) {}
     }
 

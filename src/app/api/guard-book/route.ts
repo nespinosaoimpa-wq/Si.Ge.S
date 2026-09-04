@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (!tenantId && !isSuper) {
-      tenantId = 'a1b2c3d4-0001-0001-0001-000000000001';
+      tenantId = '7f1fd036-6a82-47ab-aa2a-964c081e285b';
     }
 
     let query = supabase
