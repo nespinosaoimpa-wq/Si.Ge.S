@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
     const [authRes, resRes, usersRes] = await Promise.all([
       authQuery,
       resQuery,
-      usersQuery.catch(() => ({ data: [], error: null }))
+      Promise.resolve(usersQuery).catch(() => ({ data: [], error: null }))
     ]);
 
     const emailMap = new Map<string, any>();
