@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
       .limit(limit);
 
     if (!isSuper && tenantId) {
-      query = query.or(`tenant_id.eq.${tenantId},tenant_id.is.null`);
+      query = query.eq('tenant_id', tenantId);
     }
 
     if (objectiveId && objectiveId !== 'all') query = query.eq('objective_id', objectiveId);
@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
         .order('created_at', { ascending: false })
         .limit(limit);
 
-      if (!isSuper && tenantId) fallbackQuery = fallbackQuery.or(`tenant_id.eq.${tenantId},tenant_id.is.null`);
+      if (!isSuper && tenantId) fallbackQuery = fallbackQuery.eq('tenant_id', tenantId);
       if (objectiveId && objectiveId !== 'all') fallbackQuery = fallbackQuery.eq('objective_id', objectiveId);
       if (urgency && urgency !== 'all') fallbackQuery = fallbackQuery.eq('urgency', urgency);
       if (entryType && entryType !== 'all') fallbackQuery = fallbackQuery.eq('entry_type', entryType);
