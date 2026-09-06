@@ -104,6 +104,7 @@ export default function ObjectiveDetail() {
     contact_phone: '',
     contact_person: '',
     geofence_radius: 150,
+    hourly_billing_rate: '',
     status: 'Activo',
     notes: ''
   });
@@ -176,6 +177,7 @@ export default function ObjectiveDetail() {
           contact_phone: data.objective.contact_phone || '',
           contact_person: data.objective.contact_person || '',
           geofence_radius: data.objective.geofence_radius_meters || data.objective.geofence_radius || 150,
+          hourly_billing_rate: data.objective.hourly_billing_rate?.toString() || '',
           status: data.objective.status || 'Activo',
           notes: data.objective.notes || ''
         });
@@ -439,6 +441,7 @@ export default function ObjectiveDetail() {
         contact_person: editForm.contact_person.trim(),
         geofence_radius: Number(editForm.geofence_radius) || 150,
         geofence_radius_meters: Number(editForm.geofence_radius) || 150,
+        hourly_billing_rate: editForm.hourly_billing_rate ? Number(editForm.hourly_billing_rate) : null,
         status: editForm.status,
         notes: editForm.notes.trim()
       };
@@ -631,6 +634,7 @@ export default function ObjectiveDetail() {
                   contact_phone: objective.contact_phone || '',
                   contact_person: objective.contact_person || '',
                   geofence_radius: objective.geofence_radius_meters || objective.geofence_radius || 150,
+                  hourly_billing_rate: objective.hourly_billing_rate?.toString() || '',
                   status: objective.status || 'Activo',
                   notes: objective.notes || observations || ''
                 });
@@ -1883,17 +1887,29 @@ export default function ObjectiveDetail() {
             </div>
           </div>
 
-          <div>
-            <label className="text-[10px] font-black uppercase text-zinc-400 tracking-widest block mb-1">Radio de Geocerca (Metros)</label>
-            <Input
-              type="number"
-              value={editForm.geofence_radius}
-              onChange={(e) => setEditForm({ ...editForm, geofence_radius: Number(e.target.value) })}
-              placeholder="150"
-              min={20}
-              max={2000}
-              className="h-11 font-bold border-zinc-200"
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-[10px] font-black uppercase text-zinc-400 tracking-widest block mb-1">Radio de Geocerca (Metros)</label>
+              <Input
+                type="number"
+                value={editForm.geofence_radius}
+                onChange={(e) => setEditForm({ ...editForm, geofence_radius: Number(e.target.value) })}
+                placeholder="150"
+                min={20}
+                max={2000}
+                className="h-11 font-bold border-zinc-200"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-black uppercase text-zinc-400 tracking-widest block mb-1">Tarifa Facturación ($/Hora)</label>
+              <Input
+                type="number"
+                value={editForm.hourly_billing_rate}
+                onChange={(e) => setEditForm({ ...editForm, hourly_billing_rate: e.target.value })}
+                placeholder="Ej: 8500"
+                className="h-11 font-bold border-zinc-200"
+              />
+            </div>
           </div>
 
           <div>

@@ -911,6 +911,17 @@ export default function InventarioHub() {
               </div>
             </div>
 
+            <div className="space-y-1.5">
+              <label className="text-[10px] uppercase font-black tracking-widest text-zinc-500 ml-1">Observaciones / Notas Tácticas</label>
+              <textarea
+                value={selectedEditItem.notes || ''}
+                onChange={e => setSelectedEditItem({...selectedEditItem, notes: e.target.value})}
+                placeholder="Detalles sobre estado de conservación, accesorios incluidos..."
+                rows={3}
+                className="w-full p-3 text-xs font-semibold text-zinc-800 bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900 resize-none"
+              />
+            </div>
+
             <div className="flex gap-4 pt-4">
               <Button 
                 className="flex-1 h-14 rounded-2xl bg-zinc-900 hover:bg-black text-white font-black uppercase shadow-xl" 

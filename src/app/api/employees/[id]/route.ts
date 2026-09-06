@@ -4,9 +4,11 @@ import { serverCache } from '@/lib/cache';
 
 const ALLOWED_RESOURCE_COLUMNS = new Set([
   'name', 'role', 'status', 'latitude', 'longitude', 'accuracy', 'speed', 'heading',
-  'battery_level', 'last_gps_update', 'phone', 'email', 'dni', 'address', 'hiring_date',
+  'battery_level', 'last_gps_update', 'phone', 'email', 'dni', 'cuil', 'address', 'hiring_date',
   'salary', 'avatar_url', 'assigned_to', 'shirt_size', 'pants_size', 'boot_size',
-  'last_uniform_delivery', 'credential_number', 'credential_expiry', 'psych_expiry',
+  'last_uniform_delivery', 'uniform_delivery_date', 'uniform_expiry_date', 'custom_uniforms',
+  'credential_number', 'credential_expiry', 'clu_number', 'clu_expiry',
+  'drivers_license_category', 'drivers_license_expiry', 'psych_expiry',
   'license_expiry', 'training_expiry', 'sanctions', 'medical_records', 'leaves',
   'documents', 'performance_data', 'hourly_pay_rate', 'current_shift_id',
   'current_objective_id', 'profile_id', 'tenant_id'

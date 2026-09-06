@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
     let query = supabase
       .from('objectives')
       .select('*')
-      .eq('is_active', true);
+      .is('deleted_at', null);
 
     if (!isSuper && tenantId) {
       query = query.eq('tenant_id', tenantId);
@@ -72,6 +72,8 @@ export async function POST(req: NextRequest) {
       return isNaN(num) ? fallback : num;
     };
 
+    const initialStatus = body.status || 'Activo';
+
     const payload: any = {
       name: body.name || 'Nuevo Objetivo',
       address: body.address || 'Sin dirección registrada',
@@ -81,7 +83,8 @@ export async function POST(req: NextRequest) {
       longitude: parseCoord(body.longitude, -60.6973),
       geofence_radius: parseCoord(body.geofence_radius, 200),
       hourly_billing_rate: body.hourly_billing_rate ? parseCoord(body.hourly_billing_rate, 0) : null,
-      is_active: true,
+      is_active: initialStatus === 'Activo',
+      status: initialStatus,
       tenant_id: targetTenantId,
     };
 
