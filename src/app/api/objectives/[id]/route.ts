@@ -3,9 +3,9 @@ import { NextResponse } from 'next/server';
 import { serverCache } from '@/lib/cache';
 
 const ALLOWED_OBJECTIVE_COLUMNS = new Set([
-  'name', 'address', 'client_name', 'contact_phone', 'contact_person',
-  'latitude', 'longitude', 'geofence_radius', 'geofence_radius_meters',
-  'is_active', 'hourly_billing_rate', 'notes', 'tenant_id', 'updated_at'
+  'name', 'address', 'client_name', 'contact_phone',
+  'latitude', 'longitude', 'geofence_radius',
+  'is_active', 'hourly_billing_rate', 'tenant_id', 'updated_at'
 ]);
 
 export async function GET(
@@ -46,14 +46,18 @@ export async function PATCH(
       updated_at: new Date().toISOString()
     };
 
+    if ('status' in body) {
+      cleanedBody.is_active = body.status === 'Activo';
+    }
+
+    if ('geofence_radius_meters' in body && body.geofence_radius_meters != null) {
+      cleanedBody.geofence_radius = Number(body.geofence_radius_meters);
+    }
+
     for (const [key, value] of Object.entries(body)) {
       if (ALLOWED_OBJECTIVE_COLUMNS.has(key)) {
         cleanedBody[key] = value === '' ? null : value;
       }
-    }
-
-    if ('status' in body) {
-      cleanedBody.is_active = body.status === 'Activo';
     }
 
     const { data, error } = await supabase
