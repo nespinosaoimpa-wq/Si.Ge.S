@@ -52,6 +52,10 @@ export async function PATCH(
       }
     }
 
+    if ('status' in body) {
+      cleanedBody.is_active = body.status === 'Activo';
+    }
+
     const { data, error } = await supabase
       .from('objectives')
       .update(cleanedBody)
