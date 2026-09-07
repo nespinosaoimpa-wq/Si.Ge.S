@@ -3,6 +3,51 @@ import { isConfigured } from '@/lib/supabase';
 import { NextRequest, NextResponse } from 'next/server';
 import { resolveTenantFromRequest } from '@/lib/resolve-tenant';
 
+const VALID_DB_COLUMNS = new Set([
+  'id', 'name', 'role', 'status', 'latitude', 'longitude', 'accuracy', 'speed',
+  'heading', 'battery_level', 'last_gps_update', 'phone', 'email', 'dni',
+  'address', 'hiring_date', 'salary', 'avatar_url', 'assigned_to', 'shirt_size',
+  'pants_size', 'boot_size', 'last_uniform_delivery', 'credential_number',
+  'credential_expiry', 'psych_expiry', 'license_expiry', 'training_expiry',
+  'sanctions', 'medical_records', 'leaves', 'documents', 'performance_data',
+  'hourly_pay_rate', 'current_shift_id', 'current_objective_id', 'profile_id',
+  'created_at', 'updated_at', 'tenant_id'
+]);
+
+function unpackResource(row: any) {
+  if (!row) return row;
+  const docs = typeof row.documents === 'object' && row.documents !== null ? row.documents : {};
+  return {
+    ...docs,
+    ...row,
+    hourly_pay_rate: row.hourly_pay_rate ?? (row.salary ? parseFloat(String(row.salary).replace(/[^0-9.]/g, '')) : null),
+    objectives: row.assigned_objective || row.objectives
+  };
+}
+
+function sanitizeResourcePayload(body: any, existingDocs: any = {}) {
+  const cleaned: any = {};
+  const extraDocs: any = typeof existingDocs === 'object' && existingDocs !== null ? { ...existingDocs } : {};
+
+  for (const [key, value] of Object.entries(body)) {
+    if (key === 'assigned_objective' || key === 'objectives' || key === 'id') {
+      continue;
+    }
+    const val = value === '' ? null : value;
+    if (VALID_DB_COLUMNS.has(key)) {
+      cleaned[key] = val;
+    } else {
+      extraDocs[key] = val;
+    }
+  }
+
+  if (Object.keys(extraDocs).length > 0) {
+    cleaned.documents = extraDocs;
+  }
+
+  return cleaned;
+}
+
 export async function GET(req: NextRequest) {
   try {
     if (!isConfigured) {
@@ -35,12 +80,7 @@ export async function GET(req: NextRequest) {
 
     if (fetchError) throw fetchError;
 
-    // Map 'salary' to 'hourly_pay_rate' for frontend compatibility
-    const finalData = (rawData || []).map(r => ({
-      ...r,
-      hourly_pay_rate: r.salary,
-      objectives: r.assigned_objective
-    }));
+    const finalData = (rawData || []).map(unpackResource);
 
     return NextResponse.json(finalData, {
       headers: {
@@ -75,38 +115,35 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Clean up body: Convert empty strings to null for database compatibility
-    const cleanedBody: any = {};
-    for (const [key, value] of Object.entries(body)) {
-      if (key === 'assigned_objective' || key === 'objectives' || key === 'hourly_pay_rate' || key === 'id') {
-        continue;
-      }
-      cleanedBody[key] = value === '' ? null : value;
+    const supabase = createServiceClient();
+
+    const normalizedEmail = body.email ? String(body.email).toLowerCase().trim() : null;
+
+    // Check if a resource record with this email already exists in resources table
+    let existingResource: any = null;
+    if (normalizedEmail) {
+      const { data: found } = await supabase
+        .from('resources')
+        .select('id, documents')
+        .ilike('email', normalizedEmail)
+        .maybeSingle();
+      existingResource = found;
     }
+
+    const cleanedBody = sanitizeResourcePayload(body, existingResource?.documents);
 
     if (targetTenantId) {
       cleanedBody.tenant_id = targetTenantId;
     }
 
-    if ('hourly_pay_rate' in body) {
-      cleanedBody.salary = body.hourly_pay_rate === '' ? null : String(body.hourly_pay_rate);
+    if ('hourly_pay_rate' in body && body.hourly_pay_rate !== undefined) {
+      const numRate = body.hourly_pay_rate === '' || body.hourly_pay_rate === null ? null : String(body.hourly_pay_rate);
+      cleanedBody.salary = numRate;
+      cleanedBody.hourly_pay_rate = numRate ? parseFloat(numRate) : null;
     }
 
-    if (cleanedBody.email) {
-      cleanedBody.email = String(cleanedBody.email).toLowerCase().trim();
-    }
-
-    const supabase = createServiceClient();
-
-    // Check if a resource record with this email already exists in resources table
-    let existingResource: any = null;
-    if (cleanedBody.email) {
-      const { data: found } = await supabase
-        .from('resources')
-        .select('id')
-        .ilike('email', cleanedBody.email)
-        .maybeSingle();
-      existingResource = found;
+    if (normalizedEmail) {
+      cleanedBody.email = normalizedEmail;
     }
 
     let data: any = null;
@@ -143,7 +180,7 @@ export async function POST(req: NextRequest) {
       throw error;
     }
 
-    return NextResponse.json(data);
+    return NextResponse.json(unpackResource(data));
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Error al procesar el alta de personal' }, { status: 500 });
   }

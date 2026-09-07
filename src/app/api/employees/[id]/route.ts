@@ -14,6 +14,17 @@ const ALLOWED_RESOURCE_COLUMNS = new Set([
   'current_objective_id', 'profile_id', 'tenant_id'
 ]);
 
+function unpackResource(row: any) {
+  if (!row) return row;
+  const docs = typeof row.documents === 'object' && row.documents !== null ? row.documents : {};
+  return {
+    ...docs,
+    ...row,
+    hourly_pay_rate: row.hourly_pay_rate ?? (row.salary ? parseFloat(String(row.salary).replace(/[^0-9.]/g, '')) : null),
+    objectives: row.assigned_objective || row.objectives
+  };
+}
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -41,7 +52,7 @@ export async function GET(
       data = fallback.data;
     }
 
-    return NextResponse.json(data);
+    return NextResponse.json(unpackResource(data));
   } catch (error: any) {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
@@ -56,12 +67,30 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
 
-    // Clean up body: only keep columns that exist in the `resources` table
+    // Fetch existing resource to get current documents JSON
+    const { data: existing } = await supabase
+      .from('resources')
+      .select('documents')
+      .eq('id', id)
+      .maybeSingle();
+
+    const existingDocs = typeof existing?.documents === 'object' && existing?.documents !== null ? existing.documents : {};
+    const extraDocs = { ...existingDocs };
+
+    // Clean up body: keep known DB columns, store extra form fields in documents JSON
     const cleanedBody: any = {};
     for (const [key, value] of Object.entries(body)) {
+      if (key === 'id' || key === 'objectives' || key === 'assigned_objective') continue;
+      const val = value === '' ? null : value;
       if (ALLOWED_RESOURCE_COLUMNS.has(key)) {
-        cleanedBody[key] = value === '' ? null : value;
+        cleanedBody[key] = val;
+      } else {
+        extraDocs[key] = val;
       }
+    }
+
+    if (Object.keys(extraDocs).length > 0) {
+      cleanedBody.documents = extraDocs;
     }
 
     if ('hourly_pay_rate' in body && body.hourly_pay_rate !== undefined) {
@@ -92,7 +121,7 @@ export async function PATCH(
     }
     serverCache.invalidate(`dashboard-map-super`);
 
-    return NextResponse.json(data);
+    return NextResponse.json(unpackResource(data));
   } catch (error: any) {
     console.error('[EMPLOYEE_PATCH_EXCEPTION]', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
