@@ -124,21 +124,26 @@ export default function NovedadesPage() {
           : selectedData.id === 'emergencia' ? 'emergencia' 
           : 'incidente';
 
-        const { error: gbErr } = await supabase.from('guard_book_entries').insert({
-          objective_id: objectiveId,
-          resource_id: resourceId,
-          operator_id: resourceId,
-          entry_type: entryType,
-          content: `${selectedData.label.toUpperCase()}: ${comment || 'Sin detalles adicionales'}`,
-          latitude: shiftData?.location?.lat || 0,
-          longitude: shiftData?.location?.lng || 0,
-          urgency: selectedData.urgency,
-          image_url,
-          audio_url,
-          created_at: new Date().toISOString()
-        } as any);
+        const res = await fetch('/api/guard-book', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            objective_id: objectiveId,
+            resource_id: resourceId,
+            entry_type: entryType,
+            content: `${selectedData.label.toUpperCase()}: ${comment || 'Sin detalles adicionales'}`,
+            latitude: shiftData?.location?.lat || 0,
+            longitude: shiftData?.location?.lng || 0,
+            urgency: selectedData.urgency,
+            image_url,
+            audio_url
+          })
+        });
 
-        if (gbErr) throw gbErr;
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || 'Error al guardar la novedad');
+        }
       }
       
       setSuccess(true);

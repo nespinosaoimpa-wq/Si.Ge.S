@@ -322,14 +322,15 @@ export default function TacticalLeaflet({
               key={`obj-${obj.id}`}
               latitude={Number(obj.latitude)}
               longitude={Number(obj.longitude)}
+              anchor="center"
               onClick={e => {
                 e.originalEvent.stopPropagation();
                 setSelectedPoint(obj);
                 if (onPointSelect) onPointSelect(obj);
               }}
             >
-              <div className="relative group cursor-pointer">
-                <div className="absolute w-8 h-8 -top-4 -left-4 bg-amber-500/20 rounded-full animate-ping group-hover:bg-amber-500/40" />
+              <div className="relative w-8 h-8 flex items-center justify-center group cursor-pointer pointer-events-auto select-none">
+                <div className="absolute w-8 h-8 bg-amber-500/20 rounded-full animate-ping group-hover:bg-amber-500/40 pointer-events-none" />
                 <div className={cn(
                   "w-5 h-5 rounded-full border-2 border-white shadow-xl flex items-center justify-center transition-all group-hover:scale-125",
                   obj.status === 'Activo' ? "bg-amber-500" : "bg-red-500"
@@ -357,16 +358,16 @@ export default function TacticalLeaflet({
                   if (onResourceSelect) onResourceSelect(res);
                 }}
               >
-                <div className="relative flex flex-col items-center group transition-all duration-[2500ms] ease-linear cursor-pointer">
+                <div className="relative w-10 h-10 flex items-center justify-center group cursor-pointer pointer-events-none select-none">
                   {/* Name Tag (HUD Style) */}
-                  <div className="absolute -top-10 px-2 py-1 bg-black/80 backdrop-blur-md text-white text-[9px] font-black uppercase tracking-tighter rounded border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
+                  <div className="absolute -top-10 left-1/2 -translate-x-1/2 px-2 py-1 bg-black/80 backdrop-blur-md text-white text-[9px] font-black uppercase tracking-tighter rounded border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
                     {res.name} {isActive && <span className="text-primary ml-1">●</span>}
                   </div>
 
                   {/* Animated Body */}
                   <div 
                     className={cn(
-                      "w-10 h-10 rounded-xl flex items-center justify-center shadow-2xl border-2 transition-all duration-[2500ms] ease-linear overflow-hidden",
+                      "w-10 h-10 rounded-xl flex items-center justify-center shadow-2xl border-2 transition-all duration-[2500ms] ease-linear overflow-hidden pointer-events-auto",
                       isActive ? "bg-zinc-900 border-primary" : "bg-zinc-800 border-zinc-600 opacity-60"
                     )}
                   >
@@ -380,13 +381,13 @@ export default function TacticalLeaflet({
 
                     {/* Pulse for High Speed */}
                     {isActive && res.speed > 2 && (
-                      <div className="absolute inset-0 rounded-xl bg-primary animate-ping opacity-20" />
+                      <div className="absolute inset-0 rounded-xl bg-primary animate-ping opacity-20 pointer-events-none" />
                     )}
                   </div>
 
                   {/* Status Indicator */}
                   <div className={cn(
-                    "mt-1 px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest border",
+                    "absolute -bottom-5 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest border whitespace-nowrap pointer-events-none z-20",
                     isActive ? "bg-primary text-black border-primary" : "bg-zinc-800 text-zinc-500 border-zinc-700"
                   )}>
                     {isActive ? (res.speed > 0.5 ? `${speedKmh} KM/H` : 'EN TURNO') : (res.status?.toUpperCase() || 'OFFLINE')}
@@ -402,27 +403,30 @@ export default function TacticalLeaflet({
               key={`inc-${inc.id}`}
               latitude={Number(inc.latitude)}
               longitude={Number(inc.longitude)}
+              anchor="center"
               onClick={e => {
                 e.originalEvent.stopPropagation();
                 setSelectedIncident(inc);
               }}
             >
-              <div className={cn(
-                "p-2 rounded-xl shadow-2xl cursor-pointer border-2 border-white transition-all hover:scale-125 z-[100]",
-                (inc.entry_type === 'emergencia' || inc.entry_type === 'panic' || (inc as any).urgency === 'critica' || inc.status === 'critica' || inc.status === 'crítica' || inc.content?.toLowerCase().includes('alerta') || inc.content?.toLowerCase().includes('crítica')) 
-                  ? "bg-red-600 scale-125 animate-bounce shadow-[0_0_25px_rgba(239,68,68,0.8)]" 
-                  : "bg-zinc-900"
-              )}>
-                {(() => {
-                  const content = inc.content?.toLowerCase() || '';
-                  if (content.includes('vehículo')) return <Car size={14} className="text-white" />;
-                  if (content.includes('persona')) return <UserX size={14} className="text-white" />;
-                  if (content.includes('puerta')) return <DoorOpen size={14} className="text-white" />;
-                  if (content.includes('paquete')) return <Package size={14} className="text-white" />;
-                  if (content.includes('eléctrica')) return <Lightbulb size={14} className="text-white" />;
-                  if (content.includes('crítica') || content.includes('alerta') || inc.entry_type === 'panic' || (inc as any).urgency === 'critica' || inc.status === 'critica' || inc.status === 'crítica') return <Zap size={14} className="text-amber-300 animate-pulse" />;
-                  return <AlertTriangle size={14} className="text-white" />;
-                })()}
+              <div className="relative w-10 h-10 flex items-center justify-center pointer-events-auto select-none">
+                <div className={cn(
+                  "p-2 rounded-xl shadow-2xl cursor-pointer border-2 border-white transition-all hover:scale-125 z-[100]",
+                  (inc.entry_type === 'emergencia' || inc.entry_type === 'panic' || (inc as any).urgency === 'critica' || inc.status === 'critica' || inc.status === 'crítica' || inc.content?.toLowerCase().includes('alerta') || inc.content?.toLowerCase().includes('crítica')) 
+                    ? "bg-red-600 scale-125 animate-bounce shadow-[0_0_25px_rgba(239,68,68,0.8)]" 
+                    : "bg-zinc-900"
+                )}>
+                  {(() => {
+                    const content = inc.content?.toLowerCase() || '';
+                    if (content.includes('vehículo')) return <Car size={14} className="text-white" />;
+                    if (content.includes('persona')) return <UserX size={14} className="text-white" />;
+                    if (content.includes('puerta')) return <DoorOpen size={14} className="text-white" />;
+                    if (content.includes('paquete')) return <Package size={14} className="text-white" />;
+                    if (content.includes('eléctrica')) return <Lightbulb size={14} className="text-white" />;
+                    if (content.includes('crítica') || content.includes('alerta') || inc.entry_type === 'panic' || (inc as any).urgency === 'critica' || inc.status === 'critica' || inc.status === 'crítica') return <Zap size={14} className="text-amber-300 animate-pulse" />;
+                    return <AlertTriangle size={14} className="text-white" />;
+                  })()}
+                </div>
               </div>
             </Marker>
           );

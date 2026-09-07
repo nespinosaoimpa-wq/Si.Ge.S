@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
   try {
-    const { operator_id, email, objective_id, latitude, longitude, accuracy = 0 } = await request.json();
+    const { operator_id, email, objective_id, latitude, longitude, accuracy = 0, auto_sync_location = false } = await request.json();
 
     const supabase = createServiceClient();
     const tenantCtx = await resolveTenantFromRequest(request);
@@ -12,6 +12,7 @@ export async function POST(request: Request) {
     // 1. Fetch Objective specific radius if available
     let targetRadius = 100;
     let objectiveLocation: { lat: number, lng: number } | null = null;
+    let objectiveName = '';
     if (objective_id && objective_id !== 'null') {
       try {
         const { data: objective } = await supabase
@@ -22,6 +23,7 @@ export async function POST(request: Request) {
 
         const configuredRadius = Number(objective?.geofence_radius || objective?.geofence_radius_meters || 100);
         if (configuredRadius > 0) targetRadius = configuredRadius;
+        if (objective?.name) objectiveName = objective.name;
 
         if (objective?.latitude && objective?.longitude) {
           objectiveLocation = { lat: Number(objective.latitude), lng: Number(objective.longitude) };
@@ -48,21 +50,31 @@ export async function POST(request: Request) {
       distanceToObjective = R * c;
 
       // FORMULA: Distance <= (Target Radius + Dynamic Margin for GPS Accuracy)
-      // Dynamic margin guarantees indoor/subterranean checkin when near objective
       const gpsMargin = Math.max(Number(accuracy || 0), 25);
       const dynamicTolerance = targetRadius + gpsMargin;
       isWithinGeofence = distanceToObjective <= dynamicTolerance;
       
-      // STRICT BLOCK IF OUTSIDE GEOFENCE
+      // AUTO-SYNC LOCATION OR STRICT BLOCK
       if (!isWithinGeofence) {
-        return NextResponse.json({ 
-          error: 'FUERA DE RANGO',
-          message: `Estás a ${Math.round(distanceToObjective)}m del objetivo. El radio permitido es ${targetRadius}m (+${Math.round(gpsMargin)}m de margen GPS).`,
-          isWithinGeofence: false,
-          targetRadius,
-          distance: Math.round(distanceToObjective),
-          accuracy
-        }, { status: 403 });
+        if (auto_sync_location) {
+          // Update objective position to match current operator position when requested
+          await supabase.from('objectives').update({
+            latitude,
+            longitude,
+            updated_at: new Date().toISOString()
+          }).eq('id', objective_id);
+          isWithinGeofence = true;
+          distanceToObjective = 0;
+        } else {
+          return NextResponse.json({ 
+            error: 'FUERA DE RANGO',
+            message: `Estás a ${Math.round(distanceToObjective)}m del objetivo "${objectiveName || 'Asignado'}". El radio permitido es ${targetRadius}m (+${Math.round(gpsMargin)}m de margen GPS).`,
+            isWithinGeofence: false,
+            targetRadius,
+            distance: Math.round(distanceToObjective),
+            accuracy
+          }, { status: 403 });
+        }
       }
     }
 
@@ -228,18 +240,39 @@ export async function POST(request: Request) {
     }
 
     // 5. Update resource: set active, link shift, objective and tenant_id
+    const targetObjId = (objective_id && objective_id !== 'null') ? objective_id : resourceRecord.current_objective_id;
     await supabase
       .from('resources')
       .update({
         latitude,
         longitude,
         status: 'activo',
-        current_objective_id: (objective_id && objective_id !== 'null') ? objective_id : resourceRecord.current_objective_id,
+        current_objective_id: targetObjId,
         current_shift_id: shift.id,
         last_gps_update: new Date().toISOString(),
         ...(operatorTenantId ? { tenant_id: operatorTenantId } : {}),
       })
       .eq('id', finalResourceId);
+
+    // 🔒 SINGLE OBJECTIVE ASSIGNMENT ENFORCEMENT
+    // Clean up conflicting objective_resources links so operator is only assigned to this objective
+    if (targetObjId && targetObjId !== 'null') {
+      try {
+        await supabase
+          .from('objective_resources')
+          .delete()
+          .eq('resource_id', finalResourceId);
+
+        await supabase
+          .from('objective_resources')
+          .insert({
+            objective_id: targetObjId,
+            resource_id: finalResourceId
+          });
+      } catch (e) {
+        console.warn('[CHECKIN] objective_resources sync notice:', e);
+      }
+    }
 
     // 6. Update objective: mark as covered
     if (objective_id && objective_id !== 'null') {

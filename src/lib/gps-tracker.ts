@@ -765,9 +765,32 @@ export class GPSTracker {
   }
 
   static getAccuracyCategory(accuracyMeters: number) {
-    if (accuracyMeters <= 10) return { label: 'EXCELENTE', color: 'text-green-500', bgColor: 'bg-green-500/10', level: 'excelente' };
-    if (accuracyMeters <= 30) return { label: 'BUENA', color: 'text-green-400', bgColor: 'bg-green-400/10', level: 'buena' };
-    if (accuracyMeters <= 100) return { label: 'MEDIA', color: 'text-amber-500', bgColor: 'bg-amber-500/10', level: 'media' };
-    return { label: 'BAJA', color: 'text-red-500', bgColor: 'bg-red-500/10', level: 'baja' };
+    if (accuracyMeters <= 10) return { label: 'EXCELENTE', color: 'text-green-500', bgColor: 'bg-green-500/10', level: 'excelente', score: 98 };
+    if (accuracyMeters <= 25) return { label: 'BUENA', color: 'text-emerald-400', bgColor: 'bg-emerald-400/10', level: 'buena', score: 85 };
+    if (accuracyMeters <= 60) return { label: 'MEDIA', color: 'text-amber-500', bgColor: 'bg-amber-500/10', level: 'media', score: 65 };
+    return { label: 'BAJA (INTERIOR/SÓTANO)', color: 'text-red-500', bgColor: 'bg-red-500/10', level: 'baja', score: 35 };
+  }
+
+  /**
+   * Genera métrica completa de calidad de señal GPS (0-100%) para la UI del Operador
+   */
+  static getGPSQualityMetrics(accuracyMeters: number): {
+    score: number;
+    label: string;
+    level: string;
+    color: string;
+    bgColor: string;
+    marginText: string;
+  } {
+    const cat = this.getAccuracyCategory(accuracyMeters);
+    const score = Math.max(10, Math.min(100, Math.round(100 - Math.min(accuracyMeters, 100) * 0.8)));
+    return {
+      score,
+      label: cat.label,
+      level: cat.level,
+      color: cat.color,
+      bgColor: cat.bgColor,
+      marginText: `Tolerancia GPS: ±${Math.round(accuracyMeters)}m`
+    };
   }
 }

@@ -219,11 +219,11 @@ const GuardMarkerContent = React.memo(({
   const hasHeading = heading !== undefined && heading !== null;
 
   return (
-    <div className="relative flex flex-col items-center group">
+    <div className="relative w-10 h-10 flex items-center justify-center group pointer-events-none select-none">
       {/* Accuracy Halo */}
       {accuracy && accuracy > 15 && (
         <div 
-          className="absolute rounded-full bg-[#0F4C5C]/5 border border-[#0F4C5C]/10 pointer-events-none"
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#0F4C5C]/5 border border-[#0F4C5C]/10 pointer-events-none"
           style={{ 
             width: `${accuracy * 2}px`, 
             height: `${accuracy * 2}px`,
@@ -234,7 +234,7 @@ const GuardMarkerContent = React.memo(({
 
       {/* Name Tag */}
       <div className={cn(
-        "absolute -top-10 px-2.5 py-1 bg-black/90 text-white text-[10px] font-black uppercase tracking-widest rounded-lg border border-white/20 shadow-2xl transition-all duration-300 pointer-events-none whitespace-nowrap",
+        "absolute -top-10 left-1/2 -translate-x-1/2 px-2.5 py-1 bg-black/90 text-white text-[10px] font-black uppercase tracking-widest rounded-lg border border-white/20 shadow-2xl transition-all duration-300 pointer-events-none whitespace-nowrap z-30",
         isSelected ? "opacity-100 scale-100 -translate-y-2" : "opacity-0 scale-90 translate-y-0 group-hover:opacity-100 group-hover:scale-100 group-hover:-translate-y-1",
         isAbandoned && "border-red-500 text-red-500 font-bold",
         !isOnShift && "border-zinc-500/50 text-zinc-400"
@@ -246,7 +246,7 @@ const GuardMarkerContent = React.memo(({
       {/* Main Marker with Transition */}
       <div 
         className={cn(
-          "w-10 h-10 rounded-full flex items-center justify-center shadow-2xl cursor-pointer border transition-all duration-[2500ms] ease-linear overflow-hidden",
+          "w-10 h-10 rounded-full flex items-center justify-center shadow-2xl cursor-pointer border transition-all duration-[2500ms] ease-linear overflow-hidden pointer-events-auto relative z-10",
           isSelected 
             ? "bg-[#0F4C5C] border-black scale-125 z-50" 
             : isAbandoned
@@ -278,7 +278,7 @@ const GuardMarkerContent = React.memo(({
       {/* Direction Pointer - Only show if actively moving (speed > 1.5 km/h) */}
       {hasHeading && speed !== undefined && speed !== null && (speed * 3.6) > 1.5 && (
         <div 
-          className="absolute w-3 h-3 bg-[#D4AF37] rotate-45 border-r border-b border-black -bottom-2 z-10 transition-all duration-[2500ms] ease-linear shadow-md"
+          className="absolute w-3 h-3 bg-[#D4AF37] rotate-45 border-r border-b border-black -bottom-2 z-10 transition-all duration-[2500ms] ease-linear shadow-md pointer-events-none"
           style={{ transform: `rotate(${heading}deg) translateY(18px) rotate(45deg)` }}
         />
       )}
@@ -300,7 +300,7 @@ const ObjectiveMarkerContent = React.memo(({
   const isCritical = obj.status === 'critica' || obj.status === 'alerta' || obj.status === 'emergency';
 
   return (
-    <div className="relative flex flex-col items-center group cursor-pointer">
+    <div className="relative w-10 h-10 flex items-center justify-center group cursor-pointer pointer-events-none select-none">
       {/* Relocation visual hint */}
       {isRelocating && isSelected && (
         <div className="absolute -top-16 left-1/2 -translate-x-1/2 bg-zinc-950 text-white text-[8px] font-black uppercase px-2.5 py-1.5 rounded-lg whitespace-nowrap animate-bounce border-2 border-[#0F4C5C] shadow-2xl z-[60]">
@@ -310,7 +310,7 @@ const ObjectiveMarkerContent = React.memo(({
 
       {/* Objective Name Label */}
       <div className={cn(
-        "absolute -top-10 px-2.5 py-1 bg-zinc-950 text-white text-[9px] font-black uppercase tracking-widest rounded-lg border border-white/20 shadow-2xl transition-all duration-300 pointer-events-none whitespace-nowrap z-50 flex items-center gap-1.5",
+        "absolute -top-10 left-1/2 -translate-x-1/2 px-2.5 py-1 bg-zinc-950 text-white text-[9px] font-black uppercase tracking-widest rounded-lg border border-white/20 shadow-2xl transition-all duration-300 pointer-events-none whitespace-nowrap z-50 flex items-center gap-1.5",
         isSelected ? "opacity-100 scale-100 -translate-y-1" : "opacity-0 scale-90 translate-y-2 group-hover:opacity-100 group-hover:scale-100 group-hover:translate-y-0"
       )}>
         <span className={cn(
@@ -323,7 +323,7 @@ const ObjectiveMarkerContent = React.memo(({
 
       {/* Sleek Tactical Dark Obsidian Card with Original SIGPAD Icon & Subtle Status Border Accent */}
       <div className={cn(
-        "w-10 h-10 rounded-xl bg-zinc-950 backdrop-blur-md flex items-center justify-center shadow-[0_6px_20px_rgba(0,0,0,0.5)] cursor-pointer border-2 transition-all duration-300 relative",
+        "w-10 h-10 rounded-xl bg-zinc-950 backdrop-blur-md flex items-center justify-center shadow-[0_6px_20px_rgba(0,0,0,0.5)] cursor-pointer border-2 transition-all duration-300 relative pointer-events-auto z-10",
         isCritical
           ? "border-red-500 text-white scale-125 z-50 animate-bounce shadow-[0_0_20px_rgba(239,68,68,0.6)]"
           : isManned
@@ -369,25 +369,27 @@ const IncidentMarkerContent = React.memo(({
   const isEmergency = entryType === 'emergencia' || entryType === 'panic' || urgency === 'critica' || status === 'critica' || status === 'crítica' || content?.toLowerCase().includes('alerta') || content?.toLowerCase().includes('crítica');
 
   return (
-    <div 
-      className={cn(
-        "p-2 rounded-xl shadow-2xl cursor-pointer border-2 transition-all hover:scale-110",
-        isEmergency 
-          ? "bg-red-600 border-white scale-125 animate-bounce shadow-[0_0_20px_rgba(220,38,38,0.8)]" 
-          : "bg-zinc-950 border-[#0F4C5C]/50 shadow-[0_0_15px_rgba(0,0,0,0.5)]"
-      )}
-    >
-      {(() => {
-        if (isFallback) return <MapPin size={18} className={isEmergency ? "text-white animate-pulse" : "text-amber-400"} />;
-        const text = content?.toLowerCase() || '';
-        if (text.includes('vehículo')) return <Car size={18} className="text-white" />;
-        if (text.includes('persona')) return <UserX size={18} className="text-white" />;
-        if (text.includes('puerta')) return <DoorOpen size={18} className="text-white" />;
-        if (text.includes('paquete')) return <Package size={18} className="text-white" />;
-        if (text.includes('eléctrica')) return <Lightbulb size={18} className="text-white" />;
-        if (isEmergency) return <Zap size={18} className="text-amber-300 animate-pulse" />;
-        return <AlertTriangle size={18} className="text-[#0F4C5C]" />;
-      })()}
+    <div className="relative w-10 h-10 flex items-center justify-center pointer-events-auto select-none">
+      <div 
+        className={cn(
+          "w-10 h-10 rounded-xl flex items-center justify-center shadow-2xl cursor-pointer border-2 transition-all hover:scale-110",
+          isEmergency 
+            ? "bg-red-600 border-white scale-125 animate-bounce shadow-[0_0_20px_rgba(220,38,38,0.8)]" 
+            : "bg-zinc-950 border-[#0F4C5C]/50 shadow-[0_0_15px_rgba(0,0,0,0.5)]"
+        )}
+      >
+        {(() => {
+          if (isFallback) return <MapPin size={18} className={isEmergency ? "text-white animate-pulse" : "text-amber-400"} />;
+          const text = content?.toLowerCase() || '';
+          if (text.includes('vehículo')) return <Car size={18} className="text-white" />;
+          if (text.includes('persona')) return <UserX size={18} className="text-white" />;
+          if (text.includes('puerta')) return <DoorOpen size={18} className="text-white" />;
+          if (text.includes('paquete')) return <Package size={18} className="text-white" />;
+          if (text.includes('eléctrica')) return <Lightbulb size={18} className="text-white" />;
+          if (isEmergency) return <Zap size={18} className="text-amber-300 animate-pulse" />;
+          return <AlertTriangle size={18} className="text-[#0F4C5C]" />;
+        })()}
+      </div>
     </div>
   );
 });
@@ -395,8 +397,8 @@ IncidentMarkerContent.displayName = 'IncidentMarkerContent';
 
 const PanicAlertMarkerContent = React.memo(() => {
   return (
-    <div className="relative flex h-16 w-16 items-center justify-center cursor-pointer hover:scale-110 transition-transform">
-      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-600 opacity-80" />
+    <div className="relative w-10 h-10 flex items-center justify-center cursor-pointer pointer-events-auto select-none">
+      <span className="animate-ping absolute inline-flex h-12 w-12 rounded-full bg-red-600 opacity-80" />
       <span className="relative inline-flex rounded-full h-10 w-10 bg-red-600 border-2 border-white items-center justify-center shadow-[0_0_20px_rgba(220,38,38,0.8)] z-50">
          <Zap size={20} className="text-white animate-pulse" />
       </span>

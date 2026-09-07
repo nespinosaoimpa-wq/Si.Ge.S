@@ -171,7 +171,6 @@ export default function PanicTriggerModal({
         resolvedObjectiveId ? supabase.from('guard_book_entries').insert({
           objective_id: resolvedObjectiveId,
           operator_id: operatorId || null,
-          resource_id: operatorId || null,
           entry_type: 'incidente',
           content: `🚨 ALERTA DE PÁNICO SOS DESPACHADA DESDE APP OPERADOR - ${operatorName}`,
           urgency: 'critica',

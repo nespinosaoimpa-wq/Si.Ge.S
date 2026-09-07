@@ -114,6 +114,29 @@ export async function PATCH(
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
+    // 🔒 SINGLE OBJECTIVE ASSIGNMENT ENFORCEMENT
+    // Ensure an operator is never assigned to multiple conflicting objectives in objective_resources
+    if ('current_objective_id' in cleanedBody) {
+      const targetObjId = cleanedBody.current_objective_id;
+      const resId = data.id;
+
+      // 1. Remove all old objective_resources links for this operator
+      await supabase
+        .from('objective_resources')
+        .delete()
+        .or(`resource_id.eq.${resId},resource_id.eq.${id}`);
+
+      // 2. Link strictly to the new objective if provided
+      if (targetObjId && targetObjId !== 'null') {
+        await supabase
+          .from('objective_resources')
+          .insert({
+            objective_id: targetObjId,
+            resource_id: resId
+          });
+      }
+    }
+
     // Invalidate caches
     if (data?.tenant_id) {
       serverCache.invalidate(`dashboard-map-${data.tenant_id}`);

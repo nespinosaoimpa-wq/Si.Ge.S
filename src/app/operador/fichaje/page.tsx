@@ -312,8 +312,9 @@ export default function FichajePage() {
     fetchObjective();
 
     // ⚡ Realtime Objective Assignment Sync (<100ms)
+    const channelName = `op-assignment-sync-${OPERATOR_ID}-${Date.now()}`;
     const assignmentChannel = supabase
-      .channel(`op-assignment-sync-${OPERATOR_ID}`)
+      .channel(channelName)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
@@ -361,6 +362,9 @@ export default function FichajePage() {
 
     return () => {
       if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+      if (assignmentChannel) {
+        supabase.removeChannel(assignmentChannel);
+      }
     };
   }, [user]);
 

@@ -190,20 +190,20 @@ function OperatorLocationGroup({
           pitchAlignment="viewport"
           rotationAlignment="viewport"
         >
-          <div className="relative w-12 h-12 flex items-center justify-center pointer-events-none select-none transform-gpu will-change-transform">
+          <div className="relative w-10 h-10 flex items-center justify-center pointer-events-none select-none">
             {/* Heading Chevron */}
             <div 
-              className="absolute inset-0 flex items-center justify-center"
+              className="absolute inset-0 flex items-center justify-center pointer-events-none"
               style={{
                 transform: `rotate(${animBearing}deg)`,
                 transition: 'transform 0.4s ease-out',
               }}
             >
-              <div className="absolute -top-1 w-0 h-0 border-l-[6px] border-r-[6px] border-b-[9px] border-l-transparent border-r-transparent border-b-blue-500 drop-shadow-[0_2px_4px_rgba(59,130,246,0.6)]" />
+              <div className="absolute -top-2.5 w-0 h-0 border-l-[6px] border-r-[6px] border-b-[9px] border-l-transparent border-r-transparent border-b-blue-500 drop-shadow-[0_2px_4px_rgba(59,130,246,0.6)]" />
             </div>
             
             {/* Pulsing halo */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 bg-blue-500/20 rounded-full animate-ping" style={{ animationDuration: '2s' }} />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 bg-blue-500/20 rounded-full animate-ping pointer-events-none" style={{ animationDuration: '2s' }} />
             
             {/* Avatar Circle */}
             <div
@@ -516,7 +516,7 @@ export default function MobileLeaflet({
               pitchAlignment="viewport"
               rotationAlignment="viewport"
             >
-              <div className="relative flex flex-col items-center pointer-events-none select-none transform-gpu will-change-transform">
+              <div className="relative w-10 h-10 flex items-center justify-center pointer-events-none select-none">
                 {/* Objective Label — Floating absolutely so it NEVER distorts Marker box */}
                 <div className="absolute -top-9 left-1/2 -translate-x-1/2 bg-zinc-950/90 backdrop-blur-sm px-2.5 py-1 rounded-xl shadow-lg border border-[#0F4C5C]/50 whitespace-nowrap pointer-events-none z-20">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-[#0F4C5C]">{dest.name}</p>

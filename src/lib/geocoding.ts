@@ -77,6 +77,33 @@ export function resetSearchSession() {
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 let abortController: AbortController | null = null;
 
+// --- LRU IN-MEMORY QUERY & REVERSE GEOCODING CACHE ---
+interface CacheEntry {
+  data: GeocodingResult[];
+  timestamp: number;
+}
+const geoCache = new Map<string, CacheEntry>();
+const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const MAX_CACHE_ENTRIES = 100;
+
+function getCachedGeocode(key: string): GeocodingResult[] | null {
+  const entry = geoCache.get(key.toLowerCase().trim());
+  if (!entry) return null;
+  if (Date.now() - entry.timestamp > CACHE_TTL_MS) {
+    geoCache.delete(key.toLowerCase().trim());
+    return null;
+  }
+  return entry.data;
+}
+
+function setCachedGeocode(key: string, data: GeocodingResult[]): void {
+  if (geoCache.size >= MAX_CACHE_ENTRIES) {
+    const firstKey = geoCache.keys().next().value;
+    if (firstKey) geoCache.delete(firstKey);
+  }
+  geoCache.set(key.toLowerCase().trim(), { data, timestamp: Date.now() });
+}
+
 /**
  * Normaliza abreviaturas de calles de Argentina y arterias clave de Santa Fe
  * para garantizar coincidencia catastral exacta en Mapbox/OSM.
@@ -90,6 +117,12 @@ function normalizeAddress(query: string): string {
   n = n.replace(/\bbv\.?\b/gi, 'Boulevard');
   n = n.replace(/\bbvd\.?\b/gi, 'Boulevard');
   n = n.replace(/\bbulevar\b/gi, 'Boulevard');
+  n = n.replace(/\bdiag\.?\b/gi, 'Diagonal');
+  n = n.replace(/\bdiagonal\b/gi, 'Diagonal');
+  n = n.replace(/\besq\.?\b/gi, 'Esquina');
+  n = n.replace(/\besquina\b/gi, 'Esquina');
+  n = n.replace(/\bbº\b/gi, 'Barrio');
+  n = n.replace(/\bbarrio\b/gi, 'Barrio');
   n = n.replace(/\bnro\.?\b/gi, '');
   n = n.replace(/\bn°\b/gi, '');
   n = n.replace(/\b#\b/g, '');
@@ -98,6 +131,9 @@ function normalizeAddress(query: string): string {
   n = n.replace(/\bdr\.?\b/gi, 'Doctor');
   n = n.replace(/\bsgto\.?\b/gi, 'Sargento');
   n = n.replace(/\bcte\.?\b/gi, 'Comandante');
+  n = n.replace(/\bcmte\.?\b/gi, 'Comandante');
+  n = n.replace(/\btcnte\.?\b/gi, 'Subteniente');
+  n = n.replace(/\bint\.?\b/gi, 'Intendente');
   n = n.replace(/\bpto\.?\b/gi, 'Puerto');
   
   // 2. Mapeo específico de calles y avenidas de Santa Fe (Capital, Santo Tomé, Sauce Viejo, Rosario)
@@ -112,6 +148,8 @@ function normalizeAddress(query: string): string {
   n = n.replace(/\bfacundo\s+zuvir[ií]a\b/gi, 'Avenida Facundo Zuviría');
   n = n.replace(/\bl[oó]pez\s+y\s+planes\b/gi, 'Avenida López y Planes');
   n = n.replace(/\bestanislao\s+l[oó]pez\b/gi, 'Avenida Estanislao López');
+  n = n.replace(/\bmarcial\s+candioti\b/gi, 'Marcial Candioti');
+  n = n.replace(/\bsalvador\s+del\s+carril\b/gi, 'Salvador del Carril');
   n = n.replace(/\b27\s+de\s+febrero\b/gi, 'Avenida 27 de Febrero');
   n = n.replace(/\balem\b/gi, 'Avenida Leandro N. Alem');
   n = n.replace(/\bgral\.?\s+paz\b/gi, 'Avenida General Paz');
@@ -124,18 +162,31 @@ function normalizeAddress(query: string): string {
   n = n.replace(/\b25\s+de\s+mayo\b/gi, '25 de Mayo');
   n = n.replace(/\b7\s+de\s+marzo\b/gi, 'Avenida 7 de Marzo');
   n = n.replace(/\bruta\s+1\b/gi, 'Ruta Provincial 1');
+  n = n.replace(/\bruta\s+11\b/gi, 'Ruta Nacional 11');
+  n = n.replace(/\bruta\s+9\b/gi, 'Ruta Nacional 9');
   n = n.replace(/\bruta\s+168\b/gi, 'Ruta Nacional 168');
   
   return n.trim();
 }
 
 /**
- * Extrae coordenadas si la consulta viene en formato numérico (grados decimales o GPS)
+ * Extrae coordenadas si la consulta viene en formato numérico, enlaces de Google Maps o DMS
  */
 export function parseCoordinates(query: string): { lat: number, lng: number } | null {
   const q = query.trim();
+
+  // 1. Google Maps URL pattern parsing (e.g., https://maps.google.com/?q=-31.6107,-60.6973 or @-31.6107,-60.6973)
+  const mapUrlMatch = q.match(/(?:q=|\/|@)([-+]?\d+[.,]\d+)\s*,\s*([-+]?\d+[.,]\d+)/);
+  if (mapUrlMatch) {
+    const lat = parseFloat(mapUrlMatch[1].replace(',', '.'));
+    const lng = parseFloat(mapUrlMatch[2].replace(',', '.'));
+    if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+      return { lat, lng };
+    }
+  }
+
+  // 2. Decimal Degrees parsing (-31.6107, -60.6973 or -31.6107 -60.6973)
   const ddMatch = q.match(/([-+]?\d+[.,]\d+)\s*[,|\s]\s*([-+]?\d+[.,]\d+)/);
-  
   if (ddMatch) {
     const lat = parseFloat(ddMatch[1].replace(',', '.'));
     const lng = parseFloat(ddMatch[2].replace(',', '.'));
@@ -143,6 +194,21 @@ export function parseCoordinates(query: string): { lat: number, lng: number } | 
       return { lat, lng };
     }
   }
+
+  // 3. DMS (Degrees Minutes Seconds) pattern (e.g. 31°36'38"S 60°41'50"W)
+  const dmsMatch = q.match(/(\d+)°\s*(\d+)['′]\s*(\d+(?:[.,]\d+)?)["″]?\s*([NS])\s*(\d+)°\s*(\d+)['′]\s*(\d+(?:[.,]\d+)?)["″]?\s*([EWO])/i);
+  if (dmsMatch) {
+    let lat = Number(dmsMatch[1]) + Number(dmsMatch[2]) / 60 + Number(dmsMatch[3].replace(',', '.')) / 3600;
+    if (dmsMatch[4].toUpperCase() === 'S') lat = -lat;
+
+    let lng = Number(dmsMatch[5]) + Number(dmsMatch[6]) / 60 + Number(dmsMatch[7].replace(',', '.')) / 3600;
+    if (dmsMatch[8].toUpperCase() === 'W' || dmsMatch[8].toUpperCase() === 'O') lng = -lng;
+
+    if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+      return { lat, lng };
+    }
+  }
+
   return null;
 }
 
@@ -428,6 +494,12 @@ export function searchAddresses(
       return;
     }
 
+    const cached = getCachedGeocode(query);
+    if (cached) {
+      resolve(cached);
+      return;
+    }
+
     debounceTimer = setTimeout(async () => {
       try {
         const results: GeocodingResult[] = [];
@@ -517,7 +589,9 @@ export function searchAddresses(
           return distA - distB;
         });
 
-        resolve(candidates.slice(0, 10));
+        const finalSlice = candidates.slice(0, 10);
+        setCachedGeocode(query, finalSlice);
+        resolve(finalSlice);
       } catch (err) {
         reject(err);
       }
