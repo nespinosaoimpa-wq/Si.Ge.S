@@ -260,14 +260,24 @@ export default function InventarioHub() {
   const handleDelete = async (id: string, name: string) => {
     if (!confirm(`¿Eliminar "${name}" del inventario? Esta acción no se puede deshacer.`)) return;
     try {
-      const { error } = await supabase.from('resource_inventory').delete().eq('id', id);
-      if (error) {
-        await fetch(`/api/inventory?id=${id}`, { method: 'DELETE' });
+      setLoading(true);
+      const res = await fetch(`/api/inventory?id=${id}`, { method: 'DELETE' });
+      
+      if (!res.ok) {
+        // Fallback to route by ID or Supabase client
+        const fbRes = await fetch(`/api/inventory/${id}`, { method: 'DELETE' });
+        if (!fbRes.ok) {
+          const { error } = await supabase.from('resource_inventory').delete().eq('id', id);
+          if (error) throw error;
+        }
       }
-      fetchInventory();
+      
+      await fetchInventory();
     } catch (e: any) {
       console.error('Error deleting item:', e);
       alert('Error al eliminar: ' + (e?.message || 'Intente nuevamente'));
+    } finally {
+      setLoading(false);
     }
   };
 
