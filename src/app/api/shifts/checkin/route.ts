@@ -6,6 +6,13 @@ export async function POST(request: Request) {
   try {
     const { operator_id, email, objective_id, latitude, longitude, accuracy = 0, auto_sync_location = false } = await request.json();
 
+    if (!objective_id || objective_id === 'null' || String(objective_id).trim() === '') {
+      return NextResponse.json({
+        error: 'SIN OBJETIVO ASIGNADO',
+        message: 'No tenés ningún objetivo asignado por gerencia. Contactá a tu supervisor para que te asigne un puesto de servicio antes de iniciar el turno.'
+      }, { status: 400 });
+    }
+
     const supabase = createServiceClient();
     const tenantCtx = await resolveTenantFromRequest(request);
 

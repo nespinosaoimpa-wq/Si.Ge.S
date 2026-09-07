@@ -393,6 +393,32 @@ export default function MapaOperativoPage() {
           }
         }
       })
+      // ═══ BROADCAST ALERTS (GEOFENCE BREACH REALTIME) ═══
+      .on('broadcast', { event: 'geofence_breach' }, (payload) => {
+        const dataPayload = payload.payload;
+        if (dataPayload) {
+          const breachAlert = {
+            id: `breach-${Date.now()}`,
+            operator_id: dataPayload.operator_id,
+            operator_name: dataPayload.operator_name,
+            objective_id: dataPayload.objective_id,
+            entry_type: 'abandono_zona',
+            urgency: 'critica',
+            content: `🚨 ALERTA GEOCERCA: ${dataPayload.operator_name} se alejó a ${dataPayload.distance}m de "${dataPayload.objective_name || 'Objetivo'}".`,
+            latitude: dataPayload.latitude,
+            longitude: dataPayload.longitude,
+            created_at: dataPayload.timestamp || new Date().toISOString()
+          };
+
+          startAlarm();
+          setActiveAlert(breachAlert);
+
+          if (dataPayload.latitude && dataPayload.longitude) {
+            setMapCenter([dataPayload.latitude, dataPayload.longitude]);
+          }
+          fetchData();
+        }
+      })
       .subscribe((status, err) => {
         console.log(`[MAP_REALTIME] Subscription status: ${status}`, err || '');
       });

@@ -568,7 +568,6 @@ export default function FichajePage() {
           }));
 
           if (isShiftActiveRef.current) {
-            if (!isShiftActiveRef.current) return;
             setLocation(coords);
             setLocating(false); 
             clearTimeout(gpsTimeout);
@@ -580,6 +579,35 @@ export default function FichajePage() {
               syncStatus: navigator.onLine ? 'online' : 'offline',
               lastPointTimestamp: Date.now()
             });
+
+            // Geofence Breach Detection & Realtime Manager Alert
+            const targetRad = Number(assignedObjective?.geofence_radius_meters || assignedObjective?.geofence_radius || 100);
+            const margin = Math.max(Number(pos.accuracy || 0), 25);
+            if (pos.distanceToObjective && pos.distanceToObjective > targetRad + margin) {
+              setGeofenceError({
+                message: `🚨 ALERTA: Estás a ${Math.round(pos.distanceToObjective)}m del puesto "${assignedObjective?.name || 'Asignado'}". Reloj en pausa por salida de geocerca.`,
+                targetRadius: targetRad
+              });
+
+              // Dispatch real-time alert API to notify manager map live
+              fetch('/api/shifts/geofence-alert', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  shift_id: shiftId,
+                  operator_id: OPERATOR_ID,
+                  operator_name: user?.email || 'Operador',
+                  objective_id: assignedObjective?.id,
+                  objective_name: assignedObjective?.name,
+                  latitude: pos.latitude,
+                  longitude: pos.longitude,
+                  distance: pos.distanceToObjective,
+                  radius: targetRad
+                })
+              }).catch((e) => console.warn('[GeofenceAlert] Dispatch error:', e));
+            } else {
+              setGeofenceError(null);
+            }
           }
         },
         (err) => {
@@ -866,20 +894,35 @@ export default function FichajePage() {
                     </div>
                   )}
 
+                  {/* UNASSIGNED OBJECTIVE ALERT CARD */}
+                  {!isShiftActive && (!assignedObjective || !assignedObjective.id) && (
+                    <div className="p-4 rounded-2xl bg-red-50 border border-red-200 flex items-start gap-3">
+                      <AlertCircle size={20} className="text-red-600 shrink-0 mt-0.5" />
+                      <div className="space-y-1">
+                        <p className="text-xs font-black uppercase text-red-900 tracking-wider">Sin Objetivo Asignado por Gerencia</p>
+                        <p className="text-[11px] font-semibold text-red-700 leading-relaxed">
+                          No podés iniciar turno hasta que la gerencia te asigne un puesto de servicio. Por favor, solicitá tu asignación a tu supervisor.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   {/* ACTION BUTTON */}
                   <motion.button
-                    whileHover={{ scale: isOutOfRange ? 1 : 1.01 }}
-                    whileTap={{ scale: isOutOfRange ? 1 : 0.97 }}
+                    whileHover={{ scale: (isOutOfRange || (!isShiftActive && (!assignedObjective || !assignedObjective.id))) ? 1 : 1.01 }}
+                    whileTap={{ scale: (isOutOfRange || (!isShiftActive && (!assignedObjective || !assignedObjective.id))) ? 1 : 0.97 }}
                     onClick={handleClockClick}
-                    disabled={locating || isSubmitting || isOutOfRange}
+                    disabled={locating || isSubmitting || isOutOfRange || (!isShiftActive && (!assignedObjective || !assignedObjective.id))}
                     className={cn(
                       'w-full h-[72px] rounded-[2rem] flex items-center justify-center gap-4 text-[12px] font-black uppercase tracking-[0.35em] shadow-xl transition-all border-none',
                       isShiftActive
                         ? 'bg-red-600 text-white hover:bg-red-700 shadow-red-500/20'
+                        : (!assignedObjective || !assignedObjective.id)
+                        ? 'bg-zinc-200 text-zinc-400 cursor-not-allowed shadow-none'
                         : isOutOfRange ? 'bg-zinc-200 text-zinc-400 cursor-not-allowed' : 'bg-zinc-900 text-white hover:bg-zinc-800'
                     )}
                   >
-                  {locating ? (
+                    {locating ? (
                       <div className="flex flex-col items-center gap-2">
                         <div className="flex items-center gap-3">
                           <div className="w-5 h-5 border-[3px] border-white/30 border-t-white rounded-full animate-spin" />
@@ -908,6 +951,8 @@ export default function FichajePage() {
                       </div>
                     ) : isShiftActive ? (
                       <><LogOut size={22} /> Finalizar Turno</>
+                    ) : (!assignedObjective || !assignedObjective.id) ? (
+                      <><AlertCircle size={22} className="text-zinc-400" /> Sin Objetivo Asignado</>
                     ) : (
                       <><LogIn size={22} /> Iniciar Turno</>
                     )}

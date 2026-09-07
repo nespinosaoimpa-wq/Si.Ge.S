@@ -864,6 +864,32 @@ export default function AdminDashboard() {
           }));
         }
       })
+      // ═══ BROADCAST ALERTS (GEOFENCE BREACH & PANIC REALTIME) ═══
+      .on('broadcast', { event: 'geofence_breach' }, (payload) => {
+        const dataPayload = payload.payload;
+        if (dataPayload) {
+          const breachIncident = {
+            id: `breach-${Date.now()}`,
+            operator_id: dataPayload.operator_id,
+            operator_name: dataPayload.operator_name,
+            objective_id: dataPayload.objective_id,
+            entry_type: 'abandono_zona',
+            urgency: 'critica',
+            content: `🚨 ALERTA GEOCERCA: ${dataPayload.operator_name} se alejó a ${dataPayload.distance}m de "${dataPayload.objective_name || 'Objetivo'}".`,
+            latitude: dataPayload.latitude,
+            longitude: dataPayload.longitude,
+            created_at: dataPayload.timestamp || new Date().toISOString()
+          };
+
+          setNewIncidentNotification(breachIncident);
+          setTimeout(() => setNewIncidentNotification(null), 8000);
+
+          setData((prev: any) => ({
+            ...prev,
+            recentIncidents: [breachIncident, ...(prev.recentIncidents || []).filter((inc: any) => inc.id !== breachIncident.id)].slice(0, 20)
+          }));
+        }
+      })
       .subscribe();
 
     return () => {
