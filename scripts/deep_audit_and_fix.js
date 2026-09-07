@@ -1,7 +1,12 @@
 const { createClient } = require('@supabase/supabase-js');
 
-const SUPABASE_URL = 'https://xgzkudwuukctaldwcekr.supabase.co';
-const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhnemt1ZHd1dWtjdGFsZHdjZWtyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MzY2MjMzNywiZXhwIjoyMDk5MjM4MzM3fQ.ECHgqrp1hXeemc4v-66CoC3HbwaCM1SbU09HdOO2QmI';
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://xgzkudwuukctaldwcekr.supabase.co';
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+
+if (!SUPABASE_SERVICE_KEY) {
+  console.error('Error: SUPABASE_SERVICE_ROLE_KEY environment variable is required.');
+  process.exit(1);
+}
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
   auth: { autoRefreshToken: false, persistSession: false }
