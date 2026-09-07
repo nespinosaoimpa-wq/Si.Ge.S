@@ -189,9 +189,9 @@ export default function PersonalPage() {
     list = list.filter(s => s.status !== 'baja');
 
     if (filter === 'Activos') {
-      list = list.filter(s => s.status === 'active' || s.status === 'Activo');
+      list = list.filter(s => s.status !== 'baja' && s.status !== 'inactivo' && s.status !== 'inactive');
     } else if (filter === 'Inactivos') {
-      list = list.filter(s => s.status !== 'active' && s.status !== 'Activo');
+      list = list.filter(s => s.status === 'inactivo' || s.status === 'inactive');
     } else if (filter === 'Credenciales') {
       list = list.filter(s => {
         const c = getCredentialAlertStatus(s);
@@ -207,7 +207,7 @@ export default function PersonalPage() {
     return list;
   }, [searchTerm, staff, filter]);
 
-  const activeCount = staff.filter(s => s.status === 'active' || s.status === 'Activo').length;
+  const activeCount = staff.filter(s => s.status !== 'baja' && s.status !== 'inactivo' && s.status !== 'inactive').length;
 
   const credExpiringCount = staff.filter(s => {
     if (s.status === 'baja') return false;
@@ -399,11 +399,11 @@ export default function PersonalPage() {
                     <div className="flex flex-col items-end gap-2">
                       <span className={cn(
                         'text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl border shadow-sm',
-                        person.status === 'active' || person.status === 'Activo'
+                        person.status !== 'inactivo' && person.status !== 'inactive' && person.status !== 'baja'
                           ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
                           : 'bg-zinc-50 text-zinc-400 border-zinc-100'
                       )}>
-                        {person.status === 'active' || person.status === 'Activo' ? 'Activo' : 'Inactivo'}
+                        {person.status !== 'inactivo' && person.status !== 'inactive' && person.status !== 'baja' ? 'Activo' : 'Inactivo'}
                       </span>
                     </div>
                   </div>
