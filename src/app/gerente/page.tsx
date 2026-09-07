@@ -423,7 +423,7 @@ export default function AdminDashboard() {
         ...newObjective,
         latitude: latVal,
         longitude: lngVal,
-        status: 'Activo'
+        is_active: true
       });
 
       if (createdObj) {

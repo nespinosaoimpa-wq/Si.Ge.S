@@ -93,10 +93,7 @@ export async function GET(req: NextRequest) {
     }
     const objectivesRes = await objectivesQuery;
     const rawObjectives = (objectivesRes.data || []).filter((o: any) => 
-      o.is_active !== false && 
-      o.status !== 'Inactivo' && 
-      o.status !== 'inactivo' && 
-      !o.deleted_at
+      o.is_active !== false
     );
     const tenantObjectiveIds = rawObjectives.map((o: any) => o.id).filter(Boolean);
 

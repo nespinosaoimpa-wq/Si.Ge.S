@@ -5,7 +5,7 @@ import { serverCache } from '@/lib/cache';
 const ALLOWED_OBJECTIVE_COLUMNS = new Set([
   'name', 'address', 'client_name', 'contact_phone', 'contact_person',
   'latitude', 'longitude', 'geofence_radius', 'geofence_radius_meters',
-  'is_active', 'status', 'hourly_billing_rate', 'notes', 'tenant_id', 'updated_at'
+  'is_active', 'hourly_billing_rate', 'notes', 'tenant_id', 'updated_at'
 ]);
 
 export async function GET(
@@ -100,9 +100,8 @@ export async function DELETE(
       await supabase
         .from('objectives')
         .update({ 
-          is_active: false, 
-          status: 'Inactivo', 
-          deleted_at: new Date().toISOString() 
+          is_active: false,
+          updated_at: new Date().toISOString()
         })
         .eq('id', id);
     }

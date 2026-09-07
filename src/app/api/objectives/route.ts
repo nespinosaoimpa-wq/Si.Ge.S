@@ -82,8 +82,7 @@ export async function POST(req: NextRequest) {
       longitude: parseCoord(body.longitude, -60.6973),
       geofence_radius: parseCoord(body.geofence_radius, 200),
       hourly_billing_rate: body.hourly_billing_rate ? parseCoord(body.hourly_billing_rate, 0) : null,
-      is_active: initialStatus === 'Activo',
-      status: initialStatus,
+      is_active: initialStatus === 'Activo' || initialStatus === true,
       tenant_id: targetTenantId,
     };
 
