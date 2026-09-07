@@ -81,7 +81,7 @@ export async function resolveTenantFromRequest(req: any): Promise<ResolvedTenant
 
         const cookieTenantId = cookieUser?.tenant_id || cookieUser?.user_metadata?.tenant_id || null;
         // If cookie explicitly specifies a valid SIGPAD tenant, use it
-        if (cookieTenantId && isValidUUID(cookieTenantId) && cookieTenantId !== MASTER_TENANT_ID) {
+        if (cookieTenantId && isValidUUID(cookieTenantId)) {
           return {
             tenantId: cookieTenantId,
             isSuper: false,

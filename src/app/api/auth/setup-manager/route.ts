@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     }
 
     // Resolve tenant: usar el que venga en el body (enviado por el SuperAdmin), o buscar por email del manager
-    let targetTenantId: string | null = body.tenant_id && body.tenant_id !== MASTER_TENANT_ID ? body.tenant_id : null;
+    let targetTenantId: string | null = body.tenant_id || null;
     if (!targetTenantId) {
       try {
         const { data: tenantByEmail } = await supabase

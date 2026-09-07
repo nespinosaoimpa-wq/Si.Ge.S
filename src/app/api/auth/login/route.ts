@@ -14,8 +14,8 @@ function normalizeRole(rawRole?: string): string {
 }
 
 async function getTenantDetails(adminSupabase: any, tenantId: string | null, email?: string): Promise<{ tenantId: string | null; companyName: string | null }> {
-  // Priority 1: Use explicit tenantId param if valid UUID and NOT master UUID
-  if (tenantId && tenantId !== MASTER_TENANT_ID) {
+  // Priority 1: Use explicit tenantId param if valid UUID
+  if (tenantId) {
     try {
       const { data: tenantRow } = await adminSupabase
         .from('tenants')
@@ -37,7 +37,6 @@ async function getTenantDetails(adminSupabase: any, tenantId: string | null, ema
         .select('tenant_id')
         .ilike('email', email)
         .not('tenant_id', 'is', null)
-        .neq('tenant_id', MASTER_TENANT_ID)
         .order('created_at', { ascending: false })
         .limit(1);
 
@@ -56,7 +55,6 @@ async function getTenantDetails(adminSupabase: any, tenantId: string | null, ema
         .select('tenant_id')
         .ilike('email', email)
         .not('tenant_id', 'is', null)
-        .neq('tenant_id', MASTER_TENANT_ID)
         .order('created_at', { ascending: false })
         .limit(1);
 
@@ -131,7 +129,6 @@ export async function POST(request: Request) {
           .select('*')
           .ilike('email', lowerEmail)
           .not('tenant_id', 'is', null)
-          .neq('tenant_id', MASTER_TENANT_ID)
           .order('created_at', { ascending: false })
           .limit(1);
         if (resWithTenant && resWithTenant[0]) u = resWithTenant[0];

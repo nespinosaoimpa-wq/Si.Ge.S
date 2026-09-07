@@ -27,8 +27,7 @@ export async function GET(req: NextRequest) {
     const supabase = createServiceClient();
     let query = supabase
       .from('objectives')
-      .select('*')
-      .is('deleted_at', null);
+      .select('*');
 
     if (!isSuper && tenantId) {
       query = query.eq('tenant_id', tenantId);

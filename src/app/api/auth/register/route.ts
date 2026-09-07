@@ -128,9 +128,7 @@ export async function POST(request: Request) {
     const finalRole = requestedRole === 'operador' ? 'operador' : (requestedRole === 'gerente' ? 'gerente' : (resourceData?.role?.toLowerCase().includes('gerente') ? 'gerente' : 'operador'));
     const finalName = fullName || resourceData?.name || 'Usuario SIGPAD';
     // Usar tenant_id del recurso encontrado; null si no tiene empresa asignada todavía
-    const targetTenantId: string | null = (resourceData.tenant_id && resourceData.tenant_id !== MASTER_TENANT_ID)
-      ? resourceData.tenant_id
-      : null;
+    const targetTenantId: string | null = resourceData?.tenant_id || null;
 
     let userId = 'user-' + Date.now();
     let authCreated = false;
