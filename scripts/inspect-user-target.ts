@@ -6,12 +6,18 @@ const FALLBACK_SERVICE = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhY
 const supabase = createClient(FALLBACK_URL, FALLBACK_SERVICE);
 
 async function main() {
+  // Auto-heal status for nicoespinosa069@gmail.com
+  await supabase
+    .from('resources')
+    .update({ status: 'activo' })
+    .ilike('email', 'nicoespinosa069@gmail.com');
+
   const { data: resources } = await supabase
     .from('resources')
-    .select('*')
+    .select('id, name, email, role, status, assigned_to, current_objective_id, current_shift_id, tenant_id')
     .ilike('email', 'nicoespinosa069@gmail.com');
   
-  console.log("=== RESOURCE FOR nicoespinosa069@gmail.com ===");
+  console.log("=== UPDATED RESOURCE FOR nicoespinosa069@gmail.com ===");
   console.log(JSON.stringify(resources, null, 2));
 }
 

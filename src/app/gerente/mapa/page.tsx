@@ -161,7 +161,7 @@ export default function MapaOperativoPage() {
       setLoading(true);
       const [objRes, guardRes, incRes] = await Promise.all([
         supabase.from('objectives').select('*').order('created_at', { ascending: false }),
-        supabase.from('resources').select('*').in('status', ['activo', 'active', 'En Turno']),
+        supabase.from('resources').select('*').neq('status', 'baja'),
         supabase.from('guard_book_entries').select('*').in('urgency', ['critica', 'alta']).order('created_at', { ascending: false }).limit(20)
       ]);
 

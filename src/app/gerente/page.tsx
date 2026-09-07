@@ -222,7 +222,7 @@ export default function AdminDashboard() {
         shiftId: activeShift?.id,
         status: isAbandoned ? 'abandoned' : (isOffline ? 'offline' : (r.status || 'activo'))
       };
-    }).filter((r: any) => r !== null && r.status !== 'baja' && r.status !== 'inactivo');
+    }).filter((r: any) => r !== null && r.status !== 'baja');
 
     // Add tiny spatial jitter offset for guards sharing exact objective coordinates so markers don't overlap
     const coordCounts: Record<string, number> = {};

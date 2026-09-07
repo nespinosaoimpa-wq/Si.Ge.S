@@ -99,8 +99,7 @@ export async function GET(req: NextRequest) {
 
     let resourcesQuery = supabase.from('resources')
       .select('*, profiles:profile_id(avatar_url, full_name)')
-      .neq('status', 'baja')
-      .neq('status', 'inactivo');
+      .neq('status', 'baja');
 
     const last24h = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
 
