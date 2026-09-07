@@ -483,7 +483,7 @@ export default function FichajePage() {
           tenant_id: tenantId,
           entry_type: 'novedad',
           urgency: 'alta',
-          content: `📦 INVENTARIO: ${item.item_name} reportado como ${inventoryStatus[item.id].toUpperCase()}`,
+          content: `📦 INVENTARIO: ${item.item_name || item.name || 'Artículo'} reportado como ${inventoryStatus[item.id].toUpperCase()}`,
           latitude: lat,
           longitude: lng,
           status: 'abierto'

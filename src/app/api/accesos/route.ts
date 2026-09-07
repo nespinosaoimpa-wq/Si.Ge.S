@@ -272,7 +272,7 @@ export async function DELETE(request: NextRequest) {
     }
     if (cleanEmail) {
       let q1 = supabase.from('authorized_users').delete().ilike('email', cleanEmail);
-      let q2 = supabase.from('resources').delete().ilike('email', cleanEmail);
+      let q2 = supabase.from('resources').update({ status: 'baja' }).ilike('email', cleanEmail);
       let q3 = supabase.from('users').delete().ilike('email', cleanEmail);
 
       if (tenant && !tenant.isSuper && tenant.tenantId) {

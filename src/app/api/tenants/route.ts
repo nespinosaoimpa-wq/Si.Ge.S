@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { resolveTenantFromRequest } from '@/lib/resolve-tenant';
 
 /**
  * GET    /api/tenants — Lista todos los tenants
@@ -28,16 +29,9 @@ function isAuthorized(user: any): boolean {
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function GET(req: NextRequest) {
-  const userCookie = req.cookies.get('SIGPAD_user');
-  if (!userCookie) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-
-  try {
-    const user = JSON.parse(decodeURIComponent(userCookie.value));
-    if (!isAuthorized(user)) {
-      return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
-    }
-  } catch {
-    return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
+  const ctx = await resolveTenantFromRequest(req);
+  if (!ctx || (!ctx.isSuper && ctx.userEmail !== 'sigpad.info@gmail.com' && ctx.userRole !== 'superadmin')) {
+    return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
   }
 
   const supabaseAdmin = getAdminClient();
@@ -59,16 +53,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  const userCookie = req.cookies.get('SIGPAD_user');
-  if (!userCookie) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-
-  try {
-    const user = JSON.parse(decodeURIComponent(userCookie.value));
-    if (!isAuthorized(user)) {
-      return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
-    }
-  } catch {
-    return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
+  const ctx = await resolveTenantFromRequest(req);
+  if (!ctx || (!ctx.isSuper && ctx.userEmail !== 'sigpad.info@gmail.com' && ctx.userRole !== 'superadmin')) {
+    return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
   }
 
   const { tenantId, billing_status, plan_tier } = await req.json();
@@ -117,16 +104,9 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const userCookie = req.cookies.get('SIGPAD_user');
-  if (!userCookie) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-
-  try {
-    const user = JSON.parse(decodeURIComponent(userCookie.value));
-    if (!isAuthorized(user)) {
-      return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
-    }
-  } catch {
-    return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
+  const ctx = await resolveTenantFromRequest(req);
+  if (!ctx || (!ctx.isSuper && ctx.userEmail !== 'sigpad.info@gmail.com' && ctx.userRole !== 'superadmin')) {
+    return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
   }
 
   const { searchParams } = new URL(req.url);
