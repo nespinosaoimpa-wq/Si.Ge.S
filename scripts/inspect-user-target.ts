@@ -6,26 +6,56 @@ const FALLBACK_SERVICE = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhY
 const supabase = createClient(FALLBACK_URL, FALLBACK_SERVICE);
 
 async function main() {
-  // Update status to 'activo' for these specific operators in the database
   const emails = ['sigpadfer@gmail.com', 'nicoespinosa069@gmail.com', 'segalvittorio@gmail.com'];
   
-  const { data: updated, error: updateErr } = await supabase
+  const { data: resources } = await supabase
     .from('resources')
-    .update({ status: 'activo' })
-    .in('email', emails)
-    .select();
+    .select('id, assigned_to, email, name')
+    .in('email', emails);
 
-  console.log("=== UPDATED RESOURCES ===");
-  console.log(JSON.stringify(updated, null, 2));
+  if (!resources || resources.length === 0) return;
 
-  // Check all resources to make sure none have 'disponible' or stale status blocking them
-  const { data: allResources } = await supabase
+  const targetIds: string[] = [];
+  resources.forEach(r => {
+    if (r.id) targetIds.push(r.id);
+    if (r.assigned_to) targetIds.push(r.assigned_to);
+  });
+
+  console.log("All target IDs to purge:", targetIds);
+
+  // 1. Reset current_shift_id on resources
+  await supabase
     .from('resources')
-    .select('id, name, email, role, status, tenant_id')
-    .neq('status', 'baja');
+    .update({ current_shift_id: null, status: 'activo' })
+    .in('id', resources.map(r => r.id));
 
-  console.log("=== ALL ACTIVE/DISPONIBLE RESOURCES IN DB ===");
-  console.log(JSON.stringify(allResources, null, 2));
+  // 2. Delete ALL shifts for these IDs
+  for (const id of targetIds) {
+    await supabase.from('guard_shifts').delete().eq('operator_id', id);
+    await supabase.from('guard_shifts').delete().eq('resource_id', id);
+    await supabase.from('guard_book_entries').delete().eq('operator_id', id);
+    await supabase.from('guard_book_entries').delete().eq('resource_id', id);
+    await supabase.from('incidents').delete().eq('operator_id', id);
+    await supabase.from('incidents').delete().eq('resource_id', id);
+    await supabase.from('alarms').delete().eq('triggered_by', id);
+  }
+
+  // 3. Verify clean state of guard_shifts
+  const { data: remainingShifts } = await supabase
+    .from('guard_shifts')
+    .select('id, operator_id, status, checkin_time')
+    .in('operator_id', targetIds);
+
+  console.log("=== REMAINING SHIFTS FOR OPERATORS (SHOULD BE EMPTY) ===");
+  console.log(JSON.stringify(remainingShifts, null, 2));
+
+  const { data: cleanRes } = await supabase
+    .from('resources')
+    .select('id, name, email, status, current_shift_id, current_objective_id')
+    .in('email', emails);
+
+  console.log("=== CLEANED OPERATORS SUMMARY ===");
+  console.log(JSON.stringify(cleanRes, null, 2));
 }
 
 main().catch(console.error);

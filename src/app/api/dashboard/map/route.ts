@@ -174,7 +174,7 @@ export async function GET(req: NextRequest) {
     let rawResources = resourcesRes.data || [];
     if (resourcesRes.error) {
       console.error("❌ Resources fetch error:", JSON.stringify(resourcesRes.error));
-      let fallbackQuery = supabase.from('resources').select('*').neq('status', 'baja').neq('status', 'inactivo');
+      let fallbackQuery = supabase.from('resources').select('*').neq('status', 'baja');
       if (!isSuper && tenantId) fallbackQuery = fallbackQuery.eq('tenant_id', tenantId);
       const fb = await fallbackQuery;
       rawResources = fb.data || [];
