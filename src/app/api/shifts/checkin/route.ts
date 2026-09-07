@@ -1,4 +1,5 @@
 import { createServiceClient } from '@/lib/supabase-server';
+import { resolveTenantFromRequest } from '@/lib/resolve-tenant';
 import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
@@ -6,6 +7,7 @@ export async function POST(request: Request) {
     const { operator_id, email, objective_id, latitude, longitude, accuracy = 0 } = await request.json();
 
     const supabase = createServiceClient();
+    const tenantCtx = await resolveTenantFromRequest(request);
 
     // 1. Fetch Objective specific radius if available
     let targetRadius = 100;
@@ -199,6 +201,10 @@ export async function POST(request: Request) {
           operatorTenantId = authUser.tenant_id;
         }
       } catch (e) {}
+    }
+
+    if (!operatorTenantId && tenantCtx?.tenantId) {
+      operatorTenantId = tenantCtx.tenantId;
     }
 
     const { data: shift, error: shiftError } = await supabase
