@@ -638,7 +638,7 @@ export default function AdminDashboard() {
             ...entry, 
             resource_name: operatorName,
             resource_id: entry.operator_id,
-            urgency: isCritical ? 'critica' : 'normal',
+            urgency: isCritical ? 'critica' : (entry.urgency || 'normal'),
             latitude: resolvedLat,
             longitude: resolvedLng
           };
@@ -650,6 +650,8 @@ export default function AdminDashboard() {
 
           if (isCritical) {
             handleEmergencyTrigger(enrichedEntry);
+          } else {
+            setNewIncidentNotification(enrichedEntry);
           }
         } else if (payload.eventType === 'UPDATE') {
           const updated = payload.new as any;
@@ -1137,18 +1139,32 @@ export default function AdminDashboard() {
 
         <AnimatePresence>
           {newIncidentNotification && (
-            <motion.div initial={{ y: -100, opacity: 0, scale: 0.8 }} animate={{ y: 0, opacity: 1, scale: 1 }} exit={{ y: -100, opacity: 0, scale: 0.8 }} className="fixed top-8 left-1/2 -translate-x-1/2 z-[100] w-full max-w-sm px-4">
-              <div className="bg-red-600 text-white rounded-2xl shadow-[0_20px_50px_rgba(220,38,38,0.5)] p-4 border border-white/20 flex items-center gap-4">
-                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center animate-pulse">
+            <motion.div initial={{ y: -100, opacity: 0, scale: 0.8 }} animate={{ y: 0, opacity: 1, scale: 1 }} exit={{ y: -100, opacity: 0, scale: 0.8 }} className="fixed top-8 left-1/2 -translate-x-1/2 z-[100] w-full max-w-md px-4">
+              <div className="bg-red-600 text-white rounded-2xl shadow-[0_20px_50px_rgba(220,38,38,0.5)] p-4 border border-white/20 flex items-center gap-3">
+                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center animate-pulse shrink-0">
                   <Zap size={24} className="text-white" />
                 </div>
-                <div className="flex-1">
-                  <p className="text-xs font-medium opacity-80">Alerta en tiempo real</p>
-                  <p className="text-sm font-bold leading-tight">{newIncidentNotification.content}</p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-black uppercase tracking-wider opacity-90">
+                    ⚠️ Alerta Táctica {newIncidentNotification.resource_name ? `• ${newIncidentNotification.resource_name}` : ''}
+                  </p>
+                  <p className="text-xs font-bold leading-tight truncate">{newIncidentNotification.content}</p>
                 </div>
-                <button onClick={() => setNewIncidentNotification(null)} className="p-2 hover:bg-white/10 rounded-full">
-                  <X size={18} />
-                </button>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {newIncidentNotification.latitude && newIncidentNotification.longitude && (
+                    <button 
+                      onClick={() => {
+                        setMapCenter([Number(newIncidentNotification.latitude), Number(newIncidentNotification.longitude)]);
+                      }}
+                      className="px-3 py-1.5 bg-white text-red-700 text-[11px] font-black uppercase rounded-xl shadow hover:bg-gray-100 transition-colors"
+                    >
+                      Ver en Mapa
+                    </button>
+                  )}
+                  <button onClick={() => setNewIncidentNotification(null)} className="p-2 hover:bg-white/10 rounded-full">
+                    <X size={18} />
+                  </button>
+                </div>
               </div>
             </motion.div>
           )}
