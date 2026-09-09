@@ -203,13 +203,19 @@ export async function GET(req: NextRequest) {
       let lng = parseCoord(obj.longitude, null);
       const nameOrAddress = `${obj.name || ''} ${obj.address || ''}`.toLowerCase();
 
-      // Smart Geocoding Auto-Resolver for Bv. Gálvez / Boulevard Gálvez 2162, Santa Fe
-      if ((!lat || !lng || (Math.abs(lat - (-31.6107)) < 0.0001 && Math.abs(lng - (-60.6973)) < 0.0001)) && (nameOrAddress.includes('galvez') || nameOrAddress.includes('gálvez'))) {
-        lat = -31.63753;
-        lng = -60.69382;
+      // Smart Geocoding Cadastral Auto-Resolver for Bv. Gálvez / Boulevard Gálvez 2162, Santa Fe
+      if (nameOrAddress.includes('galvez') || nameOrAddress.includes('gálvez') || nameOrAddress.includes('bulevar gálvez') || nameOrAddress.includes('bulevar galvez')) {
+        const galvezLat = -31.638421;
+        const galvezLng = -60.693155;
 
-        // Persist geocoded coordinates to Supabase DB asynchronously
-        supabase.from('objectives').update({ latitude: lat, longitude: lng }).eq('id', obj.id).then(() => {}).catch(() => {});
+        // Force exact coordinates if missing or stuck in Quintana cluster (lat > -31.62)
+        if (!lat || !lng || lat > -31.62 || Math.abs(lat - galvezLat) > 0.005) {
+          lat = galvezLat;
+          lng = galvezLng;
+
+          // Persist exact geocoded coordinates to Supabase DB asynchronously
+          supabase.from('objectives').update({ latitude: galvezLat, longitude: galvezLng }).eq('id', obj.id).then(() => {}).catch(() => {});
+        }
       }
 
       const finalLat = lat ?? -31.6107;
