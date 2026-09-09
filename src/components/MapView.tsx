@@ -1009,10 +1009,25 @@ export default function MapView({
         {/* Guard Markers with Professional Animation and Heading */}
         {(guards || []).filter(g => {
           if (!isValidCoords(g.latitude, g.longitude)) return false;
-          // Suppress separate guard marker if guard is stationed at an active objective (handled as a single combined marker)
+          // Suppress separate guard marker if guard is stationed at or within 250m of an active objective (handled as a single combined marker)
           const objId = g.current_objective_id || (g as any).objective_id;
-          const isAtObjective = objId && (objectives || []).some(o => o.id === objId);
-          return !isAtObjective;
+          const isAssigned = Boolean(objId && (objectives || []).some(o => o.id === objId));
+          const isNearObjective = (objectives || []).some(o => {
+            if (!o.latitude || !o.longitude) return false;
+            const lat1 = Number(g.latitude);
+            const lng1 = Number(g.longitude);
+            const lat2 = Number(o.latitude);
+            const lng2 = Number(o.longitude);
+            if (isNaN(lat1) || isNaN(lng1) || isNaN(lat2) || isNaN(lng2)) return false;
+            const R = 6371e3;
+            const rad = Math.PI / 180;
+            const dLat = (lat2 - lat1) * rad;
+            const dLng = (lng2 - lng1) * rad;
+            const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(dLng / 2) ** 2;
+            const dist = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return dist < 250;
+          });
+          return !isAssigned && !isNearObjective;
         }).map((g) => {
           
           const isSelected = selectedGuard?.id === g.id;
