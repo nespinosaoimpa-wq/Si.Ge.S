@@ -318,7 +318,7 @@ const ObjectiveMarkerContent = React.memo(({
     <div className="relative w-12 h-12 flex items-center justify-center group cursor-pointer pointer-events-none select-none z-20">
       {/* Relocation visual hint */}
       {isRelocating && isSelected && (
-        <div className="absolute -top-16 left-1/2 -translate-x-1/2 bg-zinc-950 text-white text-[8px] font-black uppercase px-2.5 py-1.5 rounded-lg whitespace-nowrap animate-bounce border-2 border-[#D4AF37] shadow-2xl z-[60]">
+        <div className="absolute -top-16 left-1/2 -translate-x-1/2 bg-zinc-950 text-white text-[8px] font-black uppercase px-2.5 py-1.5 rounded-lg whitespace-nowrap animate-bounce border-2 border-[#0F4C5C] shadow-2xl z-[60]">
           MODO REUBICACIÓN: ARRASTRAR MARCADOR
         </div>
       )}
@@ -330,37 +330,39 @@ const ObjectiveMarkerContent = React.memo(({
       )}>
         <span className={cn(
           "w-2 h-2 rounded-full",
-          isCritical ? "bg-red-400 animate-ping" : isManned ? "bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.9)]" : "bg-zinc-500"
+          isCritical ? "bg-red-400 animate-ping" : isManned ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.9)]" : "bg-amber-400"
         )} />
         <span>{obj.name}</span>
         {occupantName && (
-          <span className="text-amber-400 font-bold">• {occupantName}</span>
+          <span className="text-emerald-400 font-bold">• {occupantName}</span>
         )}
         <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-zinc-950 rotate-45 border-r border-b border-white/20" />
       </div>
 
-      {/* ── BLACK & GOLD CIRCULAR BUILDING MARKER ── */}
+      {/* ── BLACK OBSIDIAN CIRCULAR BUILDING MARKER WITH BRAND #0F4C5C ACCENTS ── */}
       <div className={cn(
         "w-11 h-11 rounded-full bg-zinc-950 flex items-center justify-center shadow-[0_8px_25px_rgba(0,0,0,0.7)] cursor-pointer border-2 transition-all duration-300 relative pointer-events-auto z-20",
         isCritical
           ? "border-red-500 text-white scale-125 z-50 animate-bounce shadow-[0_0_25px_rgba(239,68,68,0.8)]"
+          : isManned
+          ? "border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.4)] group-hover:border-emerald-400 group-hover:scale-110"
           : isSelected
-          ? "border-amber-300 scale-125 z-50 shadow-2xl ring-4 ring-amber-400/30"
-          : "border-[#D4AF37] hover:scale-110 shadow-[0_0_15px_rgba(212,175,55,0.35)]"
+          ? "border-[#0F4C5C] scale-125 z-50 shadow-2xl ring-4 ring-[#0F4C5C]/30"
+          : "border-amber-400/60 shadow-[0_2px_12px_rgba(251,191,36,0.15)] group-hover:border-amber-400 group-hover:scale-110"
       )}>
         {isCritical ? (
           <Zap className="w-5 h-5 text-amber-300 animate-pulse" />
         ) : (
-          <Building2 className="w-5.5 h-5.5 text-[#D4AF37]" />
+          <Building2 className="w-5.5 h-5.5 text-[#0F4C5C]" />
         )}
 
-        {/* ── ATTACHED OPERATOR PHOTO AT BOTTOM EDGE (WHEN MANNED) ── */}
+        {/* ── ATTACHED OPERATOR PHOTO AT BOTTOM EDGE (GEOREFERENCED AT OBJECTIVE) ── */}
         {isManned && (
           <div className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 w-7.5 h-7.5 rounded-full border-2 border-white shadow-xl overflow-hidden bg-zinc-900 flex items-center justify-center z-30 pointer-events-auto">
             {occupantAvatar ? (
               <img src={occupantAvatar} className="w-full h-full object-cover" alt={occupantName || obj.name} />
             ) : (
-              <div className="w-full h-full bg-gradient-to-br from-[#D4AF37] to-amber-700 text-black font-black text-[9px] flex items-center justify-center tracking-wider">
+              <div className="w-full h-full bg-gradient-to-br from-[#0F4C5C] to-emerald-800 text-white font-black text-[9px] flex items-center justify-center tracking-wider">
                 {getInitials(occupantName)}
               </div>
             )}
