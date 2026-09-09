@@ -106,35 +106,54 @@ export class GPSTracker {
     this.boundOnlineHandler = this.handleOnline.bind(this);
 
     if (objectiveData) {
-      this.objectiveLocation = objectiveData.location;
+      const rawLoc = objectiveData.location;
+      if (rawLoc && typeof rawLoc.lat === 'number' && typeof rawLoc.lng === 'number' && !isNaN(rawLoc.lat) && !isNaN(rawLoc.lng) && (rawLoc.lat !== 0 || rawLoc.lng !== 0)) {
+        this.objectiveLocation = rawLoc;
+      }
       this.geofenceRadius = objectiveData.radius;
       this.objectiveId = objectiveData.id;
-      // Sprint 3: Dynamic Geofencing - Fetch if not provided correctly or use fallback
-      if (!this.geofenceRadius && this.objectiveId) {
-        this.fetchDynamicGeofenceRadius();
+
+      // Dynamic Geofencing - Fetch objective coordinates and radius if missing or uninitialized
+      if (this.objectiveId && (!this.objectiveLocation || !this.geofenceRadius)) {
+        this.fetchDynamicGeofenceData();
       } else if (!this.geofenceRadius) {
         this.geofenceRadius = 100; // default fallback
       }
     }
   }
 
-  private async fetchDynamicGeofenceRadius() {
+  private hasValidObjectiveLocation(): boolean {
+    if (!this.objectiveLocation) return false;
+    const lat = Number(this.objectiveLocation.lat);
+    const lng = Number(this.objectiveLocation.lng);
+    return !isNaN(lat) && !isNaN(lng) && (lat !== 0 || lng !== 0);
+  }
+
+  private async fetchDynamicGeofenceData() {
+    if (!this.objectiveId) return;
     try {
       const { supabase } = await import('./supabase');
       const { data, error } = await supabase
         .from('objectives')
-        .select('geofence_radius')
+        .select('geofence_radius, geofence_radius_meters, latitude, longitude')
         .eq('id', this.objectiveId)
-        .single();
+        .maybeSingle();
       
-      if (!error && data && data.geofence_radius) {
-        this.geofenceRadius = data.geofence_radius;
-        console.log(`[SIGPAD GPS] Dynamic Geofence Radius loaded: ${this.geofenceRadius}m`);
-      } else {
-        this.geofenceRadius = 100; // fallback
+      if (!error && data) {
+        const rad = Number(data.geofence_radius_meters || data.geofence_radius || 100);
+        if (rad > 0) this.geofenceRadius = rad;
+
+        const objLat = Number(data.latitude);
+        const objLng = Number(data.longitude);
+        if (!isNaN(objLat) && !isNaN(objLng) && (objLat !== 0 || objLng !== 0)) {
+          this.objectiveLocation = { lat: objLat, lng: objLng };
+          console.log(`[SIGPAD GPS] Dynamic Objective Location loaded: (${objLat}, ${objLng}), radius: ${this.geofenceRadius}m`);
+        }
+      } else if (!this.geofenceRadius) {
+        this.geofenceRadius = 100;
       }
     } catch (e) {
-      this.geofenceRadius = 100;
+      if (!this.geofenceRadius) this.geofenceRadius = 100;
     }
   }
 
@@ -376,8 +395,9 @@ export class GPSTracker {
     const currentInterval = isStationaryInside ? 60000 : 12000;
 
     // 3. Geofence Logic
-    if (this.objectiveLocation && this.geofenceRadius) {
-      const distance = calculateDistance(lat, lng, this.objectiveLocation.lat, this.objectiveLocation.lng);
+    const isValidObjLoc = this.hasValidObjectiveLocation();
+    if (isValidObjLoc && this.geofenceRadius) {
+      const distance = calculateDistance(lat, lng, this.objectiveLocation!.lat, this.objectiveLocation!.lng);
       const isOutside = distance > this.geofenceRadius;
 
       if (isOutside) {
@@ -399,6 +419,9 @@ export class GPSTracker {
           }
         }
       }
+    } else if (!isValidObjLoc && this.objectiveId) {
+      // Auto-recover coordinates from DB if missing/uninitialized
+      this.fetchDynamicGeofenceData();
     }
 
     // 4. Throttle Updates for standard transmission
@@ -415,8 +438,8 @@ export class GPSTracker {
         altitudeAccuracy: pos.coords.altitudeAccuracy,
         timestamp: pos.timestamp,
         isStationary,
-        isOutside: this.isCurrentlyOutside,
-        distanceToObjective: this.objectiveLocation ? calculateDistance(lat, lng, this.objectiveLocation.lat, this.objectiveLocation.lng) : null
+        isOutside: isValidObjLoc ? this.isCurrentlyOutside : false,
+        distanceToObjective: isValidObjLoc ? calculateDistance(lat, lng, this.objectiveLocation!.lat, this.objectiveLocation!.lng) : null
       };
 
       this.handleLocationUpdate(payload);

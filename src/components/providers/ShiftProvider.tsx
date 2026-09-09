@@ -203,16 +203,20 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
             shiftId || (shiftData as any)?.id,
             resolvedResourceId,
             async (pos) => {
-               // Calculate distance to objective if objectiveLocation exists
+               // Calculate distance to objective only if valid non-zero objectiveLocation exists
                let isOutside = Boolean(pos.isOutside);
                let distToObj = pos.distanceToObjective;
 
-               if (shiftData?.objectiveLocation?.lat && pos.latitude) {
+               const objLat = Number(shiftData?.objectiveLocation?.lat);
+               const objLng = Number(shiftData?.objectiveLocation?.lng);
+               const hasValidLoc = !isNaN(objLat) && !isNaN(objLng) && (objLat !== 0 || objLng !== 0);
+
+               if (hasValidLoc && pos.latitude) {
                  const R = 6371e3;
                  const φ1 = pos.latitude * Math.PI / 180;
-                 const φ2 = shiftData.objectiveLocation.lat * Math.PI / 180;
-                 const Δφ = (shiftData.objectiveLocation.lat - pos.latitude) * Math.PI / 180;
-                 const Δλ = (shiftData.objectiveLocation.lng - pos.longitude) * Math.PI / 180;
+                 const φ2 = objLat * Math.PI / 180;
+                 const Δφ = (objLat - pos.latitude) * Math.PI / 180;
+                 const Δλ = (objLng - pos.longitude) * Math.PI / 180;
                  const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
                  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
                  const calcDist = R * c;
@@ -221,6 +225,9 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
                  if (calcDist > (shiftData.geofenceRadius || 100)) {
                    isOutside = true;
                  }
+               } else if (!hasValidLoc) {
+                 isOutside = false;
+                 distToObj = null;
                }
 
                // Notify UI for live updates
@@ -232,11 +239,16 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
                });
             },
             (err) => console.warn('[704 Tracker] Background Error:', err),
-            shiftData?.objectiveLocation || shiftData?.objective_id ? {
-              location: shiftData.objectiveLocation || { lat: 0, lng: 0 },
-              radius: shiftData.geofenceRadius || 100,
-              id: shiftData.objective_id
-            } : undefined
+            (() => {
+              const objLat = Number(shiftData?.objectiveLocation?.lat);
+              const objLng = Number(shiftData?.objectiveLocation?.lng);
+              const hasValidLoc = !isNaN(objLat) && !isNaN(objLng) && (objLat !== 0 || objLng !== 0);
+              return (hasValidLoc || shiftData?.objective_id) ? {
+                location: hasValidLoc ? { lat: objLat, lng: objLng } : undefined as any,
+                radius: shiftData?.geofenceRadius || 100,
+                id: shiftData?.objective_id
+              } : undefined;
+            })()
           );
           trackerRef.current.start();
         } catch (e) {
