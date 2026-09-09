@@ -294,63 +294,78 @@ GuardMarkerContent.displayName = 'GuardMarkerContent';
 const ObjectiveMarkerContent = React.memo(({
   obj,
   isSelected,
-  isRelocating
+  isRelocating,
+  occupantAvatar,
+  occupantName
 }: {
   obj: Objective;
   isSelected: boolean;
   isRelocating: boolean;
+  occupantAvatar?: string | null;
+  occupantName?: string | null;
 }) => {
-  const isManned = obj.is_manned || (obj.assigned_personnel && obj.assigned_personnel.length > 0) || Boolean(obj.occupant_name);
+  const isManned = obj.is_manned || (obj.assigned_personnel && obj.assigned_personnel.length > 0) || Boolean(obj.occupant_name) || Boolean(occupantName);
   const isCritical = obj.status === 'critica' || obj.status === 'alerta' || obj.status === 'emergency';
 
+  const getInitials = (name?: string | null) => {
+    if (!name) return 'OP';
+    const parts = name.trim().split(' ').filter(Boolean);
+    if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    return name.substring(0, 2).toUpperCase();
+  };
+
   return (
-    <div className="relative w-10 h-10 flex items-center justify-center group cursor-pointer pointer-events-none select-none z-10">
+    <div className="relative w-12 h-12 flex items-center justify-center group cursor-pointer pointer-events-none select-none z-20">
       {/* Relocation visual hint */}
       {isRelocating && isSelected && (
-        <div className="absolute -top-16 left-1/2 -translate-x-1/2 bg-zinc-950 text-white text-[8px] font-black uppercase px-2.5 py-1.5 rounded-lg whitespace-nowrap animate-bounce border-2 border-[#0F4C5C] shadow-2xl z-[60]">
+        <div className="absolute -top-16 left-1/2 -translate-x-1/2 bg-zinc-950 text-white text-[8px] font-black uppercase px-2.5 py-1.5 rounded-lg whitespace-nowrap animate-bounce border-2 border-[#D4AF37] shadow-2xl z-[60]">
           MODO REUBICACIÓN: ARRASTRAR MARCADOR
         </div>
       )}
 
-      {/* Objective Name Label */}
+      {/* Objective & Occupant Name Label Tag */}
       <div className={cn(
         "absolute -top-10 left-1/2 -translate-x-1/2 px-2.5 py-1 bg-zinc-950 text-white text-[9px] font-black uppercase tracking-widest rounded-lg border border-white/20 shadow-2xl transition-all duration-300 pointer-events-none whitespace-nowrap z-50 flex items-center gap-1.5",
         isSelected ? "opacity-100 scale-100 -translate-y-1" : "opacity-0 scale-90 translate-y-2 group-hover:opacity-100 group-hover:scale-100 group-hover:translate-y-0"
       )}>
         <span className={cn(
           "w-2 h-2 rounded-full",
-          isCritical ? "bg-red-400 animate-ping" : isManned ? "bg-emerald-400" : "bg-amber-400"
+          isCritical ? "bg-red-400 animate-ping" : isManned ? "bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.9)]" : "bg-zinc-500"
         )} />
-        {obj.name}
+        <span>{obj.name}</span>
+        {occupantName && (
+          <span className="text-amber-400 font-bold">• {occupantName}</span>
+        )}
         <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-zinc-950 rotate-45 border-r border-b border-white/20" />
       </div>
 
-      {/* Sleek Tactical Dark Obsidian Building Card */}
+      {/* ── BLACK & GOLD CIRCULAR BUILDING MARKER ── */}
       <div className={cn(
-        "w-10 h-10 rounded-xl bg-zinc-950 backdrop-blur-md flex items-center justify-center shadow-[0_6px_20px_rgba(0,0,0,0.5)] cursor-pointer border-2 transition-all duration-300 relative pointer-events-auto z-10",
+        "w-11 h-11 rounded-full bg-zinc-950 flex items-center justify-center shadow-[0_8px_25px_rgba(0,0,0,0.7)] cursor-pointer border-2 transition-all duration-300 relative pointer-events-auto z-20",
         isCritical
-          ? "border-red-500 text-white scale-125 z-50 animate-bounce shadow-[0_0_20px_rgba(239,68,68,0.6)]"
-          : isManned
-          ? "border-emerald-500/80 shadow-[0_2px_12px_rgba(16,185,129,0.2)] group-hover:border-emerald-400 group-hover:scale-110"
+          ? "border-red-500 text-white scale-125 z-50 animate-bounce shadow-[0_0_25px_rgba(239,68,68,0.8)]"
           : isSelected
-          ? "border-[#0F4C5C] scale-125 z-50 shadow-2xl ring-2 ring-[#0F4C5C]/30"
-          : "border-amber-400/60 shadow-[0_2px_12px_rgba(251,191,36,0.15)] group-hover:border-amber-400 group-hover:scale-110"
+          ? "border-amber-300 scale-125 z-50 shadow-2xl ring-4 ring-amber-400/30"
+          : "border-[#D4AF37] hover:scale-110 shadow-[0_0_15px_rgba(212,175,55,0.35)]"
       )}>
         {isCritical ? (
           <Zap className="w-5 h-5 text-amber-300 animate-pulse" />
         ) : (
-          <Building2 className="w-5 h-5 text-[#0F4C5C]" />
+          <Building2 className="w-5.5 h-5.5 text-[#D4AF37]" />
         )}
 
-        {/* Precision Status Dot (Subtle Accent, Top-Right Corner) */}
-        <span className={cn(
-          "absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-zinc-950 shadow-md",
-          isCritical
-            ? "bg-red-500 animate-ping"
-            : isManned
-            ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]"
-            : "bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.6)]"
-        )} />
+        {/* ── ATTACHED OPERATOR PHOTO AT BOTTOM EDGE (WHEN MANNED) ── */}
+        {isManned && (
+          <div className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 w-7.5 h-7.5 rounded-full border-2 border-white shadow-xl overflow-hidden bg-zinc-900 flex items-center justify-center z-30 pointer-events-auto">
+            {occupantAvatar ? (
+              <img src={occupantAvatar} className="w-full h-full object-cover" alt={occupantName || obj.name} />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-[#D4AF37] to-amber-700 text-black font-black text-[9px] flex items-center justify-center tracking-wider">
+                {getInitials(occupantName)}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -990,7 +1005,13 @@ export default function MapView({
         })}
 
         {/* Guard Markers with Professional Animation and Heading */}
-        {(guards || []).filter(g => isValidCoords(g.latitude, g.longitude)).map((g) => {
+        {(guards || []).filter(g => {
+          if (!isValidCoords(g.latitude, g.longitude)) return false;
+          // Suppress separate guard marker if guard is stationed at an active objective (handled as a single combined marker)
+          const objId = g.current_objective_id || (g as any).objective_id;
+          const isAtObjective = objId && (objectives || []).some(o => o.id === objId);
+          return !isAtObjective;
+        }).map((g) => {
           
           const isSelected = selectedGuard?.id === g.id;
           const isAbandoned = g.status === 'abandoned';
@@ -1057,6 +1078,8 @@ export default function MapView({
                 obj={enrichedObj}
                 isSelected={isSelected}
                 isRelocating={isRelocating}
+                occupantAvatar={avatarUrl}
+                occupantName={occupantName}
               />
             </Marker>
           );
