@@ -304,7 +304,7 @@ const ObjectiveMarkerContent = React.memo(({
   occupantAvatar?: string | null;
   occupantName?: string | null;
 }) => {
-  const isManned = obj.is_manned || (obj.assigned_personnel && obj.assigned_personnel.length > 0) || Boolean(obj.occupant_name) || Boolean(occupantName);
+  const isManned = obj.is_manned || (obj.assigned_personnel && obj.assigned_personnel.length > 0) || Boolean(obj.occupant_name) || Boolean(occupantName) || Boolean(occupantAvatar);
   const isCritical = obj.status === 'critica' || obj.status === 'alerta' || obj.status === 'emergency';
 
   const getInitials = (name?: string | null) => {
@@ -339,36 +339,44 @@ const ObjectiveMarkerContent = React.memo(({
         <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-zinc-950 rotate-45 border-r border-b border-white/20" />
       </div>
 
-      {/* ── BLACK OBSIDIAN CIRCULAR BUILDING MARKER WITH BRAND #0F4C5C ACCENTS ── */}
-      <div className={cn(
-        "w-11 h-11 rounded-full bg-zinc-950 flex items-center justify-center shadow-[0_8px_25px_rgba(0,0,0,0.7)] cursor-pointer border-2 transition-all duration-300 relative pointer-events-auto z-20",
-        isCritical
-          ? "border-red-500 text-white scale-125 z-50 animate-bounce shadow-[0_0_25px_rgba(239,68,68,0.8)]"
-          : isManned
-          ? "border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.4)] group-hover:border-emerald-400 group-hover:scale-110"
-          : isSelected
-          ? "border-[#0F4C5C] scale-125 z-50 shadow-2xl ring-4 ring-[#0F4C5C]/30"
-          : "border-amber-400/60 shadow-[0_2px_12px_rgba(251,191,36,0.15)] group-hover:border-amber-400 group-hover:scale-110"
-      )}>
-        {isCritical ? (
-          <Zap className="w-5 h-5 text-amber-300 animate-pulse" />
-        ) : (
-          <Building2 className="w-5.5 h-5.5 text-[#0F4C5C]" />
-        )}
-
-        {/* ── ATTACHED OPERATOR PHOTO AT BOTTOM EDGE (GEOREFERENCED AT OBJECTIVE) ── */}
-        {isManned && (
-          <div className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 w-7.5 h-7.5 rounded-full border-2 border-white shadow-xl overflow-hidden bg-zinc-900 flex items-center justify-center z-30 pointer-events-auto">
+      {/* ── MARKER CONTAINER ── */}
+      {isManned ? (
+        /* MANNED OBJECTIVE: Front-and-Center Guard Photo Avatar Circle + Corner Building Badge */
+        <div className={cn(
+          "relative w-12 h-12 rounded-full border-2 border-emerald-500 shadow-[0_8px_25px_rgba(16,185,129,0.45)] flex items-center justify-center bg-zinc-950 pointer-events-auto transition-all duration-300 hover:scale-110 z-20",
+          isCritical && "border-red-500 animate-bounce shadow-[0_0_25px_rgba(239,68,68,0.8)] scale-125",
+          isSelected && "ring-4 ring-emerald-500/30 scale-125 z-50"
+        )}>
+          {/* Operator Photo / Initials */}
+          <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center bg-zinc-900">
             {occupantAvatar ? (
               <img src={occupantAvatar} className="w-full h-full object-cover" alt={occupantName || obj.name} />
             ) : (
-              <div className="w-full h-full bg-gradient-to-br from-[#0F4C5C] to-emerald-800 text-white font-black text-[9px] flex items-center justify-center tracking-wider">
+              <div className="w-full h-full bg-gradient-to-br from-[#0F4C5C] to-emerald-800 text-white font-black text-xs flex items-center justify-center tracking-wider">
                 {getInitials(occupantName)}
               </div>
             )}
           </div>
-        )}
-      </div>
+
+          {/* Small Corner Building Badge */}
+          <div className="absolute -top-1 -right-1 w-5.5 h-5.5 rounded-full bg-zinc-950 border border-emerald-400 shadow-md flex items-center justify-center z-30">
+            <Building2 className="w-3.5 h-3.5 text-[#0F4C5C]" />
+          </div>
+        </div>
+      ) : (
+        /* UNMANNED OBJECTIVE: Building Icon Circle Pin */
+        <div className={cn(
+          "w-10 h-10 rounded-full bg-zinc-950 flex items-center justify-center shadow-[0_6px_20px_rgba(0,0,0,0.5)] cursor-pointer border-2 border-amber-400/60 shadow-[0_2px_12px_rgba(251,191,36,0.15)] transition-all duration-300 relative pointer-events-auto z-20 hover:scale-110",
+          isCritical && "border-red-500 text-white scale-125 z-50 animate-bounce shadow-[0_0_25px_rgba(239,68,68,0.8)]",
+          isSelected && "border-[#0F4C5C] scale-125 z-50 shadow-2xl ring-4 ring-[#0F4C5C]/30"
+        )}>
+          {isCritical ? (
+            <Zap className="w-5 h-5 text-amber-300 animate-pulse" />
+          ) : (
+            <Building2 className="w-5 h-5 text-[#0F4C5C]" />
+          )}
+        </div>
+      )}
     </div>
   );
 });
