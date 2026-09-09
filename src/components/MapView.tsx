@@ -290,17 +290,28 @@ GuardMarkerContent.displayName = 'GuardMarkerContent';
 const ObjectiveMarkerContent = React.memo(({
   obj,
   isSelected,
-  isRelocating
+  isRelocating,
+  occupantAvatar,
+  occupantName
 }: {
   obj: Objective;
   isSelected: boolean;
   isRelocating: boolean;
+  occupantAvatar?: string | null;
+  occupantName?: string | null;
 }) => {
-  const isManned = obj.is_manned || (obj.assigned_personnel && obj.assigned_personnel.length > 0) || Boolean(obj.occupant_name);
+  const isManned = obj.is_manned || (obj.assigned_personnel && obj.assigned_personnel.length > 0) || Boolean(obj.occupant_name) || Boolean(occupantName);
   const isCritical = obj.status === 'critica' || obj.status === 'alerta' || obj.status === 'emergency';
 
+  const getInitials = (name?: string | null) => {
+    if (!name) return 'OP';
+    const parts = name.trim().split(' ').filter(Boolean);
+    if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    return name.substring(0, 2).toUpperCase();
+  };
+
   return (
-    <div className="relative w-10 h-10 flex items-center justify-center group cursor-pointer pointer-events-none select-none">
+    <div className="relative w-11 h-11 flex items-center justify-center group cursor-pointer pointer-events-none select-none z-20">
       {/* Relocation visual hint */}
       {isRelocating && isSelected && (
         <div className="absolute -top-16 left-1/2 -translate-x-1/2 bg-zinc-950 text-white text-[8px] font-black uppercase px-2.5 py-1.5 rounded-lg whitespace-nowrap animate-bounce border-2 border-[#0F4C5C] shadow-2xl z-[60]">
@@ -308,46 +319,82 @@ const ObjectiveMarkerContent = React.memo(({
         </div>
       )}
 
-      {/* Objective Name Label */}
+      {/* Objective & Occupant Name Label Tag */}
       <div className={cn(
         "absolute -top-10 left-1/2 -translate-x-1/2 px-2.5 py-1 bg-zinc-950 text-white text-[9px] font-black uppercase tracking-widest rounded-lg border border-white/20 shadow-2xl transition-all duration-300 pointer-events-none whitespace-nowrap z-50 flex items-center gap-1.5",
         isSelected ? "opacity-100 scale-100 -translate-y-1" : "opacity-0 scale-90 translate-y-2 group-hover:opacity-100 group-hover:scale-100 group-hover:translate-y-0"
       )}>
         <span className={cn(
           "w-2 h-2 rounded-full",
-          isCritical ? "bg-red-400 animate-ping" : isManned ? "bg-emerald-400" : "bg-amber-400"
+          isCritical ? "bg-red-400 animate-ping" : isManned ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.9)]" : "bg-amber-400"
         )} />
-        {obj.name}
+        <span>{obj.name}</span>
+        {occupantName && (
+          <span className="text-emerald-400 font-bold">• {occupantName}</span>
+        )}
         <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-zinc-950 rotate-45 border-r border-b border-white/20" />
       </div>
 
-      {/* Sleek Tactical Dark Obsidian Card with Original SIGPAD Icon & Subtle Status Border Accent */}
-      <div className={cn(
-        "w-10 h-10 rounded-xl bg-zinc-950 backdrop-blur-md flex items-center justify-center shadow-[0_6px_20px_rgba(0,0,0,0.5)] cursor-pointer border-2 transition-all duration-300 relative pointer-events-auto z-10",
-        isCritical
-          ? "border-red-500 text-white scale-125 z-50 animate-bounce shadow-[0_0_20px_rgba(239,68,68,0.6)]"
-          : isManned
-          ? "border-emerald-500/80 shadow-[0_2px_12px_rgba(16,185,129,0.2)] group-hover:border-emerald-400 group-hover:scale-110"
-          : isSelected
-          ? "border-[#0F4C5C] scale-125 z-50 shadow-2xl ring-2 ring-[#0F4C5C]/30"
-          : "border-amber-400/60 shadow-[0_2px_12px_rgba(251,191,36,0.15)] group-hover:border-amber-400 group-hover:scale-110"
-      )}>
-        {isCritical ? (
-          <Zap className="w-5 h-5 text-amber-300 animate-pulse" />
-        ) : (
-          <Building2 className="w-5 h-5 text-[#0F4C5C]" />
-        )}
-
-        {/* Precision Status Dot (Subtle Accent, Top-Right Corner) */}
-        <span className={cn(
-          "absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-zinc-950 shadow-md",
+      {/* ── MANNED OBJECTIVE: OPERATOR AVATAR IN FRONT ── */}
+      {isManned ? (
+        <div className={cn(
+          "w-11 h-11 rounded-full bg-zinc-950 backdrop-blur-md flex items-center justify-center cursor-pointer border-2 transition-all duration-300 relative pointer-events-auto overflow-visible z-30",
           isCritical
-            ? "bg-red-500 animate-ping"
-            : isManned
-            ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]"
-            : "bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.6)]"
-        )} />
-      </div>
+            ? "border-red-500 scale-125 z-50 animate-bounce shadow-[0_0_20px_rgba(239,68,68,0.8)]"
+            : isSelected
+            ? "border-[#0F4C5C] scale-125 z-50 shadow-[0_0_25px_rgba(15,76,92,0.8)] ring-2 ring-[#0F4C5C]/40"
+            : "border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.4)] group-hover:border-emerald-400 group-hover:scale-110"
+        )}>
+          {/* Operator Avatar Image (Front & Center) */}
+          <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center bg-zinc-900">
+            {occupantAvatar ? (
+              <img src={occupantAvatar} className="w-full h-full object-cover" alt={occupantName || obj.name} />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-[#0F4C5C] to-emerald-800 text-white font-black text-[11px] flex items-center justify-center tracking-wider">
+                {getInitials(occupantName)}
+              </div>
+            )}
+          </div>
+
+          {/* Objective Building Sub-Badge (Bottom-Right Corner) */}
+          <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-zinc-950 border border-emerald-400 flex items-center justify-center shadow-lg z-40">
+            {isCritical ? (
+              <Zap className="w-3 h-3 text-amber-300 animate-pulse" />
+            ) : (
+              <Building2 className="w-3 h-3 text-emerald-400" />
+            )}
+          </div>
+
+          {/* Pulse Effect for Active Status */}
+          {!isCritical && (
+            <div className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-15 pointer-events-none" />
+          )}
+        </div>
+      ) : (
+        /* ── UNMANNED OBJECTIVE: CLASSIC BUILDING CARD ── */
+        <div className={cn(
+          "w-10 h-10 rounded-xl bg-zinc-950 backdrop-blur-md flex items-center justify-center shadow-[0_6px_20px_rgba(0,0,0,0.5)] cursor-pointer border-2 transition-all duration-300 relative pointer-events-auto z-10",
+          isCritical
+            ? "border-red-500 text-white scale-125 z-50 animate-bounce shadow-[0_0_20px_rgba(239,68,68,0.6)]"
+            : isSelected
+            ? "border-[#0F4C5C] scale-125 z-50 shadow-2xl ring-2 ring-[#0F4C5C]/30"
+            : "border-amber-400/60 shadow-[0_2px_12px_rgba(251,191,36,0.15)] group-hover:border-amber-400 group-hover:scale-110"
+        )}>
+          {isCritical ? (
+            <Zap className="w-5 h-5 text-amber-300 animate-pulse" />
+          ) : (
+            <Building2 className="w-5 h-5 text-[#0F4C5C]" />
+          )}
+
+          {/* Precision Status Dot (Subtle Accent, Top-Right Corner) */}
+          <span className={cn(
+            "absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-zinc-950 shadow-md",
+            isCritical
+              ? "bg-red-500 animate-ping"
+              : "bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.6)]"
+          )} />
+        </div>
+      )}
     </div>
   );
 });
@@ -1026,6 +1073,12 @@ export default function MapView({
           const hasIncident = activeIncidents.some(inc => (inc as any).objective_id === obj.id);
           const enrichedObj = hasIncident ? { ...obj, status: 'critica' } : obj;
           
+          // Resolve occupant guard / personnel info for avatar photo priority
+          const activeGuard = (guards || []).find(g => (g.current_objective_id === obj.id || (g as any).objective_id === obj.id) && g.isOnShift);
+          const personnel = obj.assigned_personnel?.[0];
+          const avatarUrl = getAvatarUrl(activeGuard) || getAvatarUrl(personnel) || (obj as any).occupant_avatar_url || null;
+          const occupantName = activeGuard?.name || personnel?.name || obj.occupant_name || null;
+
           return (
             <Marker
               key={`obj-${obj.id}`}
@@ -1047,6 +1100,8 @@ export default function MapView({
                 obj={enrichedObj}
                 isSelected={isSelected}
                 isRelocating={isRelocating}
+                occupantAvatar={avatarUrl}
+                occupantName={occupantName}
               />
             </Marker>
           );
