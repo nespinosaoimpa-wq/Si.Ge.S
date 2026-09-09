@@ -35,17 +35,18 @@ const TYPE_CONFIG: Record<string, { icon: React.ReactNode; barColor: string; lab
 
 // ─── Avatar Helper ────────────────────────────────────────────────────────────
 function OperatorAvatar({ name, url }: { name?: string; url?: string | null }) {
+  const [imgError, setImgError] = React.useState(false);
   const initials = name
     ? name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
     : 'OP';
 
-  if (url) {
+  if (url && !imgError) {
     return (
       <img
         src={url}
-        alt={name}
+        alt={name || 'Avatar operador'}
         className="w-11 h-11 rounded-2xl object-cover border-2 border-zinc-200 shadow-sm shrink-0"
-        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+        onError={() => setImgError(true)}
       />
     );
   }
@@ -549,7 +550,7 @@ export default function GuardBookPage() {
                       <div className="flex items-center gap-4">
                         <OperatorAvatar
                           name={operatorName}
-                          url={entry.resources?.avatar_url}
+                          url={entry.resources?.avatar_url || entry.author_avatar_url || entry.avatar_url}
                         />
                         <div>
                           <div className="flex items-center gap-2 flex-wrap">
@@ -595,13 +596,13 @@ export default function GuardBookPage() {
                           )}
                         </div>
 
-                        {/* Fecha y Hora formateada */}
+                        {/* Fecha y Hora formateada (24 hs) */}
                         <div className="flex items-center gap-2 text-xs font-mono font-medium text-zinc-700 bg-zinc-100/80 px-3 py-1 rounded-lg border border-zinc-200/80">
                           <Calendar size={13} className="text-zinc-400" />
                           <span>{createdDate.toLocaleDateString('es-AR', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
                           <span className="text-zinc-300">|</span>
                           <Clock size={13} className="text-zinc-400" />
-                          <span>{createdDate.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })} hs</span>
+                          <span>{createdDate.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })} hs</span>
                         </div>
                       </div>
 

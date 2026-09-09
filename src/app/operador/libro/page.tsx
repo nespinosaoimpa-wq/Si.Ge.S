@@ -414,17 +414,26 @@ export default function GuardBookPage() {
                               'Personal Autorizado';
 
                             const isGerente = entry.content?.startsWith('[GERENTE]');
+                            const avatarUrl = entry.resources?.avatar_url || entry.author_avatar_url || entry.avatar_url;
 
                             return (
-                              <>
+                              <div className="flex items-center gap-1.5">
                                 <span className={cn('text-[9px]', isDark ? 'text-white/20' : 'text-gray-300')}>·</span>
+                                {avatarUrl && (
+                                  <img
+                                    src={avatarUrl}
+                                    alt={authorName}
+                                    className="w-5 h-5 rounded-full object-cover border border-white/20 shadow-xs"
+                                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                  />
+                                )}
                                 <span className={cn(
                                   'text-[9px] font-black uppercase tracking-wide px-2 py-0.5 rounded',
                                   isGerente ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : (isDark ? 'text-white/60' : 'text-gray-600')
                                 )}>
                                   {authorName}
                                 </span>
-                              </>
+                              </div>
                             );
                           })()}
                         </div>
@@ -432,8 +441,8 @@ export default function GuardBookPage() {
                           <p className="text-[9px] font-mono text-gray-400">
                             {new Date(entry.created_at).toLocaleDateString('es-AR')}
                           </p>
-                          <p className="text-[9px] font-mono text-gray-400">
-                            {new Date(entry.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+                          <p className="text-[9px] font-mono font-bold text-gray-300">
+                            {new Date(entry.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })} hs
                           </p>
                         </div>
                       </div>
@@ -445,6 +454,18 @@ export default function GuardBookPage() {
                       )}>
                         {entry.content}
                       </p>
+
+                      {/* Adjunto de Imagen en Operador si existe */}
+                      {entry.image_url && (
+                        <div className="mt-2.5">
+                          <img
+                            src={entry.image_url}
+                            alt="Foto novedad"
+                            className="h-28 w-auto rounded-xl object-cover border border-white/10 cursor-zoom-in"
+                            onClick={() => window.open(entry.image_url, '_blank')}
+                          />
+                        </div>
+                      )}
 
                       {/* Resolved badge */}
                       {entry.is_resolved && (
