@@ -30,7 +30,9 @@ const DOC_TYPES = [
 ];
 
 export function DocumentPanel({ operatorId, initialDocuments }: DocumentPanelProps) {
-  const [documents, setDocuments] = useState<Document[]>(initialDocuments || []);
+  const [documents, setDocuments] = useState<Document[]>(
+    Array.isArray(initialDocuments) ? initialDocuments : []
+  );
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
@@ -57,7 +59,8 @@ export function DocumentPanel({ operatorId, initialDocuments }: DocumentPanelPro
         date: new Date().toISOString()
       };
 
-      const updatedDocs = [...documents, newDoc];
+      const safeCurrentDocs = Array.isArray(documents) ? documents : [];
+      const updatedDocs = [...safeCurrentDocs, newDoc];
 
       try {
         const { error } = await supabase
@@ -80,7 +83,8 @@ export function DocumentPanel({ operatorId, initialDocuments }: DocumentPanelPro
   const handleDelete = async (docId: string) => {
     if (!confirm("¿Eliminar este documento de forma permanente?")) return;
 
-    const updatedDocs = documents.filter(d => d.id !== docId);
+    const safeCurrentDocs = Array.isArray(documents) ? documents : [];
+    const updatedDocs = safeCurrentDocs.filter(d => d.id !== docId);
     try {
       const { error } = await supabase
         .from('resources')
@@ -95,7 +99,8 @@ export function DocumentPanel({ operatorId, initialDocuments }: DocumentPanelPro
   };
 
   const handleUpdateType = async (docId: string, newType: string) => {
-    const updatedDocs = documents.map(d => 
+    const safeCurrentDocs = Array.isArray(documents) ? documents : [];
+    const updatedDocs = safeCurrentDocs.map(d => 
       d.id === docId ? { ...d, type: newType } : d
     );
     try {
@@ -110,6 +115,8 @@ export function DocumentPanel({ operatorId, initialDocuments }: DocumentPanelPro
       console.error(err);
     }
   };
+
+  const safeDocs = Array.isArray(documents) ? documents : [];
 
   return (
     <div className="bg-white border border-zinc-200 shadow-sm rounded-[2.5rem] p-10 mt-10">
@@ -130,14 +137,14 @@ export function DocumentPanel({ operatorId, initialDocuments }: DocumentPanelPro
         </label>
       </div>
 
-      {documents.length === 0 ? (
+      {safeDocs.length === 0 ? (
         <div className="py-20 text-center border-2 border-dashed border-zinc-100 rounded-[2.5rem] bg-zinc-50">
           <FileText size={56} className="text-zinc-200 mx-auto mb-6" />
           <p className="text-[10px] font-black text-zinc-300 uppercase tracking-[0.3em] italic">No hay documentos registrados para este agente</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {documents.map((doc) => {
+          {safeDocs.map((doc) => {
             const typeConfig = DOC_TYPES.find(t => t.id === doc.type) || DOC_TYPES[3];
             return (
               <div key={doc.id} className="group bg-zinc-50 border border-zinc-100 rounded-3xl p-6 hover:border-[#0F4C5C]/30 transition-all flex flex-col gap-5">

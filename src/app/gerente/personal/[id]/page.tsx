@@ -111,7 +111,7 @@ async function getShifts(id: string) {
       .eq('operator_id', id)
       .order('checkin_time', { ascending: false })
       .limit(50);
-    return data || [];
+    return Array.isArray(data) ? data : [];
   } catch {
     return [];
   }
@@ -125,7 +125,7 @@ async function getIncidents(id: string) {
       .select('id, entry_type, status')
       .or(`operator_id.eq.${id},resource_id.eq.${id}`)
       .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
-    return data || [];
+    return Array.isArray(data) ? data : [];
   } catch {
     return [];
   }
@@ -140,7 +140,7 @@ async function getEvidence(id: string) {
       .or(`operator_id.eq.${id},resource_id.eq.${id}`)
       .order('created_at', { ascending: false })
       .limit(8);
-    return data || [];
+    return Array.isArray(data) ? data : [];
   } catch {
     return [];
   }
@@ -470,7 +470,7 @@ export default async function OperatorProfilePage(props: { params: Promise<{ id:
       {/* DOCUMENTACIÓN DEL LEGAJO */}
       <DocumentPanel 
         operatorId={operator.id} 
-        initialDocuments={operator.documents || []} 
+        initialDocuments={Array.isArray(operator.documents) ? operator.documents : []} 
       />
 
       {/* DIGITAL EVIDENCE GALLERY */}

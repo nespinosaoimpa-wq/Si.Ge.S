@@ -691,7 +691,7 @@ export default function PersonalPage() {
                       </button>
                     </div>
 
-                    {newStaff.custom_uniforms && newStaff.custom_uniforms.length > 0 ? (
+                    {Array.isArray(newStaff.custom_uniforms) && newStaff.custom_uniforms.length > 0 ? (
                       <div className="space-y-3">
                         {newStaff.custom_uniforms.map((item, idx) => (
                           <div key={item.id || idx} className="p-4 bg-white border border-zinc-200 rounded-2xl space-y-3 relative shadow-sm">
