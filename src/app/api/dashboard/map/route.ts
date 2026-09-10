@@ -87,24 +87,19 @@ export async function GET(req: NextRequest) {
 
     // Fetch queries: for gerente/owner/superadmin, fetch all active objectives cleanly without PostgREST syntax issues
     // Fetch objectives first so we can use objective IDs to catch any alerts for this tenant
-    let objectivesQuery = supabase.from('objectives')
-      .select('id, name, address, client_name, contact_phone, latitude, longitude, geofence_radius, hourly_billing_rate, is_active, status, tenant_id, deleted_at, created_at, updated_at');
+    let objectivesQuery = supabase.from('objectives').select('*');
     if (!isSuper && tenantId) {
       objectivesQuery = objectivesQuery.eq('tenant_id', tenantId);
     }
     const objectivesRes = await objectivesQuery;
     const rawObjectives = (objectivesRes.data || []).filter((o: any) => 
-      o.is_active !== false && 
-      o.status !== 'Inactivo' && 
-      o.status !== 'inactivo' && 
-      !o.deleted_at
+      o.is_active !== false
     );
     const tenantObjectiveIds = rawObjectives.map((o: any) => o.id).filter(Boolean);
 
     let resourcesQuery = supabase.from('resources')
-      .select('id, name, role, status, latitude, longitude, accuracy, speed, heading, battery_level, last_gps_update, phone, email, avatar_url, current_objective_id, profile_id, tenant_id, profiles:profile_id(avatar_url, full_name)')
-      .neq('status', 'baja')
-      .neq('status', 'inactivo');
+      .select('*, profiles:profile_id(avatar_url, full_name)')
+      .neq('status', 'baja');
 
     const last24h = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
 
