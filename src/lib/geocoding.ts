@@ -215,10 +215,20 @@ export function parseCoordinates(query: string): { lat: number, lng: number } | 
 /**
  * Inyecta contexto geográfico de Santa Fe si no está explícito en la búsqueda.
  */
+/**
+ * Inyecta contexto geográfico de Santa Fe si no está explícito en la búsqueda.
+ */
 function injectContext(query: string): string {
   const lower = query.toLowerCase();
   let adjustedQuery = query;
   
+  // Detect explicit international queries (US, EEUU, USA, states, foreign countries)
+  const isInternational = /eeuu|usa|united states|estados unidos|\b(us|fl|ny|ca|tx|dc|miami|new york|washington|orlando|dallas|los angeles|chicago|madrid|barcelona|mexico|méxico|chile|uruguay|paraguay|brasil|brazil|colombia|espana|españa|santiago|bogota)\b/i.test(lower);
+
+  if (isInternational) {
+    return query; // Do not inject local context for international searches
+  }
+
   if (activeTenantConfig.countryCode === 'ar' && /santa fe/i.test(lower)) {
     const hasOtherCity = /rosario|rafaela|reconquista|santo tom[eé]|sauce viejo|esperanza|franck|coronda|venado tuerto|sunchales|villa constitucion|san lorenzo|ca[nñ]ada de gomez|casilda|santa rosa/i.test(lower);
     if (!hasOtherCity) {
@@ -237,22 +247,22 @@ function injectContext(query: string): string {
 }
 
 /**
- * Geocoding Directo Mapbox v5 con restricción de Bounding Box (BBOX).
- * Garantiza máxima precisión catastral en alturas de calles para Santa Fe y Argentina.
+ * Geocoding Directo Mapbox v5 con soporte inteligente para Argentina e Internacional (EEUU, Europa, Latam).
  */
 export async function geocodeForward(query: string): Promise<GeocodingResult[]> {
   if (!query || query.trim().length < 2) return [];
   if (!MAPBOX_TOKEN) return [];
 
   const normalized = normalizeAddress(query);
+  const lower = normalized.toLowerCase();
+  const isInternational = /eeuu|usa|united states|estados unidos|\b(us|fl|ny|ca|tx|dc|miami|new york|washington|orlando|dallas|los angeles|chicago|madrid|barcelona|mexico|méxico|chile|uruguay|paraguay|brasil|brazil|colombia|espana|españa|santiago|bogota)\b/i.test(lower);
 
-  const makeRequest = async (searchText: string): Promise<GeocodingResult[]> => {
+  const makeRequest = async (searchText: string, globalSearch: boolean = false): Promise<GeocodingResult[]> => {
     try {
       const hasNumber = /\d+/.test(searchText);
       const params = new URLSearchParams({
         access_token: MAPBOX_TOKEN!,
         autocomplete: 'true',
-        country: activeTenantConfig.countryCode,
         language: 'es',
         proximity: `${activeTenantConfig.center.lng},${activeTenantConfig.center.lat}`,
         types: hasNumber ? 'address' : 'address,poi,place,locality',
@@ -260,9 +270,14 @@ export async function geocodeForward(query: string): Promise<GeocodingResult[]> 
         fuzzyMatch: 'true',
       });
 
-      // Aplicar delimitador espacial BBOX para forzar precisión local
-      if (activeTenantConfig.bbox) {
-        params.append('bbox', activeTenantConfig.bbox);
+      // Aplicar restricciones locales solo si NO es búsqueda internacional explícita ni pase global
+      if (!globalSearch && !isInternational) {
+        if (activeTenantConfig.countryCode) {
+          params.append('country', activeTenantConfig.countryCode);
+        }
+        if (activeTenantConfig.bbox) {
+          params.append('bbox', activeTenantConfig.bbox);
+        }
       }
 
       const res = await fetch(`${MAPBOX_GEO_BASE}/${encodeURIComponent(searchText)}.json?${params}`);
@@ -278,9 +293,9 @@ export async function geocodeForward(query: string): Promise<GeocodingResult[]> 
           displayName: f.place_name,
           street: f.text || '',
           houseNumber: f.address || '',
-          city: context.find((c: any) => c.id.startsWith('place'))?.text || 'Santa Fe',
-          state: context.find((c: any) => c.id.startsWith('region'))?.text || 'Santa Fe',
-          country: context.find((c: any) => c.id.startsWith('country'))?.text || 'Argentina',
+          city: context.find((c: any) => c.id.startsWith('place'))?.text || context.find((c: any) => c.id.startsWith('district'))?.text || 'Ciudad',
+          state: context.find((c: any) => c.id.startsWith('region'))?.text || 'Estado',
+          country: context.find((c: any) => c.id.startsWith('country'))?.text || 'Internacional',
           type: f.place_type?.[0] || '',
           importance: f.relevance || 0,
         };
@@ -290,23 +305,27 @@ export async function geocodeForward(query: string): Promise<GeocodingResult[]> 
     }
   };
 
-  const [withContext, withoutContext] = await Promise.all([
+  const requests = [
     makeRequest(injectContext(normalized)),
-    makeRequest(normalized)
-  ]);
+    makeRequest(normalized),
+    makeRequest(normalized, true) // Pase libre global Mapbox v5
+  ];
 
+  const resultsList = await Promise.all(requests);
   const seen = new Set<string>();
   const merged: GeocodingResult[] = [];
 
-  for (const r of [...withContext, ...withoutContext]) {
-    const key = `${r.lat.toFixed(5)},${r.lng.toFixed(5)}`;
-    if (!seen.has(key)) {
-      seen.add(key);
-      merged.push(r);
+  for (const list of resultsList) {
+    for (const r of list) {
+      const key = `${r.lat.toFixed(5)},${r.lng.toFixed(5)}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        merged.push(r);
+      }
     }
   }
 
-  return merged.slice(0, 8);
+  return merged.slice(0, 10);
 }
 
 // ─── SEARCH BOX API v1 (Sugerencias POI y Comercio) ───────────────────
@@ -318,20 +337,27 @@ export async function searchBoxSuggest(query: string): Promise<GeocodingResult[]
   if (abortController) abortController.abort();
   abortController = new AbortController();
 
+  const lower = query.toLowerCase();
+  const isInternational = /eeuu|usa|united states|estados unidos|\b(us|fl|ny|ca|tx|dc|miami|new york|washington|orlando|dallas|los angeles|chicago|madrid|barcelona|mexico|méxico|chile|uruguay|paraguay|brasil|brazil|colombia|espana|españa|santiago|bogota)\b/i.test(lower);
+
   try {
     const params = new URLSearchParams({
       q: query,
       access_token: MAPBOX_TOKEN,
       session_token: getSessionToken(),
-      country: activeTenantConfig.countryCode,
       language: 'es',
       proximity: `${activeTenantConfig.center.lng},${activeTenantConfig.center.lat}`,
       types: 'poi,place,address',
       limit: '5'
     });
 
-    if (activeTenantConfig.bbox) {
-      params.append('bbox', activeTenantConfig.bbox);
+    if (!isInternational) {
+      if (activeTenantConfig.countryCode) {
+        params.append('country', activeTenantConfig.countryCode);
+      }
+      if (activeTenantConfig.bbox) {
+        params.append('bbox', activeTenantConfig.bbox);
+      }
     }
 
     const res = await fetch(`${MAPBOX_SEARCH_BASE}/suggest?${params}`, { signal: abortController.signal });
@@ -345,9 +371,9 @@ export async function searchBoxSuggest(query: string): Promise<GeocodingResult[]
       displayName: s.name + (s.address ? `, ${s.address}` : '') + (s.place_formatted ? ` — ${s.place_formatted}` : ''),
       street: s.name || '',
       houseNumber: s.address || '',
-      city: s.place_formatted?.split(',')[0]?.trim() || 'Santa Fe',
-      state: 'Santa Fe',
-      country: 'Argentina',
+      city: s.place_formatted?.split(',')[0]?.trim() || 'Ciudad',
+      state: s.place_formatted?.split(',')[1]?.trim() || 'Estado',
+      country: 'Internacional',
       type: s.feature_type || 'poi',
       importance: 0.85,
       mapbox_id: s.mapbox_id
