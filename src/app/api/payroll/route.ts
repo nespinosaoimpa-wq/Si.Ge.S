@@ -60,6 +60,25 @@ export async function GET(request: NextRequest) {
       shifts = fb.data;
     }
 
+    // 🚀 MAPA DE RECURSOS EN MEMORIA (para resolver operarios por id / assigned_to / email / user_id)
+    let allResourcesMap: Record<string, any> = {};
+    try {
+      let resQuery = supabase.from('resources').select('id, assigned_to, user_id, profile_id, email, name, role, hourly_pay_rate, salary');
+      if (!isSuper && tenantId) resQuery = resQuery.eq('tenant_id', tenantId);
+      const { data: resList } = await resQuery;
+      if (resList) {
+        resList.forEach(r => {
+          if (r.id) allResourcesMap[r.id] = r;
+          if (r.assigned_to) allResourcesMap[r.assigned_to] = r;
+          if (r.user_id) allResourcesMap[r.user_id] = r;
+          if (r.profile_id) allResourcesMap[r.profile_id] = r;
+          if (r.email) allResourcesMap[r.email.toLowerCase()] = r;
+        });
+      }
+    } catch (e) {
+      console.warn('[PAYROLL] Error fetching resources map:', e);
+    }
+
     const rows = (shifts ?? []).map((shift: any) => {
       // Use stored total_hours from checkout (accurate) or calculate if missing (legacy or active)
       let totalHours = shift.total_hours;
@@ -74,8 +93,15 @@ export async function GET(request: NextRequest) {
       
       const totalMinutes = Math.round(totalHours * 60);
 
+      // Resolver recurso correspondiente
+      const matchedRes = allResourcesMap[shift.operator_id] || shift.resources;
+      const canonicalOpId = matchedRes?.id || shift.resources?.id || shift.operator_id;
+      const opName = matchedRes?.name || shift.resources?.name || 'Operador Desconocido';
+      const opRole = matchedRes?.role || shift.resources?.role || 'Guardia';
+
       // Tarifa de nómina (pago al operador)
-      const payRate: number = parseFloat(shift.resources?.hourly_pay_rate ?? shift.resources?.salary ?? 3500)
+      const rawPayRate = matchedRes?.hourly_pay_rate ?? matchedRes?.salary ?? shift.resources?.hourly_pay_rate ?? shift.resources?.salary ?? 3500;
+      const payRate: number = parseFloat(String(rawPayRate).replace(/[^0-9.]/g, '')) || 3500;
       const payAmount = parseFloat((totalHours * payRate).toFixed(2))
 
       // Tarifa de facturación (cobro al cliente por el objetivo)
@@ -85,9 +111,9 @@ export async function GET(request: NextRequest) {
       return {
         id: shift.id,
         // Personal
-        operator_id: shift.operator_id,
-        operator_name: shift.resources?.name ?? 'Operador Desconocido',
-        operator_role: shift.resources?.role ?? 'Guardia',
+        operator_id: canonicalOpId,
+        operator_name: opName,
+        operator_role: opRole,
         // Objetivo
         objective_id: shift.objective_id,
         objective_name: shift.objectives?.name ?? 'Puesto General',
