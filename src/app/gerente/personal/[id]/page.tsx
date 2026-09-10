@@ -26,6 +26,11 @@ async function getOperatorData(id: string) {
       .eq('id', cleanId)
       .maybeSingle();
 
+    if (data) {
+      const docs = typeof data.documents === 'object' && data.documents !== null ? data.documents : {};
+      data = { ...docs, ...data };
+    }
+
     if (error) {
       console.warn('[getOperatorData] Primary resources lookup notice:', error.message);
     }
@@ -231,11 +236,14 @@ export default async function OperatorProfilePage(props: { params: Promise<{ id:
           <div className="bg-white border border-zinc-200 shadow-sm rounded-2xl p-5 grid grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-5 mt-6">
             {[
               { label: 'DNI / Documento', value: operator.dni || 'No registrado' },
+              { label: 'CUIL / CUIT', value: operator.cuil || 'No registrado' },
               { label: 'Correo Electrónico', value: operator.email || 'N/A', href: operator.email ? `mailto:${operator.email}` : undefined },
               { label: 'Teléfono / WhatsApp', value: operator.phone || 'Sin teléfono', href: operator.phone ? `tel:${operator.phone}` : undefined },
               { label: 'Domicilio', value: operator.address || 'No registrado' },
               { label: 'Credencial Nº', value: operator.credential_number || 'Sin credencial' },
               { label: 'Vencimiento Credencial', value: operator.credential_expiry ? new Date(operator.credential_expiry).toLocaleDateString('es-AR') : 'Indefinido', alert: isExpiringSoon },
+              { label: 'CLU (Armas)', value: operator.clu_number ? `Nº ${operator.clu_number}` : 'Sin CLU' },
+              { label: 'Licencia de Conducir', value: operator.drivers_license_category ? `Cat. ${operator.drivers_license_category}` : 'No registrada' },
               { label: 'Talle Camisa', value: operator.shirt_size || '—' },
               { label: 'Talle Pantalón', value: operator.pants_size || '—' },
               { label: 'Talle Calzado', value: operator.boot_size ? `N° ${operator.boot_size}` : '—' },
@@ -253,6 +261,70 @@ export default async function OperatorProfilePage(props: { params: Promise<{ id:
                 )}
               </div>
             ))}
+          </div>
+
+          {/* INDUMENTARIA Y EQUIPAMIENTO ENTREGADO */}
+          <div className="bg-white border border-zinc-200 shadow-sm rounded-2xl p-6 mt-6">
+            <div className="flex items-center justify-between mb-4 border-b pb-3">
+              <h3 className="text-xs font-black uppercase tracking-widest text-[#0F4C5C] flex items-center gap-2">
+                <Package size={16} /> Indumentaria y Equipamiento Personal
+              </h3>
+              {operator.uniform_expiry_date && (
+                <span className="text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 px-3 py-1 rounded-full uppercase">
+                  Renovación General: {new Date(operator.uniform_expiry_date).toLocaleDateString('es-AR')}
+                </span>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="p-3 bg-zinc-50 rounded-xl border border-zinc-100">
+                <p className="text-[9px] font-black uppercase text-zinc-400 tracking-wider">Camisa Táctica</p>
+                <p className="text-sm font-black text-zinc-900 mt-1">{operator.shirt_size ? `Talle ${operator.shirt_size}` : 'Sin registrar'}</p>
+              </div>
+              <div className="p-3 bg-zinc-50 rounded-xl border border-zinc-100">
+                <p className="text-[9px] font-black uppercase text-zinc-400 tracking-wider">Pantalón Táctico</p>
+                <p className="text-sm font-black text-zinc-900 mt-1">{operator.pants_size ? `Talle ${operator.pants_size}` : 'Sin registrar'}</p>
+              </div>
+              <div className="p-3 bg-zinc-50 rounded-xl border border-zinc-100">
+                <p className="text-[9px] font-black uppercase text-zinc-400 tracking-wider">Calzado / Borcegos</p>
+                <p className="text-sm font-black text-zinc-900 mt-1">{operator.boot_size ? `Nº ${operator.boot_size}` : 'Sin registrar'}</p>
+              </div>
+              <div className="p-3 bg-zinc-50 rounded-xl border border-zinc-100">
+                <p className="text-[9px] font-black uppercase text-zinc-400 tracking-wider">Entrega de Indumentaria</p>
+                <p className="text-sm font-black text-zinc-900 mt-1">{operator.uniform_delivery_date ? new Date(operator.uniform_delivery_date).toLocaleDateString('es-AR') : 'Sin fecha'}</p>
+              </div>
+            </div>
+
+            {/* PRENDAS ADICIONALES */}
+            {Array.isArray(operator.custom_uniforms) && operator.custom_uniforms.length > 0 && (
+              <div className="mt-5 pt-4 border-t border-zinc-100">
+                <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-3">Prendas Adicionales y Accesorios Asignados</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {operator.custom_uniforms.map((item: any, idx: number) => {
+                    const isExp = item.expiry_date && new Date(item.expiry_date).getTime() < Date.now();
+                    const isSoon = item.expiry_date && !isExp && (new Date(item.expiry_date).getTime() - Date.now()) < 30 * 24 * 60 * 60 * 1000;
+                    return (
+                      <div key={item.id || idx} className="p-3.5 bg-white border border-zinc-200 rounded-xl shadow-xs space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-black text-zinc-900 uppercase truncate">{item.name || `Prenda #${idx+1}`}</span>
+                          <span className={cn(
+                            "text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-wider",
+                            isExp ? "bg-red-100 text-red-700" : isSoon ? "bg-amber-100 text-amber-700" : "bg-emerald-50 text-emerald-700"
+                          )}>
+                            {isExp ? 'Vencida' : isSoon ? 'Por vencer' : 'Vigente'}
+                          </span>
+                        </div>
+                        {item.size && <p className="text-[10px] font-bold text-zinc-500">Talle: {item.size}</p>}
+                        <div className="flex items-center justify-between text-[9px] text-zinc-400 pt-1 border-t border-zinc-100">
+                          <span>Entrega: {item.delivery_date ? new Date(item.delivery_date).toLocaleDateString('es-AR') : '—'}</span>
+                          <span>Venc: {item.expiry_date ? new Date(item.expiry_date).toLocaleDateString('es-AR') : 'Indefinido'}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

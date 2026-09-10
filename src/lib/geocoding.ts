@@ -77,6 +77,33 @@ export function resetSearchSession() {
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 let abortController: AbortController | null = null;
 
+// --- LRU IN-MEMORY QUERY & REVERSE GEOCODING CACHE ---
+interface CacheEntry {
+  data: GeocodingResult[];
+  timestamp: number;
+}
+const geoCache = new Map<string, CacheEntry>();
+const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const MAX_CACHE_ENTRIES = 100;
+
+function getCachedGeocode(key: string): GeocodingResult[] | null {
+  const entry = geoCache.get(key.toLowerCase().trim());
+  if (!entry) return null;
+  if (Date.now() - entry.timestamp > CACHE_TTL_MS) {
+    geoCache.delete(key.toLowerCase().trim());
+    return null;
+  }
+  return entry.data;
+}
+
+function setCachedGeocode(key: string, data: GeocodingResult[]): void {
+  if (geoCache.size >= MAX_CACHE_ENTRIES) {
+    const firstKey = geoCache.keys().next().value;
+    if (firstKey) geoCache.delete(firstKey);
+  }
+  geoCache.set(key.toLowerCase().trim(), { data, timestamp: Date.now() });
+}
+
 /**
  * Normaliza abreviaturas de calles de Argentina y arterias clave de Santa Fe
  * para garantizar coincidencia catastral exacta en Mapbox/OSM.
@@ -90,6 +117,12 @@ function normalizeAddress(query: string): string {
   n = n.replace(/\bbv\.?\b/gi, 'Boulevard');
   n = n.replace(/\bbvd\.?\b/gi, 'Boulevard');
   n = n.replace(/\bbulevar\b/gi, 'Boulevard');
+  n = n.replace(/\bdiag\.?\b/gi, 'Diagonal');
+  n = n.replace(/\bdiagonal\b/gi, 'Diagonal');
+  n = n.replace(/\besq\.?\b/gi, 'Esquina');
+  n = n.replace(/\besquina\b/gi, 'Esquina');
+  n = n.replace(/\bbº\b/gi, 'Barrio');
+  n = n.replace(/\bbarrio\b/gi, 'Barrio');
   n = n.replace(/\bnro\.?\b/gi, '');
   n = n.replace(/\bn°\b/gi, '');
   n = n.replace(/\b#\b/g, '');
@@ -98,6 +131,9 @@ function normalizeAddress(query: string): string {
   n = n.replace(/\bdr\.?\b/gi, 'Doctor');
   n = n.replace(/\bsgto\.?\b/gi, 'Sargento');
   n = n.replace(/\bcte\.?\b/gi, 'Comandante');
+  n = n.replace(/\bcmte\.?\b/gi, 'Comandante');
+  n = n.replace(/\btcnte\.?\b/gi, 'Subteniente');
+  n = n.replace(/\bint\.?\b/gi, 'Intendente');
   n = n.replace(/\bpto\.?\b/gi, 'Puerto');
   
   // 2. Mapeo específico de calles y avenidas de Santa Fe (Capital, Santo Tomé, Sauce Viejo, Rosario)
@@ -112,6 +148,8 @@ function normalizeAddress(query: string): string {
   n = n.replace(/\bfacundo\s+zuvir[ií]a\b/gi, 'Avenida Facundo Zuviría');
   n = n.replace(/\bl[oó]pez\s+y\s+planes\b/gi, 'Avenida López y Planes');
   n = n.replace(/\bestanislao\s+l[oó]pez\b/gi, 'Avenida Estanislao López');
+  n = n.replace(/\bmarcial\s+candioti\b/gi, 'Marcial Candioti');
+  n = n.replace(/\bsalvador\s+del\s+carril\b/gi, 'Salvador del Carril');
   n = n.replace(/\b27\s+de\s+febrero\b/gi, 'Avenida 27 de Febrero');
   n = n.replace(/\balem\b/gi, 'Avenida Leandro N. Alem');
   n = n.replace(/\bgral\.?\s+paz\b/gi, 'Avenida General Paz');
@@ -124,18 +162,31 @@ function normalizeAddress(query: string): string {
   n = n.replace(/\b25\s+de\s+mayo\b/gi, '25 de Mayo');
   n = n.replace(/\b7\s+de\s+marzo\b/gi, 'Avenida 7 de Marzo');
   n = n.replace(/\bruta\s+1\b/gi, 'Ruta Provincial 1');
+  n = n.replace(/\bruta\s+11\b/gi, 'Ruta Nacional 11');
+  n = n.replace(/\bruta\s+9\b/gi, 'Ruta Nacional 9');
   n = n.replace(/\bruta\s+168\b/gi, 'Ruta Nacional 168');
   
   return n.trim();
 }
 
 /**
- * Extrae coordenadas si la consulta viene en formato numérico (grados decimales o GPS)
+ * Extrae coordenadas si la consulta viene en formato numérico, enlaces de Google Maps o DMS
  */
 export function parseCoordinates(query: string): { lat: number, lng: number } | null {
   const q = query.trim();
+
+  // 1. Google Maps URL pattern parsing (e.g., https://maps.google.com/?q=-31.6107,-60.6973 or @-31.6107,-60.6973)
+  const mapUrlMatch = q.match(/(?:q=|\/|@)([-+]?\d+[.,]\d+)\s*,\s*([-+]?\d+[.,]\d+)/);
+  if (mapUrlMatch) {
+    const lat = parseFloat(mapUrlMatch[1].replace(',', '.'));
+    const lng = parseFloat(mapUrlMatch[2].replace(',', '.'));
+    if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+      return { lat, lng };
+    }
+  }
+
+  // 2. Decimal Degrees parsing (-31.6107, -60.6973 or -31.6107 -60.6973)
   const ddMatch = q.match(/([-+]?\d+[.,]\d+)\s*[,|\s]\s*([-+]?\d+[.,]\d+)/);
-  
   if (ddMatch) {
     const lat = parseFloat(ddMatch[1].replace(',', '.'));
     const lng = parseFloat(ddMatch[2].replace(',', '.'));
@@ -143,9 +194,27 @@ export function parseCoordinates(query: string): { lat: number, lng: number } | 
       return { lat, lng };
     }
   }
+
+  // 3. DMS (Degrees Minutes Seconds) pattern (e.g. 31°36'38"S 60°41'50"W)
+  const dmsMatch = q.match(/(\d+)°\s*(\d+)['′]\s*(\d+(?:[.,]\d+)?)["″]?\s*([NS])\s*(\d+)°\s*(\d+)['′]\s*(\d+(?:[.,]\d+)?)["″]?\s*([EWO])/i);
+  if (dmsMatch) {
+    let lat = Number(dmsMatch[1]) + Number(dmsMatch[2]) / 60 + Number(dmsMatch[3].replace(',', '.')) / 3600;
+    if (dmsMatch[4].toUpperCase() === 'S') lat = -lat;
+
+    let lng = Number(dmsMatch[5]) + Number(dmsMatch[6]) / 60 + Number(dmsMatch[7].replace(',', '.')) / 3600;
+    if (dmsMatch[8].toUpperCase() === 'W' || dmsMatch[8].toUpperCase() === 'O') lng = -lng;
+
+    if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+      return { lat, lng };
+    }
+  }
+
   return null;
 }
 
+/**
+ * Inyecta contexto geográfico de Santa Fe si no está explícito en la búsqueda.
+ */
 /**
  * Inyecta contexto geográfico de Santa Fe si no está explícito en la búsqueda.
  */
@@ -153,6 +222,13 @@ function injectContext(query: string): string {
   const lower = query.toLowerCase();
   let adjustedQuery = query;
   
+  // Detect explicit international queries (US, EEUU, USA, states, foreign countries)
+  const isInternational = /eeuu|usa|united states|estados unidos|\b(us|fl|ny|ca|tx|dc|miami|new york|washington|orlando|dallas|los angeles|chicago|madrid|barcelona|mexico|méxico|chile|uruguay|paraguay|brasil|brazil|colombia|espana|españa|santiago|bogota)\b/i.test(lower);
+
+  if (isInternational) {
+    return query; // Do not inject local context for international searches
+  }
+
   if (activeTenantConfig.countryCode === 'ar' && /santa fe/i.test(lower)) {
     const hasOtherCity = /rosario|rafaela|reconquista|santo tom[eé]|sauce viejo|esperanza|franck|coronda|venado tuerto|sunchales|villa constitucion|san lorenzo|ca[nñ]ada de gomez|casilda|santa rosa/i.test(lower);
     if (!hasOtherCity) {
@@ -171,22 +247,22 @@ function injectContext(query: string): string {
 }
 
 /**
- * Geocoding Directo Mapbox v5 con restricción de Bounding Box (BBOX).
- * Garantiza máxima precisión catastral en alturas de calles para Santa Fe y Argentina.
+ * Geocoding Directo Mapbox v5 con soporte inteligente para Argentina e Internacional (EEUU, Europa, Latam).
  */
 export async function geocodeForward(query: string): Promise<GeocodingResult[]> {
   if (!query || query.trim().length < 2) return [];
   if (!MAPBOX_TOKEN) return [];
 
   const normalized = normalizeAddress(query);
+  const lower = normalized.toLowerCase();
+  const isInternational = /eeuu|usa|united states|estados unidos|\b(us|fl|ny|ca|tx|dc|miami|new york|washington|orlando|dallas|los angeles|chicago|madrid|barcelona|mexico|méxico|chile|uruguay|paraguay|brasil|brazil|colombia|espana|españa|santiago|bogota)\b/i.test(lower);
 
-  const makeRequest = async (searchText: string): Promise<GeocodingResult[]> => {
+  const makeRequest = async (searchText: string, globalSearch: boolean = false): Promise<GeocodingResult[]> => {
     try {
       const hasNumber = /\d+/.test(searchText);
       const params = new URLSearchParams({
         access_token: MAPBOX_TOKEN!,
         autocomplete: 'true',
-        country: activeTenantConfig.countryCode,
         language: 'es',
         proximity: `${activeTenantConfig.center.lng},${activeTenantConfig.center.lat}`,
         types: hasNumber ? 'address' : 'address,poi,place,locality',
@@ -194,9 +270,14 @@ export async function geocodeForward(query: string): Promise<GeocodingResult[]> 
         fuzzyMatch: 'true',
       });
 
-      // Aplicar delimitador espacial BBOX para forzar precisión local
-      if (activeTenantConfig.bbox) {
-        params.append('bbox', activeTenantConfig.bbox);
+      // Aplicar restricciones locales solo si NO es búsqueda internacional explícita ni pase global
+      if (!globalSearch && !isInternational) {
+        if (activeTenantConfig.countryCode) {
+          params.append('country', activeTenantConfig.countryCode);
+        }
+        if (activeTenantConfig.bbox) {
+          params.append('bbox', activeTenantConfig.bbox);
+        }
       }
 
       const res = await fetch(`${MAPBOX_GEO_BASE}/${encodeURIComponent(searchText)}.json?${params}`);
@@ -212,9 +293,9 @@ export async function geocodeForward(query: string): Promise<GeocodingResult[]> 
           displayName: f.place_name,
           street: f.text || '',
           houseNumber: f.address || '',
-          city: context.find((c: any) => c.id.startsWith('place'))?.text || 'Santa Fe',
-          state: context.find((c: any) => c.id.startsWith('region'))?.text || 'Santa Fe',
-          country: context.find((c: any) => c.id.startsWith('country'))?.text || 'Argentina',
+          city: context.find((c: any) => c.id.startsWith('place'))?.text || context.find((c: any) => c.id.startsWith('district'))?.text || 'Ciudad',
+          state: context.find((c: any) => c.id.startsWith('region'))?.text || 'Estado',
+          country: context.find((c: any) => c.id.startsWith('country'))?.text || 'Internacional',
           type: f.place_type?.[0] || '',
           importance: f.relevance || 0,
         };
@@ -224,23 +305,27 @@ export async function geocodeForward(query: string): Promise<GeocodingResult[]> 
     }
   };
 
-  const [withContext, withoutContext] = await Promise.all([
+  const requests = [
     makeRequest(injectContext(normalized)),
-    makeRequest(normalized)
-  ]);
+    makeRequest(normalized),
+    makeRequest(normalized, true) // Pase libre global Mapbox v5
+  ];
 
+  const resultsList = await Promise.all(requests);
   const seen = new Set<string>();
   const merged: GeocodingResult[] = [];
 
-  for (const r of [...withContext, ...withoutContext]) {
-    const key = `${r.lat.toFixed(5)},${r.lng.toFixed(5)}`;
-    if (!seen.has(key)) {
-      seen.add(key);
-      merged.push(r);
+  for (const list of resultsList) {
+    for (const r of list) {
+      const key = `${r.lat.toFixed(5)},${r.lng.toFixed(5)}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        merged.push(r);
+      }
     }
   }
 
-  return merged.slice(0, 8);
+  return merged.slice(0, 10);
 }
 
 // ─── SEARCH BOX API v1 (Sugerencias POI y Comercio) ───────────────────
@@ -252,20 +337,27 @@ export async function searchBoxSuggest(query: string): Promise<GeocodingResult[]
   if (abortController) abortController.abort();
   abortController = new AbortController();
 
+  const lower = query.toLowerCase();
+  const isInternational = /eeuu|usa|united states|estados unidos|\b(us|fl|ny|ca|tx|dc|miami|new york|washington|orlando|dallas|los angeles|chicago|madrid|barcelona|mexico|méxico|chile|uruguay|paraguay|brasil|brazil|colombia|espana|españa|santiago|bogota)\b/i.test(lower);
+
   try {
     const params = new URLSearchParams({
       q: query,
       access_token: MAPBOX_TOKEN,
       session_token: getSessionToken(),
-      country: activeTenantConfig.countryCode,
       language: 'es',
       proximity: `${activeTenantConfig.center.lng},${activeTenantConfig.center.lat}`,
       types: 'poi,place,address',
       limit: '5'
     });
 
-    if (activeTenantConfig.bbox) {
-      params.append('bbox', activeTenantConfig.bbox);
+    if (!isInternational) {
+      if (activeTenantConfig.countryCode) {
+        params.append('country', activeTenantConfig.countryCode);
+      }
+      if (activeTenantConfig.bbox) {
+        params.append('bbox', activeTenantConfig.bbox);
+      }
     }
 
     const res = await fetch(`${MAPBOX_SEARCH_BASE}/suggest?${params}`, { signal: abortController.signal });
@@ -279,9 +371,9 @@ export async function searchBoxSuggest(query: string): Promise<GeocodingResult[]
       displayName: s.name + (s.address ? `, ${s.address}` : '') + (s.place_formatted ? ` — ${s.place_formatted}` : ''),
       street: s.name || '',
       houseNumber: s.address || '',
-      city: s.place_formatted?.split(',')[0]?.trim() || 'Santa Fe',
-      state: 'Santa Fe',
-      country: 'Argentina',
+      city: s.place_formatted?.split(',')[0]?.trim() || 'Ciudad',
+      state: s.place_formatted?.split(',')[1]?.trim() || 'Estado',
+      country: 'Internacional',
       type: s.feature_type || 'poi',
       importance: 0.85,
       mapbox_id: s.mapbox_id
@@ -428,6 +520,12 @@ export function searchAddresses(
       return;
     }
 
+    const cached = getCachedGeocode(query);
+    if (cached) {
+      resolve(cached);
+      return;
+    }
+
     debounceTimer = setTimeout(async () => {
       try {
         const results: GeocodingResult[] = [];
@@ -517,7 +615,9 @@ export function searchAddresses(
           return distA - distB;
         });
 
-        resolve(candidates.slice(0, 10));
+        const finalSlice = candidates.slice(0, 10);
+        setCachedGeocode(query, finalSlice);
+        resolve(finalSlice);
       } catch (err) {
         reject(err);
       }

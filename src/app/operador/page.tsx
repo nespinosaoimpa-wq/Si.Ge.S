@@ -38,11 +38,14 @@ export default function GuardiaDashboard() {
   useEffect(() => {
     const handleGeofenceEvent = (e: any) => {
       const { type, distance } = e.detail || {};
-      if (type === 'exit') {
+      const numDist = Number(distance || 0);
+
+      // Failsafe: Ignore impossible anomaly distances (>50km) caused by uninitialized (0,0) coordinates
+      if (type === 'exit' && numDist <= 50000) {
         setIsGeofencePaused(true);
-        setGeofenceDistance(Math.round(distance || 0));
+        setGeofenceDistance(Math.round(numDist));
         if (updateShiftData) {
-          updateShiftData({ isOutside: true, is_paused: true, distanceToObjective: distance });
+          updateShiftData({ isOutside: true, is_paused: true, distanceToObjective: numDist });
         }
       } else if (type === 'entry') {
         setIsGeofencePaused(false);
@@ -231,9 +234,20 @@ export default function GuardiaDashboard() {
 
         if (activeShift && !error) {
           const realStartTime = activeShift.checkin_time ? new Date(activeShift.checkin_time) : new Date();
-          const objLoc = activeShift.objectives?.latitude && activeShift.objectives?.longitude
-            ? { lat: Number(activeShift.objectives.latitude), lng: Number(activeShift.objectives.longitude) }
-            : undefined;
+          const rawObj = Array.isArray(activeShift.objectives) ? activeShift.objectives[0] : activeShift.objectives;
+          
+          let targetLat = Number(rawObj?.latitude);
+          let targetLng = Number(rawObj?.longitude);
+
+          // Detect swapped coordinates
+          if (targetLat < -50 && targetLng > -50 && targetLng < 0) {
+            const tmp = targetLat;
+            targetLat = targetLng;
+            targetLng = tmp;
+          }
+
+          const hasValidLoc = !isNaN(targetLat) && !isNaN(targetLng) && (targetLat !== 0 || targetLng !== 0);
+          const objLoc = hasValidLoc ? { lat: targetLat, lng: targetLng } : undefined;
 
           startShift({
             time: realStartTime,
@@ -242,10 +256,11 @@ export default function GuardiaDashboard() {
             operator_id: activeShift.operator_id,
             objective_id: activeShift.objective_id,
             objectiveLocation: objLoc,
-            geofenceRadius: activeShift.objectives?.geofence_radius || 100,
-            objective_name: activeShift.objectives?.name
+            geofenceRadius: Number(rawObj?.geofence_radius || rawObj?.geofence_radius_meters || 100),
+            objective_name: rawObj?.name
           }, activeShift.id);
         }
+
       } catch (e) {
         console.error('Error checking active shift:', e);
       }

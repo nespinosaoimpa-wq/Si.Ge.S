@@ -169,4 +169,13 @@ export const api = {
     markRead: (notificationIds?: string[], resourceId?: string, markAll = false) =>
       apiFetch('notifications', { method: 'PATCH', body: JSON.stringify({ notification_ids: notificationIds, resource_id: resourceId, mark_all: markAll }) }),
   },
+  inventory: {
+    list: (params?: any) => {
+      const q = new URLSearchParams(params || {});
+      return apiFetch(`inventory?${q}`);
+    },
+    create: (data: any) => apiFetch('inventory', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, data: any) => apiFetch('inventory', { method: 'PATCH', body: JSON.stringify({ id, ...data }) }),
+    delete: (id: string) => apiFetch(`inventory?id=${id}`, { method: 'DELETE' }),
+  },
 };

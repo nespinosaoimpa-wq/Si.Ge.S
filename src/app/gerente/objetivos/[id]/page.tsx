@@ -1504,8 +1504,12 @@ export default function ObjectiveDetail() {
 
           <div className="max-h-[380px] overflow-y-auto space-y-2.5 pr-1 custom-scrollbar">
             {(() => {
-              const availableStaff = allStaff.filter(s => !s.current_objective_id || s.current_objective_id === id);
-              const unavailableCount = allStaff.length - availableStaff.length;
+              const managerRoles = ['gerente', 'administrador', 'admin', 'director'];
+              // Filter out managers, show all operators (even if assigned to another objective so manager can reassign)
+              const availableStaff = allStaff.filter(s => {
+                const roleLower = (s.role || '').toLowerCase();
+                return !managerRoles.includes(roleLower);
+              });
               const filteredStaff = availableStaff.filter(s => 
                 (s.name || '').toLowerCase().includes(assignSearch.toLowerCase()) || 
                 (s.role || '').toLowerCase().includes(assignSearch.toLowerCase())
@@ -1550,14 +1554,6 @@ export default function ObjectiveDetail() {
                   {filteredStaff.length === 0 && (
                     <div className="py-12 text-center text-zinc-400 text-xs font-semibold uppercase tracking-widest italic bg-zinc-900/40 rounded-2xl border border-dashed border-zinc-800">
                       No hay personal disponible para vincular
-                    </div>
-                  )}
-
-                  {unavailableCount > 0 && (
-                    <div className="mt-4 pt-3 border-t border-zinc-800/60 text-center">
-                      <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
-                        {unavailableCount} operador{unavailableCount !== 1 ? 'es' : ''} no disponible{unavailableCount !== 1 ? 's' : ''} (vinculados a otros objetivos)
-                      </p>
                     </div>
                   )}
                 </>

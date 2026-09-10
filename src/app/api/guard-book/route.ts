@@ -269,7 +269,7 @@ export async function POST(request: NextRequest) {
 
     const responseData = data ? { ...data, resource_id: data.operator_id } : data;
 
-    if (urgency === 'critica' || entry_type === 'emergencia') {
+    if (urgency === 'critica' || urgency === 'alta' || entry_type === 'emergencia' || entry_type === 'incidente') {
       let operatorName = resource_id;
       let objectiveName = '';
       let objLat = latitude;
@@ -293,7 +293,7 @@ export async function POST(request: NextRequest) {
       await supabase.from('alarms').insert({
         triggered_by: resource_id,
         objective_id,
-        alarm_type: entry_type === 'emergencia' ? 'panico' : (entry_type || 'panico'),
+        alarm_type: entry_type === 'emergencia' ? 'panico' : (entry_type || 'alerta'),
         message: content,
         latitude: objLat,
         longitude: objLng,

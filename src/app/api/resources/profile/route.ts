@@ -191,12 +191,17 @@ export async function GET(request: Request) {
     }
 
     // Self-heal current_objective_id ONLY if objective was found for this VERIFIED resource
+    const updatesToApply: any = {};
     if (finalObjective && finalObjective.id && resource.current_objective_id !== finalObjective.id) {
+      updatesToApply.current_objective_id = finalObjective.id;
+      resource.current_objective_id = finalObjective.id;
+    }
+
+    if (Object.keys(updatesToApply).length > 0) {
       await supabase
         .from('resources')
-        .update({ current_objective_id: finalObjective.id })
+        .update(updatesToApply)
         .eq('id', resource.id);
-      resource.current_objective_id = finalObjective.id;
     }
 
     resource.objectives = finalObjective || null;

@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Search, Plus, ChevronRight, MapPin, Building2, Phone, X, 
-  CheckCircle2, AlertCircle, Clock, Map as MapIcon, Filter, Trash2
+  CheckCircle2, AlertCircle, Clock, Map as MapIcon, Filter, Trash2, Edit3
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -26,6 +26,10 @@ export default function ObjetivosPage() {
   const [newObjective, setNewObjective] = useState({
     id: '', name: '', address: '', client_name: '', contact_phone: '', status: 'Activo'
   });
+
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingObjective, setEditingObjective] = useState<any | null>(null);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -104,6 +108,71 @@ export default function ObjetivosPage() {
     } catch (err) {
       setObjectives(previousObjectives); // Rollback
       alert("Error al eliminar: " + (err as any).message);
+    }
+  };
+
+  const handleEditObjectiveClick = (obj: any) => {
+    setEditingObjective({
+      id: obj.id,
+      name: obj.name || '',
+      client_name: obj.client_name || '',
+      address: obj.address || '',
+      contact_phone: obj.contact_phone || '',
+      contact_person: obj.contact_person || '',
+      status: obj.status || (obj.is_active ? 'Activo' : 'Inactivo'),
+      notes: obj.notes || ''
+    });
+    setSelectedCoords(obj.latitude && obj.longitude ? { lat: Number(obj.latitude), lng: Number(obj.longitude) } : null);
+    setSuggestions([]);
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveObjectiveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingObjective || !editingObjective.id) return;
+    try {
+      setIsSavingEdit(true);
+
+      const finalName = editingObjective.name.trim() || `Objetivo - ${editingObjective.address.split(',')[0]}`;
+      const finalClient = editingObjective.client_name.trim() || 'Cliente Particular';
+
+      let coords: any = {};
+      if (selectedCoords) {
+        coords.latitude = selectedCoords.lat;
+        coords.longitude = selectedCoords.lng;
+      } else if (editingObjective.address) {
+        try {
+          const results = await geocodeForward(editingObjective.address);
+          if (results.length > 0) {
+            coords.latitude = results[0].lat;
+            coords.longitude = results[0].lng;
+          }
+        } catch (err) {}
+      }
+
+      const updates = {
+        name: finalName,
+        client_name: finalClient,
+        address: editingObjective.address.trim(),
+        contact_phone: editingObjective.contact_phone ? editingObjective.contact_phone.trim() : null,
+        contact_person: editingObjective.contact_person ? editingObjective.contact_person.trim() : null,
+        status: editingObjective.status,
+        is_active: editingObjective.status === 'Activo',
+        notes: editingObjective.notes ? editingObjective.notes.trim() : null,
+        ...coords
+      };
+
+      await api.objectives.update(editingObjective.id, updates);
+
+      setIsEditModalOpen(false);
+      setEditingObjective(null);
+      setSelectedCoords(null);
+      await fetchObjectives();
+    } catch (err: any) {
+      console.error("Error al actualizar objetivo:", err);
+      alert("No se pudo actualizar el objetivo: " + (err.message || 'Error desconocido'));
+    } finally {
+      setIsSavingEdit(false);
     }
   };
 
@@ -307,13 +376,21 @@ export default function ObjetivosPage() {
 
                 <div className="flex items-center gap-2">
                   <button 
+                    onClick={() => handleEditObjectiveClick(obj)}
+                    className="p-3 hover:bg-zinc-100 rounded-xl transition-all text-zinc-400 hover:text-zinc-900 border border-transparent hover:border-zinc-200"
+                    title="Editar Perfil de Objetivo"
+                  >
+                    <Edit3 size={18} />
+                  </button>
+                  <button 
                     onClick={() => handleDeleteObjective(obj.id, obj.name)}
                     className="p-3 hover:bg-red-50 rounded-xl transition-all group/del"
+                    title="Eliminar Objetivo"
                   >
                     <Trash2 size={18} className="text-zinc-300 group-hover/del:text-red-500 transition-colors" />
                   </button>
                   <Link href={`/gerente/objetivos/${obj.id}`}>
-                    <button className="p-3 hover:bg-zinc-50 rounded-xl shadow-none hover:shadow-sm border border-transparent hover:border-zinc-200 transition-all">
+                    <button className="p-3 hover:bg-zinc-50 rounded-xl shadow-none hover:shadow-sm border border-transparent hover:border-zinc-200 transition-all" title="Ver Detalle">
                       <ChevronRight size={18} className="text-zinc-300 group-hover:text-[#0F4C5C]" />
                     </button>
                   </Link>
@@ -323,6 +400,110 @@ export default function ObjetivosPage() {
           </div>
         )}
       </Card>
+
+      {/* Edit Objective Modal */}
+      <BottomSheet isOpen={isEditModalOpen} onClose={() => { setIsEditModalOpen(false); setEditingObjective(null); }} title="Editar Perfil del Objetivo">
+        {editingObjective && (
+          <form onSubmit={handleSaveObjectiveEdit} className="space-y-4 pb-8">
+             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-zinc-500 ml-0.5">Nombre del lugar / Objetivo</label>
+                  <Input 
+                    required 
+                    placeholder="Ej: Edificio Central" 
+                    value={editingObjective.name}
+                    onChange={e => setEditingObjective({...editingObjective, name: e.target.value})} 
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-zinc-500 ml-0.5">Cliente / Cuenta</label>
+                  <Input 
+                    placeholder="Ej: Banco Galicia" 
+                    value={editingObjective.client_name}
+                    onChange={e => setEditingObjective({...editingObjective, client_name: e.target.value})} 
+                  />
+                </div>
+                <div className="space-y-1.5 sm:col-span-2 relative">
+                  <label className="text-xs font-medium text-zinc-500 ml-0.5">Dirección física</label>
+                  <div className="relative">
+                    <Input 
+                      required 
+                      placeholder="Ej: Gorriti 4490, Santa Fe" 
+                      value={editingObjective.address}
+                      onChange={e => handleAddressChange(e.target.value)} 
+                    />
+                    {isSearching && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center">
+                        <div className="w-4 h-4 border-2 border-zinc-200 border-t-zinc-800 rounded-full animate-spin" />
+                      </div>
+                    )}
+                  </div>
+                  {suggestions.length > 0 && (
+                    <div className="absolute left-0 right-0 top-[100%] mt-1 bg-white border border-zinc-200 rounded-2xl shadow-xl z-50 max-h-52 overflow-y-auto divide-y divide-zinc-100/60 p-1.5">
+                      {suggestions.map((sug, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => handleSelectSuggestion(sug)}
+                          className="w-full text-left px-3.5 py-2.5 text-xs text-zinc-700 hover:bg-zinc-50 rounded-xl hover:text-zinc-950 transition-colors font-medium flex items-center gap-2"
+                        >
+                          <MapPin size={14} className="text-[#0F4C5C] shrink-0" />
+                          <span className="truncate">{sug.displayName}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-zinc-500 ml-0.5">Teléfono de contacto</label>
+                  <Input 
+                    placeholder="+54 342 555-0100" 
+                    value={editingObjective.contact_phone}
+                    onChange={e => setEditingObjective({...editingObjective, contact_phone: e.target.value})} 
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-zinc-500 ml-0.5">Persona de contacto</label>
+                  <Input 
+                    placeholder="Ej: Juan Pérez" 
+                    value={editingObjective.contact_person}
+                    onChange={e => setEditingObjective({...editingObjective, contact_person: e.target.value})} 
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-zinc-500 ml-0.5">Estado del objetivo</label>
+                  <select 
+                     value={editingObjective.status}
+                     onChange={e => setEditingObjective({...editingObjective, status: e.target.value})}
+                     className="w-full h-11 border border-gray-200 rounded-xl px-4 text-sm bg-gray-50 focus:bg-white transition-colors"
+                  >
+                     <option value="Activo">Activo</option>
+                     <option value="Inactivo">Inactivo</option>
+                  </select>
+                </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <label className="text-xs font-medium text-zinc-500 ml-0.5">Observaciones / Notas del Puesto</label>
+                  <textarea
+                    rows={3}
+                    placeholder="Ingresar consignas especiales o información del puesto..."
+                    value={editingObjective.notes}
+                    onChange={e => setEditingObjective({...editingObjective, notes: e.target.value})}
+                    className="w-full p-3 text-xs font-semibold text-zinc-800 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0F4C5C]/20 transition-colors resize-none"
+                  />
+                </div>
+             </div>
+
+             <div className="flex gap-4 pt-6">
+               <Button type="button" variant="outline" className="flex-1 h-11 rounded-xl font-medium text-xs" onClick={() => { setIsEditModalOpen(false); setEditingObjective(null); }}>
+                 Cancelar
+               </Button>
+               <Button type="submit" disabled={isSavingEdit} variant="primary" className="flex-1 h-11 rounded-xl font-medium text-xs shadow-sm bg-[#0F4C5C] hover:bg-[#0a333e] text-white">
+                 {isSavingEdit ? 'Guardando...' : 'Guardar cambios'}
+               </Button>
+             </div>
+          </form>
+        )}
+      </BottomSheet>
 
       {/* New Objective Modal */}
       <BottomSheet isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Nuevo objetivo">
@@ -407,3 +588,4 @@ export default function ObjetivosPage() {
     </div>
   );
 }
+

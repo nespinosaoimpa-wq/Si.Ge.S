@@ -45,7 +45,7 @@ export function LiveActivityFeed({ liveFeed, isMobile }: LiveActivityFeedProps) 
                       <p className={cn("font-semibold uppercase tracking-wider", log.type === 'event' ? "text-red-600" : "text-[#0F4C5C]")}>
                         {log.type === 'event' ? 'Evento Reportado' : 'U-TRACK SYNC'}
                       </p>
-                      <p className="text-zinc-400 font-mono text-[10px]">{new Date(log.recorded_at || log.created_at).toLocaleTimeString()}</p>
+                      <p className="text-zinc-400 font-mono text-[10px]">{new Date(log.recorded_at || log.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })} hs</p>
                     </div>
                     <p className="text-xs text-zinc-700 font-medium mt-0.5 line-clamp-2">
                       {log.type === 'event' ? log.content : `Sinc: ${log.resource_name || log.resource_id?.substring(0,8)}`}
