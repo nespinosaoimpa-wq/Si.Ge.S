@@ -281,15 +281,13 @@ GuardMarkerContent.displayName = 'GuardMarkerContent';
 const ObjectiveMarkerContent = React.memo(({
   obj,
   isSelected,
-  isRelocating,
-  activeGuardAvatar
+  isRelocating
 }: {
   obj: Objective;
   isSelected: boolean;
   isRelocating: boolean;
-  activeGuardAvatar?: string | null;
 }) => {
-  const isManned = obj.is_manned || (obj.assigned_personnel && obj.assigned_personnel.length > 0) || Boolean(obj.occupant_name) || Boolean(activeGuardAvatar);
+  const isManned = obj.is_manned || (obj.assigned_personnel && obj.assigned_personnel.length > 0) || Boolean(obj.occupant_name);
   const isCritical = obj.status === 'critica' || obj.status === 'alerta' || obj.status === 'emergency';
 
   return (
@@ -314,7 +312,7 @@ const ObjectiveMarkerContent = React.memo(({
         <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-zinc-950 rotate-45 border-r border-b border-white/20" />
       </div>
 
-      {/* Sleek Tactical Dark Obsidian Card with Building Icon & Attached Operator Photo Badge */}
+      {/* Sleek Tactical Dark Obsidian Card with Building Icon */}
       <div className={cn(
         "w-10 h-10 rounded-xl bg-zinc-950 backdrop-blur-md flex items-center justify-center shadow-[0_6px_20px_rgba(0,0,0,0.5)] cursor-pointer border-2 transition-[color,background-color,border-color,box-shadow,opacity] duration-300 relative pointer-events-auto",
         isCritical
@@ -329,13 +327,6 @@ const ObjectiveMarkerContent = React.memo(({
           <Zap className="w-5 h-5 text-amber-300 animate-pulse" />
         ) : (
           <Building2 className={cn("w-5 h-5", isManned ? "text-emerald-400" : "text-[#0F4C5C]")} />
-        )}
-
-        {/* Attached Operator Photo Badge (Bottom-Right Corner) */}
-        {activeGuardAvatar && (
-          <div className="absolute -bottom-1.5 -right-1.5 w-5 h-5 rounded-full border-2 border-zinc-950 overflow-hidden shadow-md z-20">
-            <img src={activeGuardAvatar} className="w-full h-full object-cover" alt="Operador en turno" />
-          </div>
         )}
 
         {/* Precision Status Dot (Subtle Accent, Top-Right Corner) */}
@@ -1069,7 +1060,6 @@ export default function MapView({
                 obj={enrichedObj}
                 isSelected={isSelected}
                 isRelocating={isRelocating}
-                activeGuardAvatar={activeGuardAvatar}
               />
             </Marker>
           );
