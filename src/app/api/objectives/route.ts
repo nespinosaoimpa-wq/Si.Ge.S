@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
     const supabase = createServiceClient();
     let query = supabase
       .from('objectives')
-      .select('id, name, address, client_name, contact_phone, latitude, longitude, geofence_radius, hourly_billing_rate, is_active, status, tenant_id, created_at, updated_at');
+      .select('*');
 
     if (!isSuper && tenantId) {
       query = query.eq('tenant_id', tenantId);
