@@ -199,13 +199,27 @@ export async function POST(request: NextRequest) {
 
     // 3. Send REAL Web Push notification to operator's device (works in background!)
     try {
-      const pushResult = await sendPushToUser(operator_id, {
+      const targetIds = [operator_id];
+      const { data: opRes } = await supabase
+        .from('resources')
+        .select('id, assigned_to, user_id, profile_id')
+        .or(`id.eq.${operator_id},assigned_to.eq.${operator_id}`)
+        .maybeSingle();
+
+      if (opRes) {
+        if (opRes.id) targetIds.push(opRes.id);
+        if (opRes.assigned_to) targetIds.push(opRes.assigned_to);
+        if (opRes.user_id) targetIds.push(opRes.user_id);
+        if (opRes.profile_id) targetIds.push(opRes.profile_id);
+      }
+
+      const pushResult = await sendPushToUser(Array.from(new Set(targetIds)), {
         title: '⚡ CONTROL DE HOMBRE VIVO - SIGPAD',
         body: `Gerencia requiere tu verificación de presencia inmediata. Toca para confirmar.`,
         icon: '/Logo SIGPAD.png',
         url: '/operador',
         tag: `hombre-vivo-${alarm?.id || Date.now()}`,
-        vibrate: [500, 150, 500, 150, 500, 150, 800],
+        vibrate: [1000, 200, 1000, 200, 1000, 200, 1000, 200, 1000, 300, 1000],
         requireInteraction: true,
         data: { type: 'hombre_vivo', alarm_id: alarm?.id, operator_id }
       });

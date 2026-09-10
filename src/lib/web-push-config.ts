@@ -27,7 +27,7 @@ export interface PushPayload {
  * Cleans up expired subscriptions automatically (404/410).
  */
 export async function sendPushToUser(
-  userId: string,
+  userId: string | string[],
   payload: PushPayload
 ): Promise<{ sent: number; failed: number; cleaned: number }> {
   if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
@@ -38,14 +38,19 @@ export async function sendPushToUser(
   const supabase = createServiceClient();
   let sent = 0, failed = 0, cleaned = 0;
 
+  const targetIds = Array.isArray(userId) ? userId.filter(Boolean) : [userId].filter(Boolean);
+  if (targetIds.length === 0) return { sent: 0, failed: 0, cleaned: 0 };
+
+  const idFilters = targetIds.flatMap(id => [`user_id.eq.${id}`, `resource_id.eq.${id}`]).join(',');
+
   // Query subscriptions by user_id OR resource_id
   const { data: subs } = await supabase
     .from('push_subscriptions')
     .select('*')
-    .or(`user_id.eq.${userId},resource_id.eq.${userId}`);
+    .or(idFilters);
 
   if (!subs || subs.length === 0) {
-    console.log(`[WebPush] No subscriptions found for user ${userId}`);
+    console.log(`[WebPush] No subscriptions found for target IDs: ${targetIds.join(', ')}`);
     return { sent: 0, failed: 0, cleaned: 0 };
   }
 

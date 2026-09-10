@@ -97,15 +97,20 @@ self.addEventListener('push', (event) => {
   const title = data.title || '⚡ CONTROL DE HOMBRE VIVO';
   const options = {
     body: data.body || 'Gerencia requiere tu verificación de presencia inmediata.',
-    icon: data.icon || '/logo_704.jpeg',
+    icon: data.icon || '/Logo SIGPAD.png',
     badge: '/icons/icon-192x192.png',
-    vibrate: data.vibrate || [500, 150, 500, 150, 500, 150, 800],
-    tag: data.tag || '704-push-' + Date.now(),
+    vibrate: data.vibrate || [1000, 200, 1000, 200, 1000, 200, 1000, 200, 1000, 300, 1000],
+    tag: data.tag || 'hombre-vivo-' + Date.now(),
     renotify: true,
-    requireInteraction: data.requireInteraction !== false,
+    requireInteraction: true,
+    silent: false,
+    actions: [
+      { action: 'confirm', title: '✅ CONFIRMAR PRESENCIA' }
+    ],
     data: {
       url: data.url || '/operador',
-      alarm_id: data.data?.alarm_id || null,
+      alarm_id: data.data?.alarm_id || data.alarm_id || null,
+      operator_id: data.data?.operator_id || data.operator_id || null,
       timestamp: Date.now()
     }
   };
@@ -141,7 +146,16 @@ self.addEventListener('notificationclick', (event) => {
         }
       }
       if (self.clients.openWindow) {
-        return self.clients.openWindow(targetUrl);
+        return self.clients.openWindow(targetUrl).then((newClient) => {
+          if (newClient) {
+            setTimeout(() => {
+              newClient.postMessage({
+                type: 'NOTIFICATION_CLICKED',
+                payload: event.notification.data
+              });
+            }, 1000);
+          }
+        });
       }
     })
   );
