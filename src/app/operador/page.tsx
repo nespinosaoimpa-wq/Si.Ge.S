@@ -234,8 +234,18 @@ export default function GuardiaDashboard() {
 
         if (activeShift && !error) {
           const realStartTime = activeShift.checkin_time ? new Date(activeShift.checkin_time) : new Date();
-          const targetLat = Number(activeShift.objectives?.latitude);
-          const targetLng = Number(activeShift.objectives?.longitude);
+          const rawObj = Array.isArray(activeShift.objectives) ? activeShift.objectives[0] : activeShift.objectives;
+          
+          let targetLat = Number(rawObj?.latitude);
+          let targetLng = Number(rawObj?.longitude);
+
+          // Detect swapped coordinates
+          if (targetLat < -50 && targetLng > -50 && targetLng < 0) {
+            const tmp = targetLat;
+            targetLat = targetLng;
+            targetLng = tmp;
+          }
+
           const hasValidLoc = !isNaN(targetLat) && !isNaN(targetLng) && (targetLat !== 0 || targetLng !== 0);
           const objLoc = hasValidLoc ? { lat: targetLat, lng: targetLng } : undefined;
 
@@ -246,10 +256,11 @@ export default function GuardiaDashboard() {
             operator_id: activeShift.operator_id,
             objective_id: activeShift.objective_id,
             objectiveLocation: objLoc,
-            geofenceRadius: Number(activeShift.objectives?.geofence_radius || activeShift.objectives?.geofence_radius_meters || 100),
-            objective_name: activeShift.objectives?.name
+            geofenceRadius: Number(rawObj?.geofence_radius || rawObj?.geofence_radius_meters || 100),
+            objective_name: rawObj?.name
           }, activeShift.id);
         }
+
       } catch (e) {
         console.error('Error checking active shift:', e);
       }

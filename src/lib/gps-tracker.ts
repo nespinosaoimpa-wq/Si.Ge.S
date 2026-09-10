@@ -124,9 +124,18 @@ export class GPSTracker {
 
   private hasValidObjectiveLocation(): boolean {
     if (!this.objectiveLocation) return false;
-    const lat = Number(this.objectiveLocation.lat);
-    const lng = Number(this.objectiveLocation.lng);
-    return !isNaN(lat) && !isNaN(lng) && (lat !== 0 || lng !== 0);
+    let lat = Number(this.objectiveLocation.lat);
+    let lng = Number(this.objectiveLocation.lng);
+    if (isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0)) return false;
+
+    // Detect swapped coordinates in South America (e.g. lat = -60.69, lng = -31.63)
+    if (lat < -50 && lng > -50 && lng < 0) {
+      console.warn(`[GPSTracker] Auto-correcting inverted objective coordinates: (${lat}, ${lng}) -> (${lng}, ${lat})`);
+      this.objectiveLocation = { lat: lng, lng: lat };
+      return true;
+    }
+
+    return Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
   }
 
   private async fetchDynamicGeofenceData() {
@@ -143,8 +152,16 @@ export class GPSTracker {
         const rad = Number(data.geofence_radius_meters || data.geofence_radius || 100);
         if (rad > 0) this.geofenceRadius = rad;
 
-        const objLat = Number(data.latitude);
-        const objLng = Number(data.longitude);
+        let objLat = Number(data.latitude);
+        let objLng = Number(data.longitude);
+
+        // Detect swapped coordinates
+        if (objLat < -50 && objLng > -50 && objLng < 0) {
+          const tmp = objLat;
+          objLat = objLng;
+          objLng = tmp;
+        }
+
         if (!isNaN(objLat) && !isNaN(objLng) && (objLat !== 0 || objLng !== 0)) {
           this.objectiveLocation = { lat: objLat, lng: objLng };
           console.log(`[SIGPAD GPS] Dynamic Objective Location loaded: (${objLat}, ${objLng}), radius: ${this.geofenceRadius}m`);
@@ -156,6 +173,7 @@ export class GPSTracker {
       if (!this.geofenceRadius) this.geofenceRadius = 100;
     }
   }
+
 
   public setHighFrequencyMode(enabled: boolean, roundId?: string) {
     this.highFrequencyMode = enabled;
@@ -397,25 +415,32 @@ export class GPSTracker {
     // 3. Geofence Logic
     const isValidObjLoc = this.hasValidObjectiveLocation();
     if (isValidObjLoc && this.geofenceRadius) {
-      const distance = calculateDistance(lat, lng, this.objectiveLocation!.lat, this.objectiveLocation!.lng);
-      const isOutside = distance > this.geofenceRadius;
+      const rawDistance = calculateDistance(lat, lng, this.objectiveLocation!.lat, this.objectiveLocation!.lng);
+      
+      // Failsafe: Ignore impossible anomaly distances (>50km) caused by uninitialized (0,0) or inverted coordinates
+      const isDistanceAnomaly = rawDistance > 50000;
+      const isOutside = !isDistanceAnomaly && rawDistance > this.geofenceRadius;
+
+      if (isDistanceAnomaly) {
+        console.warn(`[SIGPAD GPS] Suppressing geofence distance anomaly: ${Math.round(rawDistance)}m (>50km threshold)`);
+      }
 
       if (isOutside) {
         if (!this.isCurrentlyOutside) {
           this.isCurrentlyOutside = true;
           this.gracePeriodStart = now;
-          this.handleGeofenceWarning({ distance, graceRemaining: GRACE_PERIOD_MS });
+          this.handleGeofenceWarning({ distance: rawDistance, graceRemaining: GRACE_PERIOD_MS });
         } else if (!this.alertTriggered && (now - (this.gracePeriodStart || 0) > GRACE_PERIOD_MS)) {
           this.alertTriggered = true;
-          this.handleAbandonment({ distance, latitude: lat, longitude: lng });
+          this.handleAbandonment({ distance: rawDistance, latitude: lat, longitude: lng });
         }
       } else {
-        if (this.isCurrentlyOutside) {
+        if (this.isCurrentlyOutside && !isDistanceAnomaly) {
           this.isCurrentlyOutside = false;
           this.gracePeriodStart = null;
           if (this.alertTriggered) {
             this.alertTriggered = false;
-            this.handleReturn({ distance });
+            this.handleReturn({ distance: rawDistance });
           }
         }
       }
@@ -428,6 +453,9 @@ export class GPSTracker {
     if (now - this.lastUpdateTs >= currentInterval) {
       this.lastUpdateTs = now;
       
+      const rawDist = isValidObjLoc ? calculateDistance(lat, lng, this.objectiveLocation!.lat, this.objectiveLocation!.lng) : null;
+      const safeDist = rawDist !== null && rawDist <= 50000 ? rawDist : null;
+
       const payload = {
         latitude: lat,
         longitude: lng,
@@ -438,12 +466,13 @@ export class GPSTracker {
         altitudeAccuracy: pos.coords.altitudeAccuracy,
         timestamp: pos.timestamp,
         isStationary,
-        isOutside: isValidObjLoc ? this.isCurrentlyOutside : false,
-        distanceToObjective: isValidObjLoc ? calculateDistance(lat, lng, this.objectiveLocation!.lat, this.objectiveLocation!.lng) : null
+        isOutside: isValidObjLoc ? (safeDist !== null && safeDist > this.geofenceRadius!) : false,
+        distanceToObjective: safeDist
       };
 
       this.handleLocationUpdate(payload);
     }
+
   }
 
   private savePatrolTracePoint(data: any) {

@@ -221,9 +221,17 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
                  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
                  const calcDist = R * c;
 
-                 distToObj = calcDist;
-                 if (calcDist > (shiftData.geofenceRadius || 100)) {
-                   isOutside = true;
+                 // Failsafe: Distances > 50km (50,000m) are coordinate anomalies / uninitialized points
+                 if (calcDist > 50000) {
+                   distToObj = null;
+                   isOutside = false;
+                 } else {
+                   distToObj = calcDist;
+                   if (calcDist > (shiftData.geofenceRadius || 100)) {
+                     isOutside = true;
+                   } else {
+                     isOutside = false;
+                   }
                  }
                } else if (!hasValidLoc) {
                  isOutside = false;
@@ -249,6 +257,7 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
                 id: shiftData?.objective_id
               } : undefined;
             })()
+
           );
           trackerRef.current.start();
         } catch (e) {

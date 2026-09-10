@@ -33,8 +33,19 @@ export async function POST(request: Request) {
         if (objective?.name) objectiveName = objective.name;
 
         if (objective?.latitude && objective?.longitude) {
-          objectiveLocation = { lat: Number(objective.latitude), lng: Number(objective.longitude) };
+          let lat = Number(objective.latitude);
+          let lng = Number(objective.longitude);
+
+          // Detect swapped coordinates
+          if (lat < -50 && lng > -50 && lng < 0) {
+            const tmp = lat;
+            lat = lng;
+            lng = tmp;
+          }
+
+          objectiveLocation = { lat, lng };
         }
+
       } catch (e) {}
     }
 
