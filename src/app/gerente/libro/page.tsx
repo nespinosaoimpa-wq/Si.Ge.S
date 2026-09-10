@@ -518,7 +518,12 @@ export default function GuardBookPage() {
               const isCritical = entry.urgency === 'critica' || entry.entry_type === 'emergencia';
               const createdDate = new Date(entry.created_at);
 
-              const operatorName = entry.author_name || entry.written_by || entry.resources?.name || 
+              let extractedNameFromContent: string | null = null;
+              if (entry.content && entry.content.includes('Pendiente de confirmación por ')) {
+                extractedNameFromContent = entry.content.split('Pendiente de confirmación por ')[1]?.trim() || null;
+              }
+
+              const operatorName = entry.resources?.name || entry.author_name || entry.written_by || extractedNameFromContent || 
                 (entry.content?.startsWith('[GERENTE]') ? 'Mesa de Control (Gerencia)' : 
                 (entry.entry_type === 'fichaje' ? 'Sistema (Fichaje Automático)' : 'Personal Autorizado'));
 

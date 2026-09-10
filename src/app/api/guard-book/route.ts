@@ -158,10 +158,41 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const finalEntries = withZones.map(e => ({
-      ...e,
-      weekly_alert_count: weeklyAlertCounts[e.resource_id] || 0
-    }));
+    // 🚀 RESOLVER NOMBRES Y AVATARES DE OPERADORES
+    let allResourcesMap: Record<string, any> = {};
+    try {
+      let resQuery = supabase.from('resources').select('id, assigned_to, name, avatar_url, role');
+      if (!isSuper && tenantId) resQuery = resQuery.eq('tenant_id', tenantId);
+      const { data: resList } = await resQuery;
+      if (resList) {
+        resList.forEach(r => {
+          if (r.id) allResourcesMap[r.id] = r;
+          if (r.assigned_to) allResourcesMap[r.assigned_to] = r;
+        });
+      }
+    } catch (e) {
+      console.warn('[GUARD_BOOK_GET] Error fetching resources map:', e);
+    }
+
+    const finalEntries = withZones.map(e => {
+      const opId = e.operator_id || e.resource_id;
+      const matchedRes = allResourcesMap[opId];
+
+      const resObj = e.resources && e.resources.name ? e.resources : (matchedRes ? {
+        id: matchedRes.id,
+        name: matchedRes.name,
+        avatar_url: matchedRes.avatar_url,
+        role: matchedRes.role
+      } : null);
+
+      return {
+        ...e,
+        resources: resObj,
+        author_name: e.author_name || resObj?.name || matchedRes?.name || null,
+        author_avatar_url: e.author_avatar_url || resObj?.avatar_url || matchedRes?.avatar_url || null,
+        weekly_alert_count: weeklyAlertCounts[e.resource_id] || 0
+      };
+    });
 
     return NextResponse.json(finalEntries, {
       headers: {
