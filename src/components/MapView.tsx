@@ -314,9 +314,9 @@ const ObjectiveMarkerContent = React.memo(({
         <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-zinc-950 rotate-45 border-r border-b border-white/20" />
       </div>
 
-      {/* Sleek Tactical Dark Obsidian Card with Operator Photo if active or Original SIGPAD Icon */}
+      {/* Sleek Tactical Dark Obsidian Card with Building Icon & Attached Operator Photo Badge */}
       <div className={cn(
-        "w-10 h-10 rounded-xl bg-zinc-950 backdrop-blur-md flex items-center justify-center shadow-[0_6px_20px_rgba(0,0,0,0.5)] cursor-pointer border-2 transition-[color,background-color,border-color,box-shadow,opacity] duration-300 relative overflow-hidden pointer-events-auto",
+        "w-10 h-10 rounded-xl bg-zinc-950 backdrop-blur-md flex items-center justify-center shadow-[0_6px_20px_rgba(0,0,0,0.5)] cursor-pointer border-2 transition-[color,background-color,border-color,box-shadow,opacity] duration-300 relative pointer-events-auto",
         isCritical
           ? "border-red-500 text-white scale-125 z-50 animate-bounce shadow-[0_0_20px_rgba(239,68,68,0.6)]"
           : isManned
@@ -327,14 +327,15 @@ const ObjectiveMarkerContent = React.memo(({
       )}>
         {isCritical ? (
           <Zap className="w-5 h-5 text-amber-300 animate-pulse" />
-        ) : activeGuardAvatar ? (
-          <img src={activeGuardAvatar} className="w-full h-full object-cover rounded-[9px]" alt={obj.name} />
-        ) : isManned ? (
-          <div className="w-full h-full flex items-center justify-center bg-[#0F4C5C]/30 text-emerald-400">
-            <User className="w-5 h-5 text-emerald-400" />
-          </div>
         ) : (
-          <Building2 className="w-5 h-5 text-[#0F4C5C]" />
+          <Building2 className={cn("w-5 h-5", isManned ? "text-emerald-400" : "text-[#0F4C5C]")} />
+        )}
+
+        {/* Attached Operator Photo Badge (Bottom-Right Corner) */}
+        {activeGuardAvatar && (
+          <div className="absolute -bottom-1.5 -right-1.5 w-5 h-5 rounded-full border-2 border-zinc-950 overflow-hidden shadow-md z-20">
+            <img src={activeGuardAvatar} className="w-full h-full object-cover" alt="Operador en turno" />
+          </div>
         )}
 
         {/* Precision Status Dot (Subtle Accent, Top-Right Corner) */}

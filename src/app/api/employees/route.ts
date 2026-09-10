@@ -16,13 +16,16 @@ const VALID_DB_COLUMNS = new Set([
 
 function unpackResource(row: any) {
   if (!row) return row;
-  const docs = typeof row.documents === 'object' && row.documents !== null ? row.documents : {};
-  return {
-    ...docs,
-    ...row,
-    hourly_pay_rate: row.hourly_pay_rate ?? (row.salary ? parseFloat(String(row.salary).replace(/[^0-9.]/g, '')) : null),
-    objectives: row.assigned_objective || row.objectives
-  };
+  const docs = typeof row.documents === 'object' && row.documents !== null && !Array.isArray(row.documents) ? row.documents : {};
+  const unpacked = { ...docs, ...row };
+  for (const [key, val] of Object.entries(docs)) {
+    if (unpacked[key] === null || unpacked[key] === undefined || unpacked[key] === '') {
+      unpacked[key] = val;
+    }
+  }
+  unpacked.hourly_pay_rate = row.hourly_pay_rate ?? (row.salary ? parseFloat(String(row.salary).replace(/[^0-9.]/g, '')) : null);
+  unpacked.objectives = row.assigned_objective || row.objectives;
+  return unpacked;
 }
 
 function sanitizeResourcePayload(body: any, existingDocs: any = {}) {
@@ -70,7 +73,7 @@ export async function GET(req: NextRequest) {
     const supabase = createServiceClient();
     let query = supabase
       .from('resources')
-      .select('id, name, role, status, latitude, longitude, phone, email, dni, address, hiring_date, salary, avatar_url, assigned_to, hourly_pay_rate, current_objective_id, profile_id, created_at, updated_at, tenant_id, assigned_objective:objectives(name)')
+      .select('*, assigned_objective:objectives(name)')
       .neq('status', 'baja');
 
     if (tenantId && (!isSuper || !showAll)) {
