@@ -119,7 +119,7 @@ export default function PersonalPage() {
       const { id, ...staffData } = newStaff;
       const normalizedData: any = {
         ...staffData,
-        email: staffData.email.toLowerCase().trim(),
+        email: (staffData.email || '').toLowerCase().trim(),
         hourly_pay_rate: staffData.hourly_pay_rate ? parseFloat(staffData.hourly_pay_rate) : null,
       };
       

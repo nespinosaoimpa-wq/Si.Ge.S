@@ -7,21 +7,29 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
+    if (!id || id === 'undefined') {
+      return NextResponse.json({ error: 'ID de incidente inválido' }, { status: 400 });
+    }
     const body = await request.json();
     const supabase = createServiceClient();
 
+    // Sanitize update fields to prevent arbitrary field override
+    const allowedUpdates: any = {};
+    if (body.status !== undefined) allowedUpdates.status = body.status;
+    if (body.comment !== undefined) allowedUpdates.comment = body.comment;
+    if (body.status === 'resolved' || body.status === 'resuelto') {
+      allowedUpdates.resolved_at = new Date().toISOString();
+    }
+
     const { data, error } = await supabase
       .from('incidents')
-      .update({
-        ...body,
-        resolved_at: body.status === 'resolved' || body.status === 'resuelto' ? new Date().toISOString() : null
-      })
+      .update(allowedUpdates)
       .eq('id', id)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
-    return NextResponse.json(data);
+    return NextResponse.json(data || { success: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

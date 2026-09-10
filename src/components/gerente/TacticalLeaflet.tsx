@@ -357,7 +357,7 @@ export default function TacticalLeaflet({
                   if (onResourceSelect) onResourceSelect(res);
                 }}
               >
-                <div className="relative flex flex-col items-center group transition-all duration-[2500ms] ease-linear cursor-pointer">
+                <div className="relative flex flex-col items-center group cursor-pointer select-none">
                   {/* Name Tag (HUD Style) */}
                   <div className="absolute -top-10 px-2 py-1 bg-black/80 backdrop-blur-md text-white text-[9px] font-black uppercase tracking-tighter rounded border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
                     {res.name} {isActive && <span className="text-primary ml-1">●</span>}
@@ -366,7 +366,7 @@ export default function TacticalLeaflet({
                   {/* Animated Body */}
                   <div 
                     className={cn(
-                      "w-10 h-10 rounded-xl flex items-center justify-center shadow-2xl border-2 transition-all duration-[2500ms] ease-linear overflow-hidden",
+                      "w-10 h-10 rounded-xl flex items-center justify-center shadow-2xl border-2 transition-[color,background-color,border-color,box-shadow,opacity] duration-300 overflow-hidden",
                       isActive ? "bg-zinc-900 border-primary" : "bg-zinc-800 border-zinc-600 opacity-60"
                     )}
                   >

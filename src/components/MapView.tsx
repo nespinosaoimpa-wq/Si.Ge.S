@@ -8,7 +8,10 @@ import { reverseGeocode } from '@/lib/geocoding';
 import { Shield, MapPin, AlertTriangle, User, Target, Layers, Car, UserX, DoorOpen, Package, Lightbulb, Zap, Navigation, Clock, Building2, CheckCircle2, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fetchNearbyEmergencyServices, getPOIStyle, NearbyPOI } from '@/lib/nearby-services';
-const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || ('pk.eyJ1Ijoibmljb2VzcGlub3NhIiwiYSI6ImNtbzczM21ucjAydDgycHB2MXZsY3Bqc3EifQ.' + 'LeVW1Jfcr6Rr6q1o15Kkzw');
+const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
+if (!MAPBOX_TOKEN) {
+  console.warn("NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN is not set.");
+}
 
 /* ─── Interfaces ─── */
 
@@ -219,22 +222,10 @@ const GuardMarkerContent = React.memo(({
   const hasHeading = heading !== undefined && heading !== null;
 
   return (
-    <div className="relative flex flex-col items-center group">
-      {/* Accuracy Halo */}
-      {accuracy && accuracy > 15 && (
-        <div 
-          className="absolute rounded-full bg-[#0F4C5C]/5 border border-[#0F4C5C]/10 pointer-events-none"
-          style={{ 
-            width: `${accuracy * 2}px`, 
-            height: `${accuracy * 2}px`,
-            transition: 'all 1s ease-out' 
-          }}
-        />
-      )}
-
-      {/* Name Tag */}
+    <div className="relative w-10 h-10 flex items-center justify-center group pointer-events-none select-none">
+      {/* Name Tag - Perfectly Centered */}
       <div className={cn(
-        "absolute -top-10 px-2.5 py-1 bg-black/90 text-white text-[10px] font-black uppercase tracking-widest rounded-lg border border-white/20 shadow-2xl transition-all duration-300 pointer-events-none whitespace-nowrap",
+        "absolute -top-10 left-1/2 -translate-x-1/2 px-2.5 py-1 bg-black/90 text-white text-[10px] font-black uppercase tracking-widest rounded-lg border border-white/20 shadow-2xl transition-opacity duration-300 pointer-events-none whitespace-nowrap z-30",
         isSelected ? "opacity-100 scale-100 -translate-y-2" : "opacity-0 scale-90 translate-y-0 group-hover:opacity-100 group-hover:scale-100 group-hover:-translate-y-1",
         isAbandoned && "border-red-500 text-red-500 font-bold",
         !isOnShift && "border-zinc-500/50 text-zinc-400"
@@ -243,10 +234,10 @@ const GuardMarkerContent = React.memo(({
         {speed && speed > 0.5 && <span className="ml-2 text-primary">| {speedKmh} km/h</span>}
       </div>
 
-      {/* Main Marker with Transition */}
+      {/* Main Marker — Instant Geographic Position Anchoring */}
       <div 
         className={cn(
-          "w-10 h-10 rounded-full flex items-center justify-center shadow-2xl cursor-pointer border transition-all duration-[2500ms] ease-linear overflow-hidden",
+          "w-10 h-10 rounded-full flex items-center justify-center shadow-2xl cursor-pointer border transition-[color,background-color,border-color,box-shadow,opacity] duration-300 overflow-hidden relative z-10 pointer-events-auto",
           isSelected 
             ? "bg-[#0F4C5C] border-black scale-125 z-50" 
             : isAbandoned
@@ -278,8 +269,8 @@ const GuardMarkerContent = React.memo(({
       {/* Direction Pointer - Only show if actively moving (speed > 1.5 km/h) */}
       {hasHeading && speed !== undefined && speed !== null && (speed * 3.6) > 1.5 && (
         <div 
-          className="absolute w-3 h-3 bg-[#D4AF37] rotate-45 border-r border-b border-black -bottom-2 z-10 transition-all duration-[2500ms] ease-linear shadow-md"
-          style={{ transform: `rotate(${heading}deg) translateY(18px) rotate(45deg)` }}
+          className="absolute w-3 h-3 bg-[#D4AF37] rotate-45 border-r border-b border-black -bottom-2 left-1/2 -translate-x-1/2 z-10 shadow-md pointer-events-none"
+          style={{ transform: `translateX(-50%) rotate(${heading}deg) translateY(18px) rotate(45deg)` }}
         />
       )}
     </div>
@@ -290,17 +281,19 @@ GuardMarkerContent.displayName = 'GuardMarkerContent';
 const ObjectiveMarkerContent = React.memo(({
   obj,
   isSelected,
-  isRelocating
+  isRelocating,
+  activeGuardAvatar
 }: {
   obj: Objective;
   isSelected: boolean;
   isRelocating: boolean;
+  activeGuardAvatar?: string | null;
 }) => {
-  const isManned = obj.is_manned || (obj.assigned_personnel && obj.assigned_personnel.length > 0) || Boolean(obj.occupant_name);
+  const isManned = obj.is_manned || (obj.assigned_personnel && obj.assigned_personnel.length > 0) || Boolean(obj.occupant_name) || Boolean(activeGuardAvatar);
   const isCritical = obj.status === 'critica' || obj.status === 'alerta' || obj.status === 'emergency';
 
   return (
-    <div className="relative flex flex-col items-center group cursor-pointer">
+    <div className="relative w-10 h-10 flex items-center justify-center group cursor-pointer pointer-events-none select-none">
       {/* Relocation visual hint */}
       {isRelocating && isSelected && (
         <div className="absolute -top-16 left-1/2 -translate-x-1/2 bg-zinc-950 text-white text-[8px] font-black uppercase px-2.5 py-1.5 rounded-lg whitespace-nowrap animate-bounce border-2 border-[#0F4C5C] shadow-2xl z-[60]">
@@ -310,7 +303,7 @@ const ObjectiveMarkerContent = React.memo(({
 
       {/* Objective Name Label */}
       <div className={cn(
-        "absolute -top-10 px-2.5 py-1 bg-zinc-950 text-white text-[9px] font-black uppercase tracking-widest rounded-lg border border-white/20 shadow-2xl transition-all duration-300 pointer-events-none whitespace-nowrap z-50 flex items-center gap-1.5",
+        "absolute -top-10 left-1/2 -translate-x-1/2 px-2.5 py-1 bg-zinc-950 text-white text-[9px] font-black uppercase tracking-widest rounded-lg border border-white/20 shadow-2xl transition-opacity duration-300 pointer-events-none whitespace-nowrap z-50 flex items-center gap-1.5",
         isSelected ? "opacity-100 scale-100 -translate-y-1" : "opacity-0 scale-90 translate-y-2 group-hover:opacity-100 group-hover:scale-100 group-hover:translate-y-0"
       )}>
         <span className={cn(
@@ -321,9 +314,9 @@ const ObjectiveMarkerContent = React.memo(({
         <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-zinc-950 rotate-45 border-r border-b border-white/20" />
       </div>
 
-      {/* Sleek Tactical Dark Obsidian Card with Original SIGPAD Icon & Subtle Status Border Accent */}
+      {/* Sleek Tactical Dark Obsidian Card with Operator Photo if active or Original SIGPAD Icon */}
       <div className={cn(
-        "w-10 h-10 rounded-xl bg-zinc-950 backdrop-blur-md flex items-center justify-center shadow-[0_6px_20px_rgba(0,0,0,0.5)] cursor-pointer border-2 transition-all duration-300 relative",
+        "w-10 h-10 rounded-xl bg-zinc-950 backdrop-blur-md flex items-center justify-center shadow-[0_6px_20px_rgba(0,0,0,0.5)] cursor-pointer border-2 transition-[color,background-color,border-color,box-shadow,opacity] duration-300 relative overflow-hidden pointer-events-auto",
         isCritical
           ? "border-red-500 text-white scale-125 z-50 animate-bounce shadow-[0_0_20px_rgba(239,68,68,0.6)]"
           : isManned
@@ -334,6 +327,12 @@ const ObjectiveMarkerContent = React.memo(({
       )}>
         {isCritical ? (
           <Zap className="w-5 h-5 text-amber-300 animate-pulse" />
+        ) : activeGuardAvatar ? (
+          <img src={activeGuardAvatar} className="w-full h-full object-cover rounded-[9px]" alt={obj.name} />
+        ) : isManned ? (
+          <div className="w-full h-full flex items-center justify-center bg-[#0F4C5C]/30 text-emerald-400">
+            <User className="w-5 h-5 text-emerald-400" />
+          </div>
         ) : (
           <Building2 className="w-5 h-5 text-[#0F4C5C]" />
         )}
@@ -438,7 +437,7 @@ export default function MapView({
   const mapRef = useRef<MapRef>(null);
   const isValidCoords = (lat: any, lng: any) => lat !== undefined && lng !== undefined && !isNaN(Number(lat)) && !isNaN(Number(lng)) && Number(lat) !== 0 && Number(lng) !== 0;
   const [isMobile, setIsMobile] = useState(false);
-  const [is3D, setIs3D] = useState(true); 
+  const [is3D, setIs3D] = useState(false); 
   const [showStyles, setShowStyles] = useState(false);
   const [viewState, setViewState] = useState(() => {
     const lat = center && center[0] && !isNaN(Number(center[0])) ? Number(center[0]) : -31.6230;
@@ -447,8 +446,8 @@ export default function MapView({
       latitude: lat,
       longitude: lng,
       zoom: zoom,
-      pitch: 60,
-      bearing: -20
+      pitch: 0,
+      bearing: 0
     };
   });
 
@@ -572,7 +571,7 @@ export default function MapView({
         latitude: Number(center[0]),
         longitude: Number(center[1]),
         zoom: zoom || 16.5,
-        pitch: 45,
+        pitch: is3D ? 45 : 0,
         transitionDuration: 1500
       }));
     }
@@ -586,7 +585,7 @@ export default function MapView({
         latitude: Number(activeObjective.latitude),
         longitude: Number(activeObjective.longitude),
         zoom: 16.5,
-        pitch: 45,
+        pitch: is3D ? 45 : 0,
         transitionDuration: 1200
       }));
     }
@@ -704,22 +703,29 @@ export default function MapView({
   
   const getAvatarUrl = (item: any) => {
     if (!item) return null;
+    if (item.avatar_url) return item.avatar_url;
+    if (item.photo_url) return item.photo_url;
+    if (item.image_url) return item.image_url;
+    if (item.user_metadata?.avatar_url) return item.user_metadata.avatar_url;
+    
     const profiles = item.profiles;
-    const avatar = item.avatar_url;
-    
-    if (avatar) return avatar;
-    
-    // Check 'profiles' (plural)
     if (profiles) {
-      if (Array.isArray(profiles) && profiles.length > 0) return profiles[0].avatar_url;
-      if (typeof profiles === 'object' && (profiles as any).avatar_url) return (profiles as any).avatar_url;
+      if (Array.isArray(profiles) && profiles.length > 0) {
+        return profiles[0].avatar_url || profiles[0].photo_url || profiles[0].image_url;
+      }
+      if (typeof profiles === 'object') {
+        return (profiles as any).avatar_url || (profiles as any).photo_url || (profiles as any).image_url;
+      }
     }
     
-    // Check 'profile' (singular) as fallback
     const singleProfile = (item as any).profile;
     if (singleProfile) {
-      if (Array.isArray(singleProfile) && singleProfile.length > 0) return singleProfile[0].avatar_url;
-      if (typeof singleProfile === 'object' && singleProfile.avatar_url) return singleProfile.avatar_url;
+      if (Array.isArray(singleProfile) && singleProfile.length > 0) {
+        return singleProfile[0].avatar_url || singleProfile[0].photo_url || singleProfile[0].image_url;
+      }
+      if (typeof singleProfile === 'object') {
+        return singleProfile.avatar_url || singleProfile.photo_url || singleProfile.image_url;
+      }
     }
     
     return null;
@@ -1023,6 +1029,23 @@ export default function MapView({
           const isSelected = selectedObjectiveId === obj.id || selectedObjective?.id === obj.id;
           const hasIncident = activeIncidents.some(inc => (inc as any).objective_id === obj.id);
           const enrichedObj = hasIncident ? { ...obj, status: 'critica' } : obj;
+
+          // Resolve active guard on shift at this objective to display avatar photo!
+          const activeGuardAtObj = (guards || []).find(g => {
+            const isAtThisObj = g.current_objective_id === obj.id || 
+                                g.id === (obj as any).current_operator_id ||
+                                (obj.assigned_personnel || []).some((p: any) => p.id === g.id || p.assigned_to === g.id);
+            const isActive = g.status === 'activo' || 
+                             g.status === 'active' || 
+                             g.status === 'En Turno' || 
+                             g.status === 'en_turno' || 
+                             g.status === 'online' || 
+                             Boolean(g.isOnShift) || 
+                             Boolean((g as any).current_shift_id);
+            return isAtThisObj && isActive;
+          }) || ((obj.assigned_personnel && obj.assigned_personnel.length > 0) ? obj.assigned_personnel[0] : null);
+
+          const activeGuardAvatar = activeGuardAtObj ? getAvatarUrl(activeGuardAtObj) : null;
           
           return (
             <Marker
@@ -1045,6 +1068,7 @@ export default function MapView({
                 obj={enrichedObj}
                 isSelected={isSelected}
                 isRelocating={isRelocating}
+                activeGuardAvatar={activeGuardAvatar}
               />
             </Marker>
           );

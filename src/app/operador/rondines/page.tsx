@@ -102,7 +102,14 @@ export default function RondinesPage() {
 
   // ── Cleanup tracker on unmount ──────────────────────────────────────────────
   useEffect(() => {
-    return () => { trackerRef.current?.stop(); };
+    return () => { 
+      if (trackerRef.current) {
+        trackerRef.current.stop();
+        if (trackerRef.current._realtimeChannel) {
+          supabase.removeChannel(trackerRef.current._realtimeChannel);
+        }
+      }
+    };
   }, []);
 
   // ── Initial data fetch ──────────────────────────────────────────────────────
@@ -332,9 +339,11 @@ export default function RondinesPage() {
 
     setValidating(true);
     try {
+      const tenantId = (shiftData as any)?.tenant_id;
       const { data, error } = await supabase
         .from('patrol_rounds')
         .insert({
+          tenant_id: tenantId,
           objective_id: objectiveId,
           resource_id: operatorId,
           status: 'active',

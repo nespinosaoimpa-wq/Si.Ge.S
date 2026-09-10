@@ -65,14 +65,15 @@ export async function GET(req: NextRequest) {
     }
 
     const { tenantId, isSuper } = ctx;
+    const showAll = req.nextUrl.searchParams.get('all') === 'true';
 
     const supabase = createServiceClient();
     let query = supabase
       .from('resources')
-      .select('*, assigned_objective:objectives(name)')
+      .select('id, name, role, status, latitude, longitude, phone, email, dni, address, hiring_date, salary, avatar_url, assigned_to, hourly_pay_rate, current_objective_id, profile_id, created_at, updated_at, tenant_id, assigned_objective:objectives(name)')
       .neq('status', 'baja');
 
-    if (!isSuper && tenantId) {
+    if (tenantId && (!isSuper || !showAll)) {
       query = query.eq('tenant_id', tenantId);
     }
 
@@ -84,7 +85,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(finalData, {
       headers: {
-        'Cache-Control': 'no-store, max-age=0'
+        'Cache-Control': 'public, s-maxage=5, stale-while-revalidate=15'
       }
     });
   } catch (error: any) {

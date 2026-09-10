@@ -15,176 +15,137 @@ export async function POST(request: Request) {
 
     try {
       if (objective_id) {
-        const { data: obj } = await supabase.from('objectives').select('name, tenant_id').eq('id', objective_id).maybeSingle();
+        const { data: obj } = await supabase
+          .from('objectives')
+          .select('name, tenant_id')
+          .eq('id', objective_id)
+          .maybeSingle();
         if (obj?.name) objectiveName = obj.name;
         if (obj?.tenant_id) tenantId = obj.tenant_id;
       }
-      if (!tenantId && operator_id) {
-        const { data: op } = await supabase.from('resources').select('name, tenant_id').or(`id.eq.${operator_id},assigned_to.eq.${operator_id}`).limit(1).maybeSingle();
+      if (operator_id) {
+        const { data: op } = await supabase
+          .from('resources')
+          .select('name, tenant_id')
+          .or(`id.eq.${operator_id},assigned_to.eq.${operator_id},user_id.eq.${operator_id},profile_id.eq.${operator_id}`)
+          .limit(1)
+          .maybeSingle();
         if (op?.name) operatorName = op.name;
-        if (op?.tenant_id) tenantId = op.tenant_id;
+        if (!tenantId && op?.tenant_id) tenantId = op.tenant_id;
       }
-    } catch (e) {}
+    } catch (e) {
+      console.warn('[GEOTRACKING_ALERT] Error fetching names:', e);
+    }
 
     const distMeters = Math.round(distance || 0);
 
     if (type === 'exit') {
-      // ════ CONGELAR / PAUSAR CÓMPUTO DE MINUTOS DE TURNO ════
-      if (shift_id) {
-        await supabase
-          .from('guard_shifts')
-          .update({
-            is_paused: true,
-            paused_reason: 'abandono_geocerca',
-            geofence_status: 'outside',
-            last_exit_at: now
-          })
-          .eq('id', shift_id);
+      // ════ REJECT INVALID / NULL ISLAND ANOMALIES (>500km distance indicates unconfigured coords) ════
+      if (distMeters > 500000 || (latitude !== undefined && Math.abs(Number(latitude)) < 0.1 && Math.abs(Number(longitude)) < 0.1)) {
+        console.warn(`[GEOTRACKING_ALERT] Ignored invalid exit alert: distance=${distMeters}m, lat=${latitude}, lng=${longitude}`);
+        return NextResponse.json({ success: false, reason: 'invalid_distance_or_coordinates' });
       }
 
-      if (operator_id) {
-        await supabase
-          .from('resources')
-          .update({
-            is_geofence_paused: true,
-            geofence_status: 'outside'
-          })
-          .or(`id.eq.${operator_id},assigned_to.eq.${operator_id}`);
-      }
-
-      // ════ CREAR REGISTRO DE INCIDENCIA GEOFENCING ════
-      await supabase.from('geofencing_incidents').insert({
-        shift_id,
-        operator_id,
-        objective_id,
-        exit_at: now,
-        max_distance_meters: distMeters,
-        status: 'pendiente',
-        tenant_id: tenantId
-      });
-
-      // ════ ALERTA PARA EL GERENTE (TABLA ALARMS) ════
-      await supabase.from('alarms').insert({
-        alarm_type: 'geofence_exit',
-        status: 'active',
-        operator_id: operator_id,
-        objective_id: objective_id,
-        operator_name: operatorName,
-        message: `🚨 ABANDONO DE PUESTO: ${operatorName} se alejó ${distMeters}m de ${objectiveName}. CÓMPUTO DE HORAS PAUSADO.`,
-        latitude: latitude || 0,
-        longitude: longitude || 0,
-        created_at: now,
-        tenant_id: tenantId
-      });
-
-      // ════ ALERTA PUSH / NOTIFICACIÓN PARA GERENCIA Y SUPERVISORES ════
+      // ════ REGISTRO EN TABLA GEOFENCE_ALERTS ════
       try {
-        let managerQuery = supabase
-          .from('resources')
-          .select('id')
-          .in('role', ['owner', 'gerente', 'superadmin', 'supervisor']);
-        if (tenantId) managerQuery = managerQuery.eq('tenant_id', tenantId);
-        const { data: managers } = await managerQuery;
+        await supabase.from('geofence_alerts').insert({
+          operator_id: operator_id || null,
+          objective_id: objective_id || null,
+          alert_type: 'exit',
+          latitude: latitude || 0,
+          longitude: longitude || 0,
+          resolved: false,
+          created_at: now,
+          tenant_id: tenantId
+        });
+      } catch (err) {
+        console.warn('[GEOTRACKING_ALERT] geofence_alerts insert failed:', err);
+      }
 
-        if (managers && managers.length > 0) {
-          const notifications = managers.map(m => ({
-            resource_id: m.id,
-            type: 'alerta',
-            title: '🚨 ABANDONO DE PUESTO - CÓMPUTO PAUSADO',
-            body: `El operador ${operatorName} se alejó ${distMeters}m de ${objectiveName}. El conteo de minutos de su turno ha sido CONGELADO automáticamente.`,
-            data: { operator_id, objective_id, distance: distMeters, latitude, longitude },
-            created_at: now,
-            tenant_id: tenantId
-          }));
-          await supabase.from('notifications').insert(notifications);
-        }
+      // ════ ALERTA PARA EL GERENTE EN TABLA ALARMS (Sirena & Live Feed) ════
+      try {
+        await supabase.from('alarms').insert({
+          alarm_type: 'geofence_exit',
+          status: 'active',
+          triggered_by: operator_id || null,
+          operator_name: operatorName,
+          objective_id: objective_id || null,
+          message: `🚨 ABANDONO DE PUESTO: ${operatorName} se alejó ${distMeters}m de ${objectiveName}. CÓMPUTO DE HORAS PAUSADO.`,
+          latitude: latitude || 0,
+          longitude: longitude || 0,
+          created_at: now,
+          tenant_id: tenantId
+        });
+      } catch (err) {
+        console.warn('[GEOTRACKING_ALERT] alarms insert failed:', err);
+      }
+
+      // ════ REGISTRO EN TABLA INCIDENTS ════
+      try {
+        await supabase.from('incidents').insert({
+          operator_id: operator_id || null,
+          objective_id: objective_id || null,
+          entry_type: 'alerta',
+          content: `⚠️ ALERTA GEOCERCA: ${operatorName} se alejó ${distMeters}m de ${objectiveName}. Conteo de horas pausado.`,
+          latitude: latitude || 0,
+          longitude: longitude || 0,
+          status: 'pendiente',
+          created_at: now,
+          tenant_id: tenantId
+        });
+      } catch (err) {
+        console.warn('[GEOTRACKING_ALERT] incidents insert failed:', err);
+      }
+
+      // ════ ENTRADA EN LA BITÁCORA TÁCTICA GUARD_BOOK_ENTRIES ════
+      try {
+        await supabase.from('guard_book_entries').insert({
+          objective_id: objective_id || null,
+          operator_id: operator_id || null,
+          entry_type: 'alerta',
+          content: `⚠️ ALERTA DE ABANDONO: El operador ${operatorName} se alejó ${distMeters}m de ${objectiveName}. Conteo de horas PAUSADO.`,
+          latitude: latitude || 0,
+          longitude: longitude || 0,
+          urgency: 'critica',
+          created_at: now,
+          tenant_id: tenantId
+        });
+      } catch (err) {
+        console.warn('[GEOTRACKING_ALERT] guard_book_entries insert failed:', err);
+      }
+
+    } else if (type === 'entry') {
+      // ════ REINGRESO AL PUESTO DE TRABAJO ════
+      try {
+        await supabase
+          .from('geofence_alerts')
+          .update({ resolved: true, resolved_at: now })
+          .eq('objective_id', objective_id)
+          .eq('resolved', false);
       } catch (err) {}
 
-      // ════ ALERTA PUSH / NOTIFICACIÓN PARA EL OPERADOR ════
-      if (operator_id) {
-        try {
-          await supabase.from('notifications').insert({
-            resource_id: operator_id,
-            type: 'alerta',
-            title: '⚠️ REGRESA A TU PUESTO - CÓMPUTO PAUSADO',
-            body: `Te has alejado ${distMeters}m de ${objectiveName}. El conteo de horas trabajadas se ha DETENIDO. Regresa a la zona autorizada para reanudarlo.`,
-            data: { type: 'geofence_warning', distance: distMeters },
-            created_at: now,
-            tenant_id: tenantId
-          });
-        } catch (err) {}
-      }
-    } else if (type === 'entry') {
-      // ════ REANUDAR CÓMPUTO DE MINUTOS DE TURNO ════
-      if (shift_id) {
+      try {
         await supabase
-          .from('guard_shifts')
-          .update({
-            is_paused: false,
-            paused_reason: null,
-            geofence_status: 'inside'
-          })
-          .eq('id', shift_id);
-      }
+          .from('alarms')
+          .update({ status: 'resolved', resolved_at: now })
+          .eq('objective_id', objective_id)
+          .eq('status', 'active');
+      } catch (err) {}
 
-      if (operator_id) {
-        await supabase
-          .from('resources')
-          .update({
-            is_geofence_paused: false,
-            geofence_status: 'inside'
-          })
-          .or(`id.eq.${operator_id},assigned_to.eq.${operator_id}`);
-      }
-
-      // Cerrar la incidencia abierta
-      const { data: lastIncident } = await supabase
-        .from('geofencing_incidents')
-        .select('*')
-        .eq('shift_id', shift_id)
-        .is('return_at', null)
-        .order('exit_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (lastIncident) {
-        await supabase
-          .from('geofencing_incidents')
-          .update({
-            return_at: now,
-            max_distance_meters: Math.max(lastIncident.max_distance_meters || 0, distMeters)
-          })
-          .eq('id', lastIncident.id);
-      }
-
-      // Notificación de reingreso al operador
-      if (operator_id) {
-        try {
-          await supabase.from('notifications').insert({
-            resource_id: operator_id,
-            type: 'novedad',
-            title: '✅ REINGRESO DETECTADO - CÓMPUTO REANUDADO',
-            body: `Has regresado a la zona autorizada de ${objectiveName}. Se ha reanudado el conteo de minutos de tu turno.`,
-            created_at: now,
-            tenant_id: tenantId
-          });
-        } catch (err) {}
-      }
+      try {
+        await supabase.from('guard_book_entries').insert({
+          objective_id: objective_id || null,
+          operator_id: operator_id || null,
+          entry_type: 'novedad',
+          content: `✅ REINGRESO AL PUESTO: El operador ${operatorName} ha regresado a ${objectiveName}. Conteo de horas REANUDADO.`,
+          latitude: latitude || 0,
+          longitude: longitude || 0,
+          urgency: 'normal',
+          created_at: now,
+          tenant_id: tenantId
+        });
+      } catch (err) {}
     }
-
-    // Insertar entrada en la bitácora táctica guard_book_entries
-    await supabase.from('guard_book_entries').insert({
-      objective_id: objective_id,
-      operator_id: operator_id,
-      entry_type: type === 'exit' ? 'alerta' : 'novedad',
-      content: type === 'exit' 
-        ? `⚠️ ALERTA DE ABANDONO: El operador ${operatorName} se alejó ${distMeters}m de ${objectiveName}. Conteo de horas PAUSADO.`
-        : `✅ REINGRESO AL PUESTO: El operador ${operatorName} ha regresado a ${objectiveName}. Conteo de horas REANUDADO.`,
-      latitude: latitude || 0,
-      longitude: longitude || 0,
-      urgency: type === 'exit' ? 'critica' : 'normal',
-      tenant_id: tenantId
-    });
 
     return NextResponse.json({ success: true, is_paused: type === 'exit' });
   } catch (error: any) {
@@ -192,3 +153,4 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+

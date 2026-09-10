@@ -95,7 +95,7 @@ export default function PayrollPage() {
   }, [startDate, endDate])
 
   // Presets de fechas
-  const setPresetPeriod = (preset: 'today' | 'this_week' | 'this_month' | 'last_month') => {
+  const setPresetPeriod = (preset: 'today' | 'this_week' | 'this_month' | 'last_month' | 'last_30_days' | 'all') => {
     const now = new Date()
     let start = new Date()
     let end = new Date()
@@ -114,6 +114,13 @@ export default function PayrollPage() {
     } else if (preset === 'last_month') {
       start = new Date(now.getFullYear(), now.getMonth() - 1, 1)
       end = new Date(now.getFullYear(), now.getMonth(), 0)
+    } else if (preset === 'last_30_days') {
+      start = new Date()
+      start.setDate(now.getDate() - 30)
+      end = new Date()
+    } else if (preset === 'all') {
+      start = new Date(2025, 0, 1)
+      end = new Date()
     }
 
     setStartDate(start.toISOString().split('T')[0])
@@ -329,6 +336,8 @@ export default function PayrollPage() {
               { id: 'this_week', label: 'Esta Semana' },
               { id: 'this_month', label: 'Este Mes' },
               { id: 'last_month', label: 'Mes Anterior' },
+              { id: 'last_30_days', label: 'Últimos 30 Días' },
+              { id: 'all', label: 'Ver Todo' },
             ].map((p) => (
               <button
                 key={p.id}
@@ -511,9 +520,45 @@ export default function PayrollPage() {
                 ))
               ) : activeTab === 'nomina' ? (
                 filteredNomina.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="px-6 py-16 text-center text-zinc-400 text-xs font-bold uppercase tracking-widest">
-                      {searchQuery ? 'No se encontraron resultados para la búsqueda' : 'No hay registros en el período seleccionado'}
+                  <tr className="bg-zinc-50/50">
+                    <td colSpan={7} className="px-6 py-16 text-center">
+                      <div className="max-w-md mx-auto space-y-4">
+                        <div className="w-12 h-12 bg-amber-50 border border-amber-200 text-amber-600 rounded-2xl flex items-center justify-center mx-auto">
+                          <Calendar size={22} />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-black text-zinc-900 uppercase tracking-wide">
+                            {searchQuery ? 'Sin coincidencias para la búsqueda' : 'Sin turnos en el período seleccionado'}
+                          </h4>
+                          <p className="text-xs text-zinc-500 font-medium mt-1 leading-relaxed">
+                            {searchQuery
+                              ? `No encontramos operadores o funciones que coincidan con "${searchQuery}".`
+                              : `No hay turnos registrados entre el ${new Date(startDate + 'T00:00:00').toLocaleDateString('es-AR')} y el ${new Date(endDate + 'T00:00:00').toLocaleDateString('es-AR')}.`}
+                          </p>
+                        </div>
+                        {!searchQuery && (
+                          <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+                            <button
+                              onClick={() => setPresetPeriod('last_month')}
+                              className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all shadow-md"
+                            >
+                              📅 Ver Mes Anterior (Agosto)
+                            </button>
+                            <button
+                              onClick={() => setPresetPeriod('last_30_days')}
+                              className="px-4 py-2 bg-white border border-zinc-300 hover:bg-zinc-100 text-zinc-800 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all"
+                            >
+                              🔄 Ver Últimos 30 Días
+                            </button>
+                            <button
+                              onClick={() => setPresetPeriod('all')}
+                              className="px-4 py-2 bg-white border border-zinc-300 hover:bg-zinc-100 text-zinc-800 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all"
+                            >
+                              📂 Ver Todo el Histórico
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ) : (
@@ -644,9 +689,45 @@ export default function PayrollPage() {
                   })
                 )
               ) : filteredFacturacion.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-6 py-16 text-center text-zinc-400 text-xs font-bold uppercase tracking-widest">
-                    {searchQuery ? 'No se encontraron resultados para la búsqueda' : 'No hay registros en el período seleccionado'}
+                <tr className="bg-zinc-50/50">
+                  <td colSpan={7} className="px-6 py-16 text-center">
+                    <div className="max-w-md mx-auto space-y-4">
+                      <div className="w-12 h-12 bg-amber-50 border border-amber-200 text-amber-600 rounded-2xl flex items-center justify-center mx-auto">
+                        <Calendar size={22} />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-black text-zinc-900 uppercase tracking-wide">
+                          {searchQuery ? 'Sin coincidencias para la búsqueda' : 'Sin turnos en el período seleccionado'}
+                        </h4>
+                        <p className="text-xs text-zinc-500 font-medium mt-1 leading-relaxed">
+                          {searchQuery
+                            ? `No encontramos puestos u objetivos que coincidan con "${searchQuery}".`
+                            : `No hay turnos registrados entre el ${new Date(startDate + 'T00:00:00').toLocaleDateString('es-AR')} y el ${new Date(endDate + 'T00:00:00').toLocaleDateString('es-AR')}.`}
+                        </p>
+                      </div>
+                      {!searchQuery && (
+                        <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+                          <button
+                            onClick={() => setPresetPeriod('last_month')}
+                            className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all shadow-md"
+                          >
+                            📅 Ver Mes Anterior (Agosto)
+                          </button>
+                          <button
+                            onClick={() => setPresetPeriod('last_30_days')}
+                            className="px-4 py-2 bg-white border border-zinc-300 hover:bg-zinc-100 text-zinc-800 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all"
+                          >
+                            🔄 Ver Últimos 30 Días
+                          </button>
+                          <button
+                            onClick={() => setPresetPeriod('all')}
+                            className="px-4 py-2 bg-white border border-zinc-300 hover:bg-zinc-100 text-zinc-800 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all"
+                          >
+                            📂 Ver Todo el Histórico
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ) : (

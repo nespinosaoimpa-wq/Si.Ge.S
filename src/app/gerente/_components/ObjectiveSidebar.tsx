@@ -240,10 +240,26 @@ export function ObjectiveSidebar({
                           "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border transition-all overflow-hidden bg-zinc-50 mt-0.5",
                           obj.is_manned ? "border-[#0F4C5C]/30 shadow-sm" : "border-zinc-200"
                         )}>
-                          {obj.is_manned && (obj.assigned_personnel?.[0]?.profiles?.avatar_url || obj.assigned_personnel?.[0]?.avatar_url) ? (
-                            <img src={obj.assigned_personnel[0].profiles?.avatar_url || obj.assigned_personnel[0].avatar_url} className="w-full h-full object-cover" alt={obj.name} />
+                          {obj.is_manned && (
+                            obj.assigned_personnel?.[0]?.profiles?.avatar_url || 
+                            obj.assigned_personnel?.[0]?.avatar_url ||
+                            (activeGuards || []).find((g: any) => g.current_objective_id === obj.id)?.profiles?.avatar_url ||
+                            (activeGuards || []).find((g: any) => g.current_objective_id === obj.id)?.avatar_url
+                          ) ? (
+                            <img 
+                              src={
+                                obj.assigned_personnel?.[0]?.profiles?.avatar_url || 
+                                obj.assigned_personnel?.[0]?.avatar_url ||
+                                (activeGuards || []).find((g: any) => g.current_objective_id === obj.id)?.profiles?.avatar_url ||
+                                (activeGuards || []).find((g: any) => g.current_objective_id === obj.id)?.avatar_url
+                              } 
+                              className="w-full h-full object-cover" 
+                              alt={obj.name} 
+                            />
+                          ) : obj.is_manned ? (
+                            <User size={18} className="text-[#0F4C5C]" />
                           ) : (
-                            <MapPin size={18} className={cn(obj.is_manned ? "text-[#0F4C5C]" : "text-zinc-400")} />
+                            <MapPin size={18} className="text-zinc-400" />
                           )}
                         </div>
                         <div className="min-w-0 flex-1 overflow-hidden">

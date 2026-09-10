@@ -51,6 +51,7 @@ export default function HombreVivoCheckModal({
 
   // Fetch operator's resource details to match operator_id accurately
   useEffect(() => {
+    let isMounted = true;
     const fetchUserResource = async () => {
       if (!user?.id && !user?.email) return;
       try {
@@ -59,7 +60,7 @@ export default function HombreVivoCheckModal({
           .select('id, name, user_id, profile_id, assigned_to, email')
           .or(`id.eq.${user.id},assigned_to.eq.${user.id},user_id.eq.${user.id},profile_id.eq.${user.id}`);
 
-        if (res1 && res1.length > 0) {
+        if (res1 && res1.length > 0 && isMounted) {
           userResourceRef.current = res1[0];
           return;
         }
@@ -70,18 +71,19 @@ export default function HombreVivoCheckModal({
             .select('id, name, user_id, profile_id, assigned_to, email')
             .eq('email', user.email);
 
-          if (res2 && res2.length > 0) {
+          if (res2 && res2.length > 0 && isMounted) {
             userResourceRef.current = res2[0];
           }
         }
       } catch (e) {}
     };
     fetchUserResource();
+    return () => { isMounted = false; };
   }, [user?.id, user?.email]);
 
   const isTargetOperator = useCallback((alarm: any) => {
     if (!alarm) return false;
-    const targetId = alarm?.operator_id || alarm?.resource_id;
+    const targetId = alarm?.operator_id || alarm?.resource_id || alarm?.triggered_by;
 
     // If no target ID specified in alarm or target is 'all', it's for all active operators
     if (!targetId || targetId === 'all') return true;
@@ -129,6 +131,11 @@ export default function HombreVivoCheckModal({
       return true;
     }
 
+    // If userResourceRef was null at evaluation time, default to true for targeted alarms on operator layout
+    if (!userResourceRef.current && (operatorId || user?.id)) {
+      return true;
+    }
+
     return false;
   }, [operatorId, user?.id, user?.email, objectiveId, shiftData]);
 
@@ -169,15 +176,13 @@ export default function HombreVivoCheckModal({
       if (data?.type === 'PUSH_RECEIVED' || data?.type === 'NOTIFICATION_CLICKED') {
         console.log('[HombreVivo] 🔔 Service Worker Push Message recibido:', data);
         const payload = data.payload || {};
-        if (isTargetOperator(payload)) {
-          triggerCheckModal({
-            id: payload.alarm_id || 'push-' + Date.now(),
-            operator_id: payload.operator_id || operatorId,
-            alarm_type: 'hombre_vivo_solicitud',
-            message: payload.body || 'Control de Hombre Vivo',
-            created_at: new Date().toISOString()
-          });
-        }
+        triggerCheckModal({
+          id: payload.alarm_id || 'push-' + Date.now(),
+          operator_id: payload.operator_id || operatorId,
+          alarm_type: 'hombre_vivo_solicitud',
+          message: payload.body || 'Control de Hombre Vivo',
+          created_at: new Date().toISOString()
+        });
       }
     };
 
@@ -234,7 +239,7 @@ export default function HombreVivoCheckModal({
     };
   }, [triggerCheckModal, isTargetOperator]);
 
-  // ═══════════ STRATEGY 3: Polling fallback for active alarms every 3 seconds ═══════════
+  // ═══════════ STRATEGY 3: Lightweight polling fallback for active alarms every 15 seconds ═══════════
   useEffect(() => {
     const checkForPendingAlarms = async () => {
       if (activeCheck) return;
@@ -245,7 +250,7 @@ export default function HombreVivoCheckModal({
         // Query alarms table ONLY for active status hombre_vivo checks
         const { data: alarmsData } = await supabase
           .from('alarms')
-          .select('*')
+          .select('id, alarm_type, operator_id, resource_id, objective_id, status, created_at, message, operator_name, operator_email')
           .or('alarm_type.eq.hombre_vivo_solicitud,alarm_type.eq.hombre_vivo,alarm_type.eq.hombre_vivo_sin_respuesta')
           .eq('status', 'active')
           .gte('created_at', tenMinutesAgo)
@@ -267,7 +272,7 @@ export default function HombreVivoCheckModal({
     };
 
     checkForPendingAlarms();
-    pollingRef.current = setInterval(checkForPendingAlarms, 3000);
+    pollingRef.current = setInterval(checkForPendingAlarms, 15000);
 
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);

@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
       .order('checkin_time', { ascending: false });
 
     if (!isSuper && tenantId) {
-      query = query.eq('tenant_id', tenantId);
+      query = query.or(`tenant_id.eq.${tenantId},tenant_id.is.null`);
     }
 
     if (operatorId) query = query.eq('operator_id', operatorId);
@@ -67,7 +67,8 @@ export async function GET(request: NextRequest) {
       const checkOut = shift.checkout_time ? new Date(shift.checkout_time) : new Date();
 
       if (totalHours === null || totalHours === undefined || totalHours === 0 || !shift.checkout_time) {
-        const durationMs = Math.max(0, checkOut.getTime() - checkIn.getTime());
+        // Cap unclosed/active shifts at 12 hours max to prevent stale shift inflation
+        const durationMs = Math.min(Math.max(0, checkOut.getTime() - checkIn.getTime()), 12 * 3600 * 1000);
         totalHours = parseFloat((durationMs / 3_600_000).toFixed(4));
       }
       

@@ -120,7 +120,7 @@ export default function PerfilPage() {
                 )}
               </div>
               <h2 className="mt-4 text-xl font-black text-zinc-900 uppercase tracking-tight">
-                {operator?.name || (user?.email ? user.email.split('@')[0] : 'Vigilador Demo')}
+                {operator?.name || user?.user_metadata?.full_name || (user?.email ? user.email.split('@')[0] : 'Operador')}
               </h2>
               <div className="flex items-center justify-center gap-1.5 mt-1">
                 <BadgeCheck size={14} className="text-blue-500" />

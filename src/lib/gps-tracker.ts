@@ -1,5 +1,15 @@
-import { db, GPSPoint } from './db';
 import { supabase } from './supabase';
+import { db, GPSPoint } from './db';
+
+export function isValidCoordinatePair(lat: any, lng: any): boolean {
+  if (lat === null || lat === undefined || lng === null || lng === undefined) return false;
+  const numLat = Number(lat);
+  const numLng = Number(lng);
+  if (isNaN(numLat) || isNaN(numLng)) return false;
+  if (Math.abs(numLat) < 0.1 && Math.abs(numLng) < 0.1) return false;
+  if (numLat < -90 || numLat > 90 || numLng < -180 || numLng > 180) return false;
+  return true;
+}
 
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
   const R = 6371e3; // meters
@@ -105,11 +115,10 @@ export class GPSTracker {
     this.boundVisibilityHandler = this.handleVisibilityChange.bind(this);
     this.boundOnlineHandler = this.handleOnline.bind(this);
 
-    if (objectiveData) {
-      this.objectiveLocation = objectiveData.location;
+    if (objectiveData && isValidCoordinatePair(objectiveData.location?.lat, objectiveData.location?.lng)) {
+      this.objectiveLocation = { lat: Number(objectiveData.location.lat), lng: Number(objectiveData.location.lng) };
       this.geofenceRadius = objectiveData.radius;
       this.objectiveId = objectiveData.id;
-      // Sprint 3: Dynamic Geofencing - Fetch if not provided correctly or use fallback
       if (!this.geofenceRadius && this.objectiveId) {
         this.fetchDynamicGeofenceRadius();
       } else if (!this.geofenceRadius) {
@@ -376,26 +385,35 @@ export class GPSTracker {
     const currentInterval = isStationaryInside ? 60000 : 12000;
 
     // 3. Geofence Logic
-    if (this.objectiveLocation && this.geofenceRadius) {
-      const distance = calculateDistance(lat, lng, this.objectiveLocation.lat, this.objectiveLocation.lng);
-      const isOutside = distance > this.geofenceRadius;
+    const hasValidObjLoc = this.objectiveLocation && isValidCoordinatePair(this.objectiveLocation.lat, this.objectiveLocation.lng);
+    const hasValidOpLoc = isValidCoordinatePair(lat, lng);
 
-      if (isOutside) {
-        if (!this.isCurrentlyOutside) {
-          this.isCurrentlyOutside = true;
-          this.gracePeriodStart = now;
-          this.handleGeofenceWarning({ distance, graceRemaining: GRACE_PERIOD_MS });
-        } else if (!this.alertTriggered && (now - (this.gracePeriodStart || 0) > GRACE_PERIOD_MS)) {
-          this.alertTriggered = true;
-          this.handleAbandonment({ distance, latitude: lat, longitude: lng });
-        }
-      } else {
-        if (this.isCurrentlyOutside) {
-          this.isCurrentlyOutside = false;
-          this.gracePeriodStart = null;
-          if (this.alertTriggered) {
-            this.alertTriggered = false;
-            this.handleReturn({ distance });
+    if (hasValidObjLoc && hasValidOpLoc && this.geofenceRadius) {
+      const distance = calculateDistance(lat, lng, Number(this.objectiveLocation!.lat), Number(this.objectiveLocation!.lng));
+      
+      // Sanity Gate: Distances > 500km indicate invalid / unconfigured objective coordinates (e.g. 0,0)
+      if (distance <= 500000) {
+        const gpsMargin = Math.max(Number(accuracy || 0), 25);
+        const effectiveRadius = this.geofenceRadius + gpsMargin;
+        const isOutside = accuracy < 300 && distance > effectiveRadius;
+
+        if (isOutside) {
+          if (!this.isCurrentlyOutside) {
+            this.isCurrentlyOutside = true;
+            this.gracePeriodStart = now;
+            this.handleGeofenceWarning({ distance, graceRemaining: GRACE_PERIOD_MS });
+          } else if (!this.alertTriggered && (now - (this.gracePeriodStart || 0) > GRACE_PERIOD_MS)) {
+            this.alertTriggered = true;
+            this.handleAbandonment({ distance, latitude: lat, longitude: lng });
+          }
+        } else {
+          if (this.isCurrentlyOutside) {
+            this.isCurrentlyOutside = false;
+            this.gracePeriodStart = null;
+            if (this.alertTriggered) {
+              this.alertTriggered = false;
+              this.handleReturn({ distance });
+            }
           }
         }
       }
@@ -404,7 +422,11 @@ export class GPSTracker {
     // 4. Throttle Updates for standard transmission
     if (now - this.lastUpdateTs >= currentInterval) {
       this.lastUpdateTs = now;
-      
+      const rawDistance = (hasValidObjLoc && hasValidOpLoc) 
+        ? calculateDistance(lat, lng, Number(this.objectiveLocation!.lat), Number(this.objectiveLocation!.lng))
+        : null;
+      const sanitizedDistance = (rawDistance !== null && rawDistance <= 500000) ? rawDistance : null;
+
       const payload = {
         latitude: lat,
         longitude: lng,
@@ -416,7 +438,7 @@ export class GPSTracker {
         timestamp: pos.timestamp,
         isStationary,
         isOutside: this.isCurrentlyOutside,
-        distanceToObjective: this.objectiveLocation ? calculateDistance(lat, lng, this.objectiveLocation.lat, this.objectiveLocation.lng) : null
+        distanceToObjective: sanitizedDistance
       };
 
       this.handleLocationUpdate(payload);

@@ -17,12 +17,12 @@ export async function GET(req: NextRequest) {
     // 🚀 CACHE CHECK: Evitar hit a DB si fue consultado en los últimos 10 segundos
     // Con Vercel Free (10s max), el caché de 10s divide por 10 el consumo de invocaciones
     const cacheKey = `dashboard-map-${isSuper ? 'super' : tenantId}`;
-    const cachedData = serverCache.get(cacheKey, 10000); // 10 seconds TTL
+    const cachedData = serverCache.get(cacheKey, 5000); // 5 seconds TTL
     if (cachedData) {
       return NextResponse.json(cachedData, {
         headers: {
           'X-Cache': 'HIT',
-          'Cache-Control': 'public, max-age=10'
+          'Cache-Control': 'public, s-maxage=5, stale-while-revalidate=15'
         }
       });
     }
@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
           .select('objective_id')
           .in('objective_id', objIds)
           .eq('alarm_type', 'cobertura_pendiente')
-          .eq('status', 'active');
+          .gte('created_at', new Date(now.getTime() - 30 * 60 * 1000).toISOString());
 
         if (!isSuper && tenantId) {
           alarmCheck = alarmCheck.eq('tenant_id', tenantId);
@@ -87,7 +87,8 @@ export async function GET(req: NextRequest) {
 
     // Fetch queries: for gerente/owner/superadmin, fetch all active objectives cleanly without PostgREST syntax issues
     // Fetch objectives first so we can use objective IDs to catch any alerts for this tenant
-    let objectivesQuery = supabase.from('objectives').select('*');
+    let objectivesQuery = supabase.from('objectives')
+      .select('id, name, address, client_name, contact_phone, latitude, longitude, geofence_radius, hourly_billing_rate, is_active, status, tenant_id, deleted_at, created_at, updated_at');
     if (!isSuper && tenantId) {
       objectivesQuery = objectivesQuery.eq('tenant_id', tenantId);
     }
@@ -101,7 +102,7 @@ export async function GET(req: NextRequest) {
     const tenantObjectiveIds = rawObjectives.map((o: any) => o.id).filter(Boolean);
 
     let resourcesQuery = supabase.from('resources')
-      .select('*, profiles:profile_id(avatar_url, full_name)')
+      .select('id, name, role, status, latitude, longitude, accuracy, speed, heading, battery_level, last_gps_update, phone, email, avatar_url, current_objective_id, profile_id, tenant_id, profiles:profile_id(avatar_url, full_name)')
       .neq('status', 'baja')
       .neq('status', 'inactivo');
 
@@ -178,7 +179,7 @@ export async function GET(req: NextRequest) {
     let rawResources = resourcesRes.data || [];
     if (resourcesRes.error) {
       console.error("❌ Resources fetch error:", JSON.stringify(resourcesRes.error));
-      let fallbackQuery = supabase.from('resources').select('*').neq('status', 'baja').neq('status', 'inactivo');
+      let fallbackQuery = supabase.from('resources').select('id, name, role, status, latitude, longitude, accuracy, speed, heading, battery_level, last_gps_update, phone, email, avatar_url, current_objective_id, profile_id, tenant_id').neq('status', 'baja').neq('status', 'inactivo');
       if (!isSuper && tenantId) fallbackQuery = fallbackQuery.eq('tenant_id', tenantId);
       const fb = await fallbackQuery;
       rawResources = fb.data || [];
@@ -332,12 +333,12 @@ export async function GET(req: NextRequest) {
       activeShifts: shiftsRes.data || []
     };
 
+    serverCache.set(cacheKey, responseData);
+
     return NextResponse.json(responseData, {
       headers: {
         'X-Cache': 'MISS',
-        'Cache-Control': 'no-store, max-age=0, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0'
+        'Cache-Control': 'public, s-maxage=5, stale-while-revalidate=15'
       }
     });
   } catch (error: any) {

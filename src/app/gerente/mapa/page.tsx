@@ -28,6 +28,7 @@ import { api } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 import { reverseGeocode } from '@/lib/geocoding';
+import { useAuth } from '@/components/providers/AuthProvider';
 
 const MapView = dynamic(() => import('@/components/MapView'), { 
   ssr: false,
@@ -35,6 +36,7 @@ const MapView = dynamic(() => import('@/components/MapView'), {
 });
 
 export default function MapaOperativoPage() {
+  const { user } = useAuth();
   const [data, setData] = useState<any>({ objectives: [], resources: [] });
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -161,7 +163,7 @@ export default function MapaOperativoPage() {
       setLoading(true);
       const [objRes, guardRes, incRes] = await Promise.all([
         supabase.from('objectives').select('*').order('created_at', { ascending: false }),
-        supabase.from('resources').select('*').in('status', ['activo', 'active', 'En Turno']),
+        supabase.from('resources').select('*, profiles:profile_id(avatar_url, full_name)').in('status', ['activo', 'active', 'En Turno', 'en_turno', 'disponible']),
         supabase.from('guard_book_entries').select('*').in('urgency', ['critica', 'alta']).order('created_at', { ascending: false }).limit(20)
       ]);
 
@@ -201,10 +203,13 @@ export default function MapaOperativoPage() {
     fetchData();
     if (isMobile) setIsSidebarOpen(false);
 
+    const tenantId = (user as any)?.user_metadata?.tenant_id || (user as any)?.tenant_id;
+
     const channel = supabase
       .channel('map-realtime-v4')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'resources' }, (payload) => {
         const updatedResource = payload.new as any;
+        if (tenantId && updatedResource?.tenant_id && updatedResource.tenant_id !== tenantId) return;
         
         if (payload.eventType === 'UPDATE') {
           const isActuallyActive = updatedResource.status === 'activo' || updatedResource.status === 'active' || updatedResource.status === 'En Turno';
@@ -242,10 +247,15 @@ export default function MapaOperativoPage() {
           }
         }
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'objectives' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'objectives' }, (payload) => {
+        const updated = payload.new as any;
+        if (tenantId && updated?.tenant_id && updated.tenant_id !== tenantId) return;
         fetchData(); 
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'incidents' }, async (payload) => {
+        const newEntry = payload.new as any;
+        if (tenantId && newEntry?.tenant_id && newEntry.tenant_id !== tenantId) return;
+
         if (payload.eventType === 'UPDATE') {
           const updated = payload.new as any;
           if (updated.status === 'resolved' || updated.status === 'resuelto') {
@@ -260,7 +270,6 @@ export default function MapaOperativoPage() {
         if (payload.eventType === 'INSERT') {
           fetchData(); 
           
-          const newEntry = payload.new as any;
         if (newEntry) {
           const isCritical = newEntry.entry_type === 'panic' || newEntry.entry_type === 'emergencia' || 
                              newEntry.status === 'critica' || newEntry.status === 'crítica' ||
@@ -300,8 +309,9 @@ export default function MapaOperativoPage() {
         } // Missing closing brace for payload.eventType === 'INSERT' added here
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'alarms' }, async (payload) => {
-        fetchData(); 
         const newAlarm = payload.new as any;
+        if (tenantId && newAlarm?.tenant_id && newAlarm.tenant_id !== tenantId) return;
+        fetchData();
         if (newAlarm && newAlarm.status === 'active') {
           // Trigger audio siren loop
           startAlarm();

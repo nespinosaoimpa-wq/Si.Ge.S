@@ -153,35 +153,50 @@ function OperatorLocationGroup({
         </Source>
       )}
 
-      {/* Accuracy Circle */}
+      {/* Accuracy Circle as GeoJSON Polygon (True Geographic Scale) */}
       {animLat !== 0 && currentAccuracy && currentAccuracy > 15 && (
         <Source id="accuracy-circle" type="geojson" data={{
           type: 'Feature',
-          geometry: { type: 'Point', coordinates: [animLng, animLat] },
+          geometry: {
+            type: 'Polygon',
+            coordinates: [(() => {
+              const points = 64;
+              const coords: [number, number][] = [];
+              const km = currentAccuracy / 1000;
+              for (let i = 0; i < points; i++) {
+                const theta = (i / points) * (2 * Math.PI);
+                const dx = (km * Math.cos(theta)) / (111.32 * Math.cos((animLat * Math.PI) / 180));
+                const dy = (km * Math.sin(theta)) / 110.574;
+                coords.push([animLng + dx, animLat + dy]);
+              }
+              coords.push(coords[0]);
+              return coords;
+            })()]
+          },
           properties: {}
-        }}>
+        } as any}>
           <Layer
-            id="accuracy-layer"
-            type="circle"
+            id="accuracy-layer-fill"
+            type="fill"
             paint={{
-              'circle-radius': [
-                'interpolate',
-                ['exponential', 2],
-                ['zoom'],
-                0, 0,
-                22, ['*', ['number', currentAccuracy], 10]
-              ],
-              'circle-color': '#3b82f6',
-              'circle-opacity': 0.1,
-              'circle-stroke-width': 1,
-              'circle-stroke-color': '#3b82f6',
-              'circle-stroke-opacity': 0.25,
+              'fill-color': '#3b82f6',
+              'fill-opacity': 0.08
+            }}
+          />
+          <Layer
+            id="accuracy-layer-outline"
+            type="line"
+            paint={{
+              'line-color': '#3b82f6',
+              'line-width': 1.5,
+              'line-opacity': 0.3,
+              'line-dasharray': [2, 2]
             }}
           />
         </Source>
       )}
 
-      {/* Operator Marker - Fixed Anchor Precision */}
+      {/* Operator Marker - Perfect Subpixel Anchor Precision */}
       {animLat !== 0 && (
         <Marker 
           latitude={animLat} 
@@ -190,24 +205,24 @@ function OperatorLocationGroup({
           pitchAlignment="viewport"
           rotationAlignment="viewport"
         >
-          <div className="relative w-12 h-12 flex items-center justify-center pointer-events-none select-none transform-gpu will-change-transform">
-            {/* Heading Chevron */}
+          <div className="relative w-10 h-10 pointer-events-none select-none flex items-center justify-center">
+            {/* Heading Chevron - Perfectly Centered */}
             <div 
-              className="absolute inset-0 flex items-center justify-center"
+              className="absolute inset-0 flex items-center justify-center pointer-events-none"
               style={{
                 transform: `rotate(${animBearing}deg)`,
                 transition: 'transform 0.4s ease-out',
               }}
             >
-              <div className="absolute -top-1 w-0 h-0 border-l-[6px] border-r-[6px] border-b-[9px] border-l-transparent border-r-transparent border-b-blue-500 drop-shadow-[0_2px_4px_rgba(59,130,246,0.6)]" />
+              <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[5px] border-r-[5px] border-b-[8px] border-l-transparent border-r-transparent border-b-blue-500 drop-shadow-[0_2px_4px_rgba(59,130,246,0.6)]" />
             </div>
             
-            {/* Pulsing halo */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 bg-blue-500/20 rounded-full animate-ping" style={{ animationDuration: '2s' }} />
+            {/* Pulsing halo - Perfectly Centered without subpixel translation math */}
+            <div className="absolute inset-0 -m-1 bg-blue-500/20 rounded-full animate-ping pointer-events-none" style={{ animationDuration: '2s' }} />
             
-            {/* Avatar Circle */}
+            {/* Avatar Circle - Perfectly Centered */}
             <div
-              className="w-10 h-10 bg-blue-600 border-[3.5px] border-white rounded-full shadow-[0_4px_16px_rgba(59,130,246,0.5)] flex items-center justify-center overflow-hidden relative z-10"
+              className="w-10 h-10 bg-blue-600 border-[3px] border-white rounded-full shadow-[0_4px_16px_rgba(59,130,246,0.5)] flex items-center justify-center overflow-hidden relative z-10"
               style={{
                 transform: `rotate(${-animBearing}deg)`,
                 transition: 'transform 0.4s ease-out',
@@ -285,6 +300,56 @@ export default function MobileLeaflet({
     fetchDirections();
   }, [currentPosition, destinations]);
 
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Auto-resize Mapbox map whenever container dimensions change (e.g. bottom sheet resize, mobile chrome, keyboard)
+  useEffect(() => {
+    const triggerResize = () => {
+      if (mapRef.current) {
+        const map = (mapRef.current as any).getMap ? (mapRef.current as any).getMap() : mapRef.current;
+        if (map && typeof map.resize === 'function') {
+          map.resize();
+        }
+      }
+    };
+
+    let observer: ResizeObserver | null = null;
+    if (containerRef.current) {
+      observer = new ResizeObserver(() => {
+        triggerResize();
+      });
+      observer.observe(containerRef.current);
+    }
+
+    window.addEventListener('resize', triggerResize);
+    window.addEventListener('orientationchange', triggerResize);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', triggerResize);
+    }
+
+    return () => {
+      if (observer) observer.disconnect();
+      window.removeEventListener('resize', triggerResize);
+      window.removeEventListener('orientationchange', triggerResize);
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', triggerResize);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (mapLoaded && mapRef.current) {
+      const map = (mapRef.current as any).getMap ? (mapRef.current as any).getMap() : mapRef.current;
+      if (map && typeof map.resize === 'function') {
+        map.resize();
+        const t1 = setTimeout(() => map.resize(), 150);
+        const t2 = setTimeout(() => map.resize(), 400);
+        const t3 = setTimeout(() => map.resize(), 1000);
+        return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+      }
+    }
+  }, [mapLoaded]);
+
   const destinationGeofenceData = useMemo(() => {
     if (!destinations || !Array.isArray(destinations) || destinations.length === 0) return null;
     const dest = destinations[0];
@@ -312,12 +377,25 @@ export default function MobileLeaflet({
     coords.push(coords[0]);
 
     return {
-      type: 'Feature' as const,
-      properties: {},
-      geometry: {
-        type: 'Polygon' as const,
-        coordinates: [coords]
-      }
+      type: 'FeatureCollection' as const,
+      features: [
+        {
+          type: 'Feature' as const,
+          properties: { featureType: 'geofence' },
+          geometry: {
+            type: 'Polygon' as const,
+            coordinates: [coords]
+          }
+        },
+        {
+          type: 'Feature' as const,
+          properties: { featureType: 'center', name: dest.name },
+          geometry: {
+            type: 'Point' as const,
+            coordinates: [lng, lat]
+          }
+        }
+      ]
     };
   }, [destinations]);
 
@@ -377,7 +455,7 @@ export default function MobileLeaflet({
   if (!MAPBOX_TOKEN) return null;
 
   return (
-    <div className="w-full h-full relative z-0">
+    <div ref={containerRef} className="w-full h-full relative z-0">
       <Map
         initialViewState={initialViewState}
         onDragStart={handleInteractionStart}
@@ -402,12 +480,13 @@ export default function MobileLeaflet({
         />
         <NavigationControl position="top-right" showCompass={true} />
 
-        {/* GEOFENCE PERIMETER */}
+        {/* GEOFENCE PERIMETER & VECTOR CENTER PIN */}
         {destinationGeofenceData && (
           <Source id="destination-geofence" type="geojson" data={destinationGeofenceData as any}>
             <Layer
               id="geofence-fill"
               type="fill"
+              filter={['==', ['get', 'featureType'], 'geofence']}
               paint={{
                 'fill-color': '#0F4C5C',
                 'fill-opacity': 0.12
@@ -416,10 +495,43 @@ export default function MobileLeaflet({
             <Layer
               id="geofence-outline"
               type="line"
+              filter={['==', ['get', 'featureType'], 'geofence']}
               paint={{
                 'line-color': '#0F4C5C',
                 'line-width': 2,
                 'line-dasharray': [3, 2]
+              }}
+            />
+            <Layer
+              id="geofence-center-glow"
+              type="circle"
+              filter={['==', ['get', 'featureType'], 'center']}
+              paint={{
+                'circle-radius': 16,
+                'circle-color': '#0F4C5C',
+                'circle-opacity': 0.35,
+                'circle-blur': 0.5
+              }}
+            />
+            <Layer
+              id="geofence-center-ring"
+              type="circle"
+              filter={['==', ['get', 'featureType'], 'center']}
+              paint={{
+                'circle-radius': 10,
+                'circle-color': '#0F4C5C',
+                'circle-stroke-width': 3,
+                'circle-stroke-color': '#ffffff',
+                'circle-opacity': 0.9
+              }}
+            />
+            <Layer
+              id="geofence-center-core"
+              type="circle"
+              filter={['==', ['get', 'featureType'], 'center']}
+              paint={{
+                'circle-radius': 5,
+                'circle-color': '#ffffff'
               }}
             />
           </Source>
@@ -516,15 +628,19 @@ export default function MobileLeaflet({
               pitchAlignment="viewport"
               rotationAlignment="viewport"
             >
-              <div className="relative flex flex-col items-center pointer-events-none select-none transform-gpu will-change-transform">
+              <div className="relative w-10 h-10 flex items-center justify-center pointer-events-none select-none">
                 {/* Objective Label — Floating absolutely so it NEVER distorts Marker box */}
                 <div className="absolute -top-9 left-1/2 -translate-x-1/2 bg-zinc-950/90 backdrop-blur-sm px-2.5 py-1 rounded-xl shadow-lg border border-[#0F4C5C]/50 whitespace-nowrap pointer-events-none z-20">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-[#0F4C5C]">{dest.name}</p>
                 </div>
-                {/* Fixed-Size Tactical Obsidian Card (Identical to Manager MapView) */}
-                <div className="w-10 h-10 rounded-xl bg-zinc-950 border-2 border-[#0F4C5C] shadow-[0_6px_20px_rgba(0,0,0,0.5)] flex items-center justify-center relative">
+                {/* Fixed-Size Tactical Obsidian Card with Operator Photo if active */}
+                <div className="w-10 h-10 rounded-xl bg-zinc-950 border-2 border-[#0F4C5C] shadow-[0_6px_20px_rgba(0,0,0,0.5)] flex items-center justify-center relative overflow-hidden">
                   <div className="absolute inset-0 bg-[#0F4C5C]/20 rounded-xl animate-ping pointer-events-none" style={{ animationDuration: '2.5s' }} />
-                  <Building2 className="w-5 h-5 text-[#0F4C5C] relative z-10" />
+                  {avatarUrl ? (
+                    <img src={avatarUrl} className="w-full h-full object-cover rounded-[9px] relative z-10" alt={dest.name} />
+                  ) : (
+                    <Building2 className="w-5 h-5 text-[#0F4C5C] relative z-10" />
+                  )}
                 </div>
               </div>
             </Marker>

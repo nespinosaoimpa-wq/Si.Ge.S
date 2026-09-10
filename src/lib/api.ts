@@ -40,8 +40,11 @@ function buildFetchOptions(endpoint: string, options: RequestInit): RequestInit 
     return { ...options, cache: 'no-store' };
   }
 
-  if (isCacheable && typeof window === 'undefined') {
-    return { ...options, next: { revalidate: 60 } } as RequestInit;
+  if (isCacheable) {
+    if (typeof window === 'undefined') {
+      return { ...options, next: { revalidate: 60 } } as RequestInit;
+    }
+    return options;
   }
 
   return { ...options, cache: 'no-store' };

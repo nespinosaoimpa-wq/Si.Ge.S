@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
     const supabase = createServiceClient();
     let query = supabase
       .from('objectives')
-      .select('*');
+      .select('id, name, address, client_name, contact_phone, latitude, longitude, geofence_radius, hourly_billing_rate, is_active, status, tenant_id, created_at, updated_at');
 
     if (!isSuper && tenantId) {
       query = query.eq('tenant_id', tenantId);
@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(data || [], {
       headers: {
-        'Cache-Control': 'no-store, max-age=0'
+        'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=30'
       }
     });
   } catch (error: any) {

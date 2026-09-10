@@ -163,7 +163,11 @@ export async function GET(request: NextRequest) {
       weekly_alert_count: weeklyAlertCounts[e.resource_id] || 0
     }));
 
-    return NextResponse.json(finalEntries);
+    return NextResponse.json(finalEntries, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=5, stale-while-revalidate=15'
+      }
+    });
   } catch (error: any) {
     console.error('[GUARD_BOOK_GET]', error);
     return NextResponse.json({ error: error.message }, { status: 500 });

@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     
     const { data: res } = await supabase
       .from('resources')
-      .select('id, status, latitude, longitude, last_gps_update')
+      .select('id, status, latitude, longitude, last_gps_update, tenant_id')
       .or(`id.eq.${operator_id},assigned_to.eq.${operator_id}`)
       .limit(1)
       .maybeSingle();
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
     // SAFETY CHECK: Verify the resource has an active shift
     const { data: activeShift, error: shiftError } = await supabase
       .from('guard_shifts')
-      .select('id, objective_id')
+      .select('id, objective_id, tenant_id')
       .eq('operator_id', finalResourceId)
       .in('status', ['activo', 'active'])
       .maybeSingle();
@@ -62,6 +62,7 @@ export async function POST(request: Request) {
 
     // Use current objective from shift if not provided in payload
     const finalObjectiveId = objective_id || activeShift.objective_id;
+    const finalTenantId = res?.tenant_id || activeShift?.tenant_id || shiftData?.tenant_id;
 
     // 1. Prepare async tasks without awaiting them sequentially
     const tasks: any[] = [];
@@ -78,6 +79,7 @@ export async function POST(request: Request) {
       tasks.push(
         supabase.from('gps_tracking').insert({
           operator_id: finalResourceId,
+          tenant_id: finalTenantId || null,
           latitude,
           longitude,
           accuracy,

@@ -10,8 +10,8 @@ export interface OperatorProfile {
     id: string;
     name: string;
     address: string | null;
-    latitude: number;
-    longitude: number;
+    latitude: number | null;
+    longitude: number | null;
     geofence_radius: number;
     geofence_radius_meters?: number;
   } | null;
@@ -26,14 +26,15 @@ const CACHE_KEY = 'sigpad_operator_profile_v3';
  */
 export async function resolveOperatorProfileDirect(
   userId: string,
-  userEmail?: string | null
+  userEmail?: string | null,
+  forceRefresh: boolean = false
 ): Promise<OperatorProfile | null> {
   const cleanEmail = userEmail ? userEmail.toLowerCase().trim() : null;
   const cacheKey = `sigpad_operator_profile_v4_${cleanEmail || userId || 'guest'}`;
 
-  // 1. User-Specific Cache Retrieval (0ms UX)
+  // 1. User-Specific Cache Retrieval (0ms UX) - Bypassed if forceRefresh === true
   let cached: OperatorProfile | null = null;
-  if (typeof window !== 'undefined') {
+  if (!forceRefresh && typeof window !== 'undefined') {
     try {
       const raw = localStorage.getItem(cacheKey);
       if (raw) {
@@ -64,8 +65,8 @@ export async function resolveOperatorProfileDirect(
                 id: resData.objectives.id,
                 name: resData.objectives.name,
                 address: resData.objectives.address || null,
-                latitude: Number(resData.objectives.latitude || 0),
-                longitude: Number(resData.objectives.longitude || 0),
+                latitude: resData.objectives.latitude != null ? Number(resData.objectives.latitude) : null as any,
+                longitude: resData.objectives.longitude != null ? Number(resData.objectives.longitude) : null as any,
                 geofence_radius: Number(resData.objectives.geofence_radius_meters || resData.objectives.geofence_radius || 150),
                 geofence_radius_meters: Number(resData.objectives.geofence_radius_meters || resData.objectives.geofence_radius || 150)
               } : null;
@@ -192,8 +193,8 @@ export async function resolveOperatorProfileDirect(
           id: obj.id,
           name: obj.name,
           address: obj.address,
-          latitude: Number(obj.latitude || 0),
-          longitude: Number(obj.longitude || 0),
+          latitude: obj.latitude != null ? Number(obj.latitude) : null as any,
+          longitude: obj.longitude != null ? Number(obj.longitude) : null as any,
           geofence_radius: Number(obj.geofence_radius_meters || obj.geofence_radius || 150),
           geofence_radius_meters: Number(obj.geofence_radius_meters || obj.geofence_radius || 150)
         };

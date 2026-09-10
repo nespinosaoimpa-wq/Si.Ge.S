@@ -64,14 +64,39 @@ export async function GET(request: Request) {
       }
     }
 
-    // ⛔ IF NO STRICT MATCH FOUND: DENY ACCESS IMMEDIATELY
+    // 🔒 AUTO-PROVISION LEGAJO FOR LOGGED-IN OPERATOR (Self-Healing)
+    if (!resource && email) {
+      const cleanEmail = email.toLowerCase().trim();
+      const rawName = cleanEmail.split('@')[0];
+      const formattedName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
+      const newLegajoId = `S-${Math.floor(1000 + Math.random() * 9000)}`;
+
+      const { data: createdResource, error: createError } = await supabase
+        .from('resources')
+        .insert({
+          id: newLegajoId,
+          name: formattedName,
+          email: cleanEmail,
+          status: 'active',
+          assigned_to: (userId && userId !== 'recurso_demo') ? userId : null
+        })
+        .select('*')
+        .single();
+
+      if (createdResource && !createError) {
+        resource = createdResource;
+        debug.foundBy = 'auto_provisioned_legajo';
+      }
+    }
+
+    // ⛔ IF STILL NO MATCH FOUND (Guest without email)
     if (!resource) {
       return NextResponse.json({ 
         error: 'Resource not found or unauthorized', 
         debug,
-        name: email ? email.split('@')[0] : 'Operador No Vinculado',
+        name: email ? email.split('@')[0] : 'Operador',
         isRecovering: true,
-        message: 'Tu correo de inicio de sesión no coincide con ningún legajo autorizado en Gerencia. Solicita a Gerencia que ingrese este correo exacto en tu legajo.'
+        message: 'Tu correo de inicio de sesión no coincide con ningún legajo en Gerencia.'
       }, { status: 404 });
     }
 

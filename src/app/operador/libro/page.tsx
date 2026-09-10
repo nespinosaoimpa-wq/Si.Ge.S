@@ -38,6 +38,8 @@ export default function GuardBookPage() {
     (shiftData as any)?.objective_id || (shiftData as any)?.current_objective_id;
   const resourceId  =
     (shiftData as any)?.operator_id  || (shiftData as any)?.resource_id;
+  const tenantId =
+    (user as any)?.user_metadata?.tenant_id || (user as any)?.tenant_id || (shiftData as any)?.tenant_id;
 
   const [entries,      setEntries]      = useState<any[]>([]);
   const [loading,      setLoading]      = useState(true);
@@ -116,8 +118,8 @@ export default function GuardBookPage() {
 
     try {
       const { error: dbErr } = await supabase.from('guard_book_entries').insert({
+        tenant_id: tenantId,
         objective_id: objectiveId,
-        resource_id: resourceId || user?.id,
         operator_id: resourceId || user?.id,
         entry_type: newType,
         content: newContent.trim(),

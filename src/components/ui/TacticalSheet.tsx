@@ -73,6 +73,12 @@ export const TacticalSheet = forwardRef<TacticalSheetRef, TacticalSheetProps>(fu
         damping: 32,
         stiffness: 380,
         mass: 0.8,
+        onUpdate: () => {
+          window.dispatchEvent(new Event('resize'));
+        },
+        onComplete: () => {
+          window.dispatchEvent(new Event('resize'));
+        }
       });
     },
     [snapPoints, fractionToY, y, onSnapChange]
@@ -121,6 +127,12 @@ export const TacticalSheet = forwardRef<TacticalSheetRef, TacticalSheetProps>(fu
         damping: 32,
         stiffness: 380,
         mass: 0.8,
+        onUpdate: () => {
+          window.dispatchEvent(new Event('resize'));
+        },
+        onComplete: () => {
+          window.dispatchEvent(new Event('resize'));
+        }
       });
     },
     [snapPoints, fractionToY, y, onSnapChange]

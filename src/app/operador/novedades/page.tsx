@@ -93,6 +93,7 @@ export default function NovedadesPage() {
       const { supabase } = await import('@/lib/supabase');
       const objectiveId = (shiftData as any)?.objective_id || (shiftData as any)?.current_objective_id;
       const resourceId = (shiftData as any)?.operator_id || (shiftData as any)?.resource_id || (shiftData as any)?.id;
+      const tenantId = (shiftData as any)?.tenant_id;
 
       if (!objectiveId && selectedData.id !== 'falla_equipo') {
         setErrorMsg('No se detectó el vínculo con tu legajo. Por favor, cerrá sesión y volvé a entrar o consultá con el gerente.');
@@ -108,11 +109,14 @@ export default function NovedadesPage() {
       if (selectedData.id === 'falla_equipo' && selectedItemId) {
         // Special case: Inventory Damage
         const { error: damErr } = await supabase.from('incidents').insert({
+          tenant_id: tenantId,
           objective_id: objectiveId || null,
           operator_id: resourceId,
           entry_type: 'novedad',
           urgency: 'alta',
           content: `📦 FALLA DE EQUIPAMIENTO: ${comment || 'Falla de equipo reportada.'}`,
+          latitude: shiftData?.location?.lat || shiftData?.objectiveLocation?.lat || 0,
+          longitude: shiftData?.location?.lng || shiftData?.objectiveLocation?.lng || 0,
           status: 'abierto',
           created_at: new Date().toISOString()
         } as any);
@@ -124,21 +128,40 @@ export default function NovedadesPage() {
           : selectedData.id === 'emergencia' ? 'emergencia' 
           : 'incidente';
 
+        const lat = shiftData?.location?.lat || shiftData?.objectiveLocation?.lat || 0;
+        const lng = shiftData?.location?.lng || shiftData?.objectiveLocation?.lng || 0;
+        const contentText = `${selectedData.label.toUpperCase()}: ${comment || 'Sin detalles adicionales'}`;
+        const nowIso = new Date().toISOString();
+
         const { error: gbErr } = await supabase.from('guard_book_entries').insert({
-          objective_id: objectiveId,
-          resource_id: resourceId,
+          tenant_id: tenantId,
+          objective_id: objectiveId || null,
           operator_id: resourceId,
           entry_type: entryType,
-          content: `${selectedData.label.toUpperCase()}: ${comment || 'Sin detalles adicionales'}`,
-          latitude: shiftData?.location?.lat || 0,
-          longitude: shiftData?.location?.lng || 0,
+          content: contentText,
+          latitude: lat,
+          longitude: lng,
           urgency: selectedData.urgency,
           image_url,
           audio_url,
-          created_at: new Date().toISOString()
+          created_at: nowIso
         } as any);
 
         if (gbErr) throw gbErr;
+
+        // Also insert into incidents table for instant multi-channel map pin rendering
+        await supabase.from('incidents').insert({
+          tenant_id: tenantId,
+          objective_id: objectiveId || null,
+          operator_id: resourceId,
+          entry_type: entryType,
+          urgency: selectedData.urgency,
+          content: contentText,
+          latitude: lat,
+          longitude: lng,
+          status: 'pendiente',
+          created_at: nowIso
+        } as any).catch(() => {});
       }
       
       setSuccess(true);

@@ -536,63 +536,94 @@ export default function AdminDashboard() {
     fetchData();
     if (isMobile) setIsSidebarOpen(false);
 
+    const tenantId = (user as any)?.user_metadata?.tenant_id || (user as any)?.tenant_id;
+
     const channel = supabase
       .channel('map-realtime-feed')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'gps_tracking' }, (payload) => {
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'gps_tracking', filter: tenantId ? `tenant_id=eq.${tenantId}` : undefined }, (payload) => {
         const log = payload.new as any;
+        if (tenantId && log.tenant_id && log.tenant_id !== tenantId) return;
         const res = resourcesRef.current?.find((r: any) => r.id === log.operator_id);
         setLiveFeed(prev => [{ ...log, resource_name: res?.name, type: 'gps' }, ...prev].slice(0, 15));
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'guard_book_entries' }, async (payload) => {
         if (payload.eventType === 'INSERT') {
           const entry = payload.new as any;
-          
-          // Fetch operator name for better UI
-          const { data: res } = await supabase.from('resources').select('name, current_objective_id').eq('id', entry.resource_id).single();
-          const enrichedEntry = { ...entry, resource_name: res?.name || 'Personal', type: 'event' };
-          
+          if (tenantId && entry.tenant_id && entry.tenant_id !== tenantId) return;
+
+          const opId = entry.operator_id || entry.resource_id;
+          let operatorName = entry.operator_name || entry.resource_name;
+          let targetObjId = entry.objective_id;
+
+          // Lookup operator name if missing or generic
+          if (!operatorName || operatorName === 'Desconocido' || operatorName === 'Personal') {
+            const localRes = (resourcesRef.current || dataRef.current?.resources || []).find((r: any) => r.id === opId || r.assigned_to === opId);
+            if (localRes?.name) {
+              operatorName = localRes.name;
+              if (!targetObjId) targetObjId = localRes.current_objective_id;
+            } else if (opId) {
+              try {
+                const { data: res } = await supabase
+                  .from('resources')
+                  .select('name, current_objective_id')
+                  .or(`id.eq.${opId},assigned_to.eq.${opId}`)
+                  .maybeSingle();
+                if (res?.name) operatorName = res.name;
+                if (!targetObjId && res?.current_objective_id) targetObjId = res.current_objective_id;
+              } catch (e) {}
+            }
+          }
+
           // Resolve missing coordinates from objective
           let resolvedLat = entry.latitude;
           let resolvedLng = entry.longitude;
           const hasCoords = resolvedLat && resolvedLng && !isNaN(Number(resolvedLat)) && Number(resolvedLat) !== 0;
-          
+
           if (!hasCoords) {
-            const objId = entry.objective_id || res?.current_objective_id;
+            const objId = targetObjId || entry.objective_id;
             if (objId) {
-              const targetObj = data.objectives?.find((o: any) => o.id === objId);
+              const targetObj = (dataRef.current?.objectives || data.objectives || []).find((o: any) => o.id === objId);
               if (targetObj?.latitude && targetObj?.longitude) {
                 resolvedLat = targetObj.latitude;
                 resolvedLng = targetObj.longitude;
               }
             }
           }
-          
-          const mapEntry = { ...enrichedEntry, latitude: resolvedLat, longitude: resolvedLng };
-          
+
+          const isCritical = entry.entry_type === 'panic' || entry.entry_type === 'emergencia' || 
+                             entry.urgency === 'critica' || entry.urgency === 'crítica' ||
+                             (entry.content && (entry.content.toLowerCase().includes('pánico') || entry.content.toLowerCase().includes('sos')));
+
+          const enrichedEntry = { 
+            ...entry, 
+            resource_name: operatorName || 'Personal',
+            operator_name: operatorName || 'Personal',
+            resource_id: opId,
+            latitude: resolvedLat, 
+            longitude: resolvedLng,
+            urgency: isCritical ? 'critica' : (entry.urgency || 'normal'),
+            type: 'event' 
+          };
+
           setLiveFeed(prev => [enrichedEntry, ...prev].slice(0, 15));
 
-          if (entry.entry_type === 'emergencia' || entry.urgency === 'critica' || (entry.content && entry.content.includes('PÁNICO'))) {
-            handleEmergencyTrigger(mapEntry);
-            // Always add critical entries to map incidents (coordinates resolved above)
-            if (resolvedLat && resolvedLng) {
-              setData((prev: any) => ({
-                ...prev,
-                recentIncidents: [mapEntry, ...(prev.recentIncidents || [])].slice(0, 20)
-              }));
-            }
-          } else if (entry.entry_type === 'incidente' || entry.entry_type === 'alerta' || (entry.content && entry.content.includes('ALERTA'))) {
-             setNewIncidentNotification(mapEntry);
-             setTimeout(() => setNewIncidentNotification(null), 8000);
-             // Always add alert-type entries to map incidents (coordinates resolved above)
-             if (resolvedLat && resolvedLng) {
-               setData((prev: any) => ({
-                 ...prev,
-                 recentIncidents: [mapEntry, ...(prev.recentIncidents || [])].slice(0, 20)
-               }));
-             }
+          // Always add entries with valid coordinates to recentIncidents so MapView renders the marker in real time
+          if (resolvedLat && resolvedLng) {
+            setData((prev: any) => ({
+              ...prev,
+              recentIncidents: [enrichedEntry, ...(prev.recentIncidents || []).filter((x: any) => x.id !== enrichedEntry.id)].slice(0, 20)
+            }));
+          }
+
+          if (isCritical) {
+            handleEmergencyTrigger(enrichedEntry);
+          } else {
+            setNewIncidentNotification(enrichedEntry);
+            setTimeout(() => setNewIncidentNotification(null), 8000);
           }
         } else if (payload.eventType === 'UPDATE') {
           const updated = payload.new as any;
+          if (tenantId && updated.tenant_id && updated.tenant_id !== tenantId) return;
           if (updated.status === 'resolved' || updated.status === 'resuelto') {
             setData((prev: any) => ({
               ...prev,
@@ -604,24 +635,38 @@ export default function AdminDashboard() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'incidents' }, async (payload) => {
         if (payload.eventType === 'INSERT') {
           const entry = payload.new as any;
-          let operatorName = entry.operator_name || 'Personal';
+          if (tenantId && entry.tenant_id && entry.tenant_id !== tenantId) return;
+
+          const opId = entry.operator_id || entry.resource_id;
+          let operatorName = entry.operator_name || entry.resource_name;
+          let targetObjId = entry.objective_id;
+
+          if (!operatorName || operatorName === 'Desconocido' || operatorName === 'Personal') {
+            const localRes = (resourcesRef.current || dataRef.current?.resources || []).find((r: any) => r.id === opId || r.assigned_to === opId);
+            if (localRes?.name) {
+              operatorName = localRes.name;
+              if (!targetObjId) targetObjId = localRes.current_objective_id;
+            } else if (opId) {
+              try {
+                const { data: res } = await supabase
+                  .from('resources')
+                  .select('name, current_objective_id')
+                  .or(`id.eq.${opId},assigned_to.eq.${opId}`)
+                  .maybeSingle();
+                if (res?.name) operatorName = res.name;
+                if (!targetObjId && res?.current_objective_id) targetObjId = res.current_objective_id;
+              } catch (e) {}
+            }
+          }
+
           let resolvedLat = entry.latitude;
           let resolvedLng = entry.longitude;
-          
-          if (!operatorName || operatorName === 'Personal') {
-            try {
-              const { data: res } = await supabase.from('resources').select('name, current_objective_id').eq('id', entry.operator_id).single();
-              if (res?.name) operatorName = res.name;
-              if (!entry.objective_id && res?.current_objective_id) entry.objective_id = res.current_objective_id;
-            } catch (e) {}
-          }
-          
-          // Resolve missing coordinates from dataRef
           const hasCoords = resolvedLat && resolvedLng && !isNaN(Number(resolvedLat)) && Number(resolvedLat) !== 0;
+
           if (!hasCoords) {
-            const objId = entry.objective_id;
+            const objId = targetObjId || entry.objective_id;
             if (objId) {
-              const targetObj = dataRef.current.objectives?.find((o: any) => o.id === objId);
+              const targetObj = (dataRef.current?.objectives || data.objectives || []).find((o: any) => o.id === objId);
               if (targetObj?.latitude && targetObj?.longitude) {
                 resolvedLat = targetObj.latitude;
                 resolvedLng = targetObj.longitude;
@@ -631,28 +676,36 @@ export default function AdminDashboard() {
 
           const isCritical = entry.entry_type === 'panic' || entry.entry_type === 'emergencia' || 
                              entry.status === 'critica' || entry.status === 'crítica' ||
+                             entry.urgency === 'critica' || entry.urgency === 'crítica' ||
                              (entry.content || '').toLowerCase().includes('pánico') || 
                              (entry.content || '').toLowerCase().includes('sos');
 
           const enrichedEntry = { 
             ...entry, 
-            resource_name: operatorName,
-            resource_id: entry.operator_id,
-            urgency: isCritical ? 'critica' : 'normal',
+            resource_name: operatorName || 'Personal',
+            operator_name: operatorName || 'Personal',
+            resource_id: opId,
+            urgency: isCritical ? 'critica' : (entry.urgency || 'normal'),
             latitude: resolvedLat,
             longitude: resolvedLng
           };
-          
-          setData((prev: any) => ({
-            ...prev,
-            recentIncidents: [enrichedEntry, ...(prev.recentIncidents || []).filter((x: any) => x.id !== enrichedEntry.id)].slice(0, 20)
-          }));
+
+          if (resolvedLat && resolvedLng) {
+            setData((prev: any) => ({
+              ...prev,
+              recentIncidents: [enrichedEntry, ...(prev.recentIncidents || []).filter((x: any) => x.id !== enrichedEntry.id)].slice(0, 20)
+            }));
+          }
 
           if (isCritical) {
             handleEmergencyTrigger(enrichedEntry);
+          } else {
+            setNewIncidentNotification(enrichedEntry);
+            setTimeout(() => setNewIncidentNotification(null), 8000);
           }
         } else if (payload.eventType === 'UPDATE') {
           const updated = payload.new as any;
+          if (tenantId && updated.tenant_id && updated.tenant_id !== tenantId) return;
           if (updated.status === 'resolved' || updated.status === 'resuelto') {
             setData((prev: any) => ({
               ...prev,
@@ -664,6 +717,7 @@ export default function AdminDashboard() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'resources' }, (payload) => {
         if (payload.eventType === 'UPDATE') {
           const updated = payload.new as any;
+          if (tenantId && updated.tenant_id && updated.tenant_id !== tenantId) return;
           setData((prev: any) => {
             const exists = prev.resources?.some((r: any) => r.id === updated.id);
             const isActive = ['activo', 'active'].includes(updated.status);
@@ -688,11 +742,14 @@ export default function AdminDashboard() {
             return { ...prev, resources };
           });
         } else if (payload.eventType === 'INSERT') {
+          const newRes = payload.new as any;
+          if (tenantId && newRes.tenant_id && newRes.tenant_id !== tenantId) return;
           fetchData();
         }
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, (payload) => {
         const updated = payload.new as any;
+        if (tenantId && updated.tenant_id && updated.tenant_id !== tenantId) return;
         setData((prev: any) => {
           const resources = prev.resources?.map((r: any) => 
             r.profile_id === updated.id ? { ...r, profiles: { ...r.profiles, ...updated } } : r
@@ -703,12 +760,14 @@ export default function AdminDashboard() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'guard_shifts' }, (payload) => {
          if (payload.eventType === 'INSERT') {
            const newShift = payload.new as any;
+           if (tenantId && newShift.tenant_id && newShift.tenant_id !== tenantId) return;
            setData((prev: any) => ({
              ...prev,
              activeShifts: [newShift, ...(prev.activeShifts || [])]
            }));
          } else if (payload.eventType === 'UPDATE') {
            const updated = payload.new as any;
+           if (tenantId && updated.tenant_id && updated.tenant_id !== tenantId) return;
            setData((prev: any) => {
              // If checkout happened, remove from active shifts
              if (updated.status === 'completado' || updated.checkout_time) {

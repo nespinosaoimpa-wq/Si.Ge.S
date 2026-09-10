@@ -256,9 +256,17 @@ export default function FichajePage() {
       
       const data = await res.json();
       if (data.shift?.id) serverShiftId = data.shift.id;
-      if (data.warning) alert("⚠️ " + data.warning);
+      if (data.warning && !data.warning.includes('Turno recuperado') && !data.warning.includes('turno activo')) {
+        alert("⚠️ " + data.warning);
+      }
       
       const realStartTime = data.shift?.checkin_time ? new Date(data.shift.checkin_time) : now;
+
+      const objLoc = (data.objectiveLocation && Number(data.objectiveLocation.lat) !== 0)
+        ? data.objectiveLocation
+        : (assignedObjective?.latitude && Number(assignedObjective.latitude) !== 0
+            ? { lat: Number(assignedObjective.latitude), lng: Number(assignedObjective.longitude) }
+            : null);
 
       startShift({ 
         time: realStartTime, 
@@ -266,8 +274,8 @@ export default function FichajePage() {
         location: coords, 
         operator_id: data.resource_id || OPERATOR_ID, 
         objective_id: assignedObjective?.id,
-        objectiveLocation: data.objectiveLocation,
-        geofenceRadius: data.geofenceRadius,
+        objectiveLocation: objLoc,
+        geofenceRadius: data.geofenceRadius || assignedObjective?.geofence_radius_meters || assignedObjective?.geofence_radius || 100,
         avatar_url: avatarUrl // Include avatar
       }, serverShiftId);
       
@@ -312,16 +320,21 @@ export default function FichajePage() {
     fetchObjective();
 
     // ⚡ Realtime Objective Assignment Sync (<100ms)
+    const channelId = `op-sync-${OPERATOR_ID}-${Date.now()}`;
     const assignmentChannel = supabase
-      .channel(`op-assignment-sync-${OPERATOR_ID}`)
+      .channel(channelId)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'resources'
       }, async (payload: any) => {
         const updated = payload.new;
-        if (updated && (updated.id === OPERATOR_ID || updated.assigned_to === user?.id)) {
-          const fresh = await resolveOperatorProfileDirect(OPERATOR_ID, user?.email);
+        if (updated && (
+          updated.id === OPERATOR_ID || 
+          updated.assigned_to === user?.id ||
+          (user?.email && updated.email && updated.email.toLowerCase() === user.email.toLowerCase())
+        )) {
+          const fresh = await resolveOperatorProfileDirect(OPERATOR_ID, user?.email, true);
           if (fresh?.assignedObjective) {
             setAssignedObjective(fresh.assignedObjective);
             if ("vibrate" in navigator) navigator.vibrate([200, 100, 200, 100, 300]);
@@ -361,6 +374,9 @@ export default function FichajePage() {
 
     return () => {
       if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+      try {
+        supabase.removeChannel(assignmentChannel);
+      } catch (e) {}
     };
   }, [user]);
 
@@ -412,13 +428,25 @@ export default function FichajePage() {
 
         if (activeShift && !error) {
           const realStartTime = activeShift.checkin_time ? new Date(activeShift.checkin_time) : new Date();
-          startShift({
-            time: realStartTime,
-            startTime: realStartTime,
-            location: { lat: activeShift.checkin_latitude, lng: activeShift.checkin_longitude },
-            operator_id: activeShift.operator_id,
-            objective_id: activeShift.objective_id
-          }, activeShift.id);
+          const hoursOld = (Date.now() - realStartTime.getTime()) / (1000 * 3600);
+
+          if (hoursOld > 24) {
+            // Shift is older than 24h — auto-checkout stale shift on server and reset local state
+            await fetch('/api/shifts/checkout', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ shift_id: activeShift.id, operator_id: activeShift.operator_id })
+            }).catch(() => {});
+            endShift();
+          } else {
+            startShift({
+              time: realStartTime,
+              startTime: realStartTime,
+              location: { lat: activeShift.checkin_latitude, lng: activeShift.checkin_longitude },
+              operator_id: activeShift.operator_id,
+              objective_id: activeShift.objective_id
+            }, activeShift.id);
+          }
         }
       } catch (e) {
         console.error("Error checking active shift:", e);
@@ -498,7 +526,7 @@ export default function FichajePage() {
 
     if (isShiftActive) {
       if (tracker) {
-        tracker.stop();
+        await tracker.stop().catch((e: any) => console.warn('[CHECKOUT] Tracker stop warning:', e));
         setTracker(null);
       }
       try {
@@ -708,20 +736,28 @@ export default function FichajePage() {
     }
   };
 
-  const targetLat = assignedObjective ? Number(assignedObjective.latitude) : NaN;
-  const targetLng = assignedObjective ? Number(assignedObjective.longitude) : NaN;
+  const targetLat = (isShiftActive && shiftData?.objectiveLocation?.lat && Number(shiftData.objectiveLocation.lat) !== 0)
+    ? Number(shiftData.objectiveLocation.lat)
+    : (assignedObjective ? Number(assignedObjective.latitude) : NaN);
 
-  const destinations = (assignedObjective && !isNaN(targetLat) && !isNaN(targetLng) && targetLat !== 0 && targetLng !== 0) 
+  const targetLng = (isShiftActive && shiftData?.objectiveLocation?.lng && Number(shiftData.objectiveLocation.lng) !== 0)
+    ? Number(shiftData.objectiveLocation.lng)
+    : (assignedObjective ? Number(assignedObjective.longitude) : NaN);
+
+  const targetName = shiftData?.objective_name || assignedObjective?.name || 'Objetivo Asignado';
+  const targetId = shiftData?.objective_id || assignedObjective?.id || 'target_obj';
+
+  const destinations = (!isNaN(targetLat) && !isNaN(targetLng) && targetLat !== 0 && targetLng !== 0) 
     ? [{
-        id: assignedObjective.id,
-        name: assignedObjective.name,
+        id: targetId,
+        name: targetName,
         position: [targetLat, targetLng] as [number, number],
-        radius: Number(assignedObjective.geofence_radius_meters || assignedObjective.geofence_radius || 150)
+        radius: Number(shiftData?.geofenceRadius || assignedObjective?.geofence_radius_meters || assignedObjective?.geofence_radius || 150)
       }] 
     : [];
 
   let currentDistance = telemetry.distanceToTarget;
-  let geofenceRadius = Number(assignedObjective?.geofence_radius_meters || assignedObjective?.geofence_radius || 150);
+  let geofenceRadius = Number(shiftData?.geofenceRadius || assignedObjective?.geofence_radius_meters || assignedObjective?.geofence_radius || 150);
   
   if (currentDistance === null && location && !isNaN(targetLat) && !isNaN(targetLng) && targetLat !== 0) {
     const R = 6371e3; 
@@ -732,6 +768,10 @@ export default function FichajePage() {
     const a = Math.sin(dp/2) * Math.sin(dp/2) + Math.cos(p1) * Math.cos(p2) * Math.sin(dl/2) * Math.sin(dl/2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     currentDistance = R * c;
+  }
+
+  if (currentDistance !== null && currentDistance > 500000) {
+    currentDistance = null;
   }
 
   const isOutOfRange = !isShiftActive && currentDistance !== null && currentDistance > geofenceRadius;
@@ -864,15 +904,15 @@ export default function FichajePage() {
 
                   {/* ACTION BUTTON */}
                   <motion.button
-                    whileHover={{ scale: isOutOfRange ? 1 : 1.01 }}
-                    whileTap={{ scale: isOutOfRange ? 1 : 0.97 }}
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.97 }}
                     onClick={handleClockClick}
-                    disabled={locating || isSubmitting || isOutOfRange}
+                    disabled={locating || isSubmitting}
                     className={cn(
                       'w-full h-[72px] rounded-[2rem] flex items-center justify-center gap-4 text-[12px] font-black uppercase tracking-[0.35em] shadow-xl transition-all border-none',
                       isShiftActive
                         ? 'bg-red-600 text-white hover:bg-red-700 shadow-red-500/20'
-                        : isOutOfRange ? 'bg-zinc-200 text-zinc-400 cursor-not-allowed' : 'bg-zinc-900 text-white hover:bg-zinc-800'
+                        : 'bg-zinc-900 text-white hover:bg-zinc-800'
                     )}
                   >
                   {locating ? (

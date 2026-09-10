@@ -100,9 +100,7 @@ export async function GET(req: NextRequest) {
     const combinedUsers = Array.from(emailMap.values());
     return NextResponse.json(combinedUsers, {
       headers: {
-        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0',
+        'Cache-Control': 'public, s-maxage=5, stale-while-revalidate=15'
       }
     });
   } catch (error: any) {

@@ -1,26 +1,53 @@
 import { createServiceClient } from '@/lib/supabase-server';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { sendPushToUser } from '@/lib/web-push-config';
+import { resolveTenantFromRequest } from '@/lib/resolve-tenant';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const ctx = await resolveTenantFromRequest(req);
+    const tenantId = ctx?.tenantId;
+    const effectiveTenantId = tenantId || '7f1fd036-6a82-47ab-aa2a-964c081e285b';
+
     const supabase = createServiceClient();
 
-    const [resourcesRes, objectivesRes, bookRes, alarmsRes] = await Promise.all([
-      supabase.from('resources').select('*').in('status', ['activo', 'active']),
-      supabase.from('objectives').select('id, name'),
-      supabase.from('guard_book_entries')
-        .select('*')
-        .or('entry_type.eq.hombre_vivo,entry_type.eq.hombre_vivo_sin_respuesta,content.ilike.%hombre vivo%')
-        .order('created_at', { ascending: false })
-        .limit(100),
-      supabase.from('alarms')
-        .select('*')
-        .or('alarm_type.eq.hombre_vivo,alarm_type.eq.hombre_vivo_sin_respuesta,alarm_type.eq.hombre_vivo_solicitud,message.ilike.%hombre vivo%')
-        .order('created_at', { ascending: false })
-        .limit(100)
+    const showAll = req.nextUrl.searchParams.get('all') === 'true';
+
+    let resQuery = supabase.from('resources')
+      .select('*')
+      .neq('status', 'baja')
+      .neq('status', 'inactivo');
+    let objQuery = supabase.from('objectives').select('id, name');
+    let shiftsQuery = supabase.from('guard_shifts')
+      .select('operator_id, objective_id')
+      .in('status', ['activo', 'active']);
+    let bookQuery = supabase.from('guard_book_entries')
+      .select('*')
+      .or('entry_type.eq.hombre_vivo,entry_type.eq.hombre_vivo_sin_respuesta,content.ilike.%hombre vivo%')
+      .order('created_at', { ascending: false })
+      .limit(100);
+    let alarmsQuery = supabase.from('alarms')
+      .select('*')
+      .or('alarm_type.eq.hombre_vivo,alarm_type.eq.hombre_vivo_sin_respuesta,alarm_type.eq.hombre_vivo_solicitud,message.ilike.%hombre vivo%')
+      .order('created_at', { ascending: false })
+      .limit(100);
+
+    if (effectiveTenantId && (!ctx?.isSuper || !showAll)) {
+      resQuery = resQuery.eq('tenant_id', effectiveTenantId);
+      objQuery = objQuery.eq('tenant_id', effectiveTenantId);
+      shiftsQuery = shiftsQuery.eq('tenant_id', effectiveTenantId);
+      bookQuery = bookQuery.eq('tenant_id', effectiveTenantId);
+      alarmsQuery = alarmsQuery.eq('tenant_id', effectiveTenantId);
+    }
+
+    const [resourcesRes, objectivesRes, shiftsRes, bookRes, alarmsRes] = await Promise.all([
+      resQuery,
+      objQuery,
+      shiftsQuery,
+      bookQuery,
+      alarmsQuery
     ]);
 
     const objMap: Record<string, string> = {};
@@ -28,14 +55,38 @@ export async function GET() {
       objMap[o.id] = o.name;
     });
 
-    const activeGuards = (resourcesRes.data || []).map((r: any) => ({
-      id: r.id,
-      name: r.name,
-      avatar_url: r.avatar_url,
-      role: r.role,
-      current_objective_id: r.current_objective_id,
-      objective_name: r.current_objective_id ? objMap[r.current_objective_id] || 'Puesto Activo' : 'Puesto Activo'
-    }));
+    const activeShiftMap: Record<string, string> = {};
+    (shiftsRes.data || []).forEach((s: any) => {
+      if (s.operator_id) activeShiftMap[s.operator_id] = s.objective_id;
+    });
+
+    const seenKeys = new Set<string>();
+    const activeGuards: any[] = [];
+
+    (resourcesRes.data || []).forEach((r: any) => {
+      const shiftObjId = activeShiftMap[r.id] || activeShiftMap[r.assigned_to];
+      const isOnShift = Boolean(shiftObjId);
+
+      const key = (r.dni || r.email || r.name || '').toLowerCase().trim();
+      if (seenKeys.has(key)) return;
+      seenKeys.add(key);
+
+      const objId = shiftObjId || r.current_objective_id;
+      const objName = objId ? (objMap[objId] || 'Puesto Activo') : 'Puesto Activo';
+
+      activeGuards.push({
+        id: r.id,
+        name: r.name,
+        avatar_url: r.avatar_url,
+        role: r.role,
+        isOnShift,
+        current_objective_id: objId,
+        objective_name: objName
+      });
+    });
+
+    // Sort: Guards on active shifts first
+    activeGuards.sort((a, b) => (b.isOnShift ? 1 : 0) - (a.isOnShift ? 1 : 0));
 
     const resMap: Record<string, any> = {};
     (resourcesRes.data || []).forEach((r: any) => {
@@ -44,53 +95,54 @@ export async function GET() {
 
     const combined: any[] = [];
 
-    (bookRes.data || []).forEach((e: any) => {
-      const isUnanswered = e.entry_type === 'hombre_vivo_sin_respuesta' || 
-                           e.urgency === 'critica' || 
-                           (e.content || '').toLowerCase().includes('no atendido') ||
-                           (e.content || '').toLowerCase().includes('sin responder');
-
-      const elapsedMins = Math.floor((Date.now() - new Date(e.created_at).getTime()) / (1000 * 60));
-      const opId = e.operator_id || e.resource_id;
-      const opName = resMap[opId]?.name || 'Operador en Guardia';
+    (alarmsRes.data || []).forEach((a: any) => {
+      const elapsedMins = Math.floor((Date.now() - new Date(a.created_at).getTime()) / (1000 * 60));
+      const opId = a.operator_id || a.triggered_by;
+      const opName = a.operator_name || resMap[opId]?.name || 'Operador';
+      
+      const isAcknowledged = a.status === 'acknowledged';
+      const isResolved = a.status === 'resolved' || a.status === 'resuelto';
+      const isUnanswered = a.status === 'active' || a.alarm_type === 'hombre_vivo_sin_respuesta';
 
       combined.push({
-        id: e.id,
-        created_at: e.created_at,
+        id: a.id,
+        created_at: a.created_at,
         operator_id: opId,
         operator_name: opName,
-        operator_avatar: resMap[opId]?.avatar_url,
-        objective_id: e.objective_id,
-        objective_name: e.objective_id ? objMap[e.objective_id] || 'Puesto Asignado' : 'Puesto Asignado',
-        status: e.status === 'resolved' || e.status === 'resuelto' ? 'resuelto' 
-               : isUnanswered ? 'sin_responder' : 'respondido',
+        objective_id: a.objective_id,
+        objective_name: a.objective_id ? objMap[a.objective_id] || 'Puesto Asignado' : 'Puesto Asignado',
+        status: isResolved ? 'resuelto' : (isAcknowledged ? 'respondido' : 'sin_responder'),
         time_elapsed_minutes: elapsedMins,
-        latitude: e.latitude,
-        longitude: e.longitude,
-        notes: e.content,
-        urgency: e.urgency
+        latitude: a.latitude || a.operator_latitude,
+        longitude: a.longitude || a.operator_longitude,
+        notes: a.message,
+        urgency: isUnanswered ? 'critica' : 'normal'
       });
     });
 
-    (alarmsRes.data || []).forEach((a: any) => {
-      if (!combined.some(c => c.id === a.id)) {
-        const elapsedMins = Math.floor((Date.now() - new Date(a.created_at).getTime()) / (1000 * 60));
-        const opId = a.operator_id || a.triggered_by;
-        const opName = a.operator_name || resMap[opId]?.name || 'Operador';
+    (bookRes.data || []).forEach((e: any) => {
+      // Only add guard book entries if not already represented by an alarm record
+      if (!combined.some(c => c.id === e.id || c.created_at === e.created_at)) {
+        const isAnswered = (e.content || '').includes('RESPONDIDO OK') || (e.content || '').includes('PRESENCIA CONFIRMADA');
+        const isResolved = e.status === 'resolved' || e.status === 'resuelto';
+        const elapsedMins = Math.floor((Date.now() - new Date(e.created_at).getTime()) / (1000 * 60));
+        const opId = e.operator_id || e.resource_id;
+        const opName = resMap[opId]?.name || 'Operador en Guardia';
 
         combined.push({
-          id: a.id,
-          created_at: a.created_at,
+          id: e.id,
+          created_at: e.created_at,
           operator_id: opId,
           operator_name: opName,
-          objective_id: a.objective_id,
-          objective_name: a.objective_id ? objMap[a.objective_id] || 'Puesto Asignado' : 'Puesto Asignado',
-          status: a.status === 'acknowledged' || a.status === 'resolved' ? 'resuelto' : 'sin_responder',
+          operator_avatar: resMap[opId]?.avatar_url,
+          objective_id: e.objective_id,
+          objective_name: e.objective_id ? objMap[e.objective_id] || 'Puesto Asignado' : 'Puesto Asignado',
+          status: isResolved ? 'resuelto' : (isAnswered ? 'respondido' : 'sin_responder'),
           time_elapsed_minutes: elapsedMins,
-          latitude: a.latitude || a.operator_latitude,
-          longitude: a.longitude || a.operator_longitude,
-          notes: a.message,
-          urgency: a.severity || 'critica'
+          latitude: e.latitude,
+          longitude: e.longitude,
+          notes: e.content,
+          urgency: e.urgency
         });
       }
     });
@@ -104,8 +156,10 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    const ctx = await resolveTenantFromRequest(request);
+    const tenantId = ctx?.tenantId;
     const supabase = createServiceClient();
     const { operator_id, objective_id, operator_name } = await request.json();
 
@@ -122,6 +176,7 @@ export async function POST(request: Request) {
       operator_id: operator_id,
       operator_name: targetName,
       objective_id: objective_id || null,
+      tenant_id: tenantId || null,
       alarm_type: 'hombre_vivo_solicitud',
       severity: 'alta',
       message: `⚡ CONTROL HOMBRE VIVO SOLICITADO: Gerencia requiere verificación inmediata de presencia a ${targetName}.`,
@@ -135,6 +190,7 @@ export async function POST(request: Request) {
     await supabase.from('guard_book_entries').insert({
       objective_id: objective_id || null,
       operator_id: operator_id,
+      tenant_id: tenantId || null,
       entry_type: 'hombre_vivo',
       content: `⚡ CONTROL HOMBRE VIVO ENVIADO DESDE GERENCIA: Pendiente de confirmación por ${targetName}`,
       urgency: 'alta',

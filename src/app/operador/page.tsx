@@ -21,7 +21,7 @@ import { useAuth } from '@/components/providers/AuthProvider';
 import PanicTriggerModal from '@/components/operador/PanicTriggerModal';
 
 export default function GuardiaDashboard() {
-  const { isShiftActive, shiftId, shiftData, startShift, theme, toggleTheme, updateShiftData } = useShift();
+  const { isShiftActive, isCheckingShift, shiftId, shiftData, startShift, theme, toggleTheme, updateShiftData } = useShift();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [assignedObjective, setAssignedObjective] = useState<any>(null);
@@ -313,7 +313,9 @@ export default function GuardiaDashboard() {
               <p className={cn(
                 "font-medium text-sm",
                 theme === 'dark' ? "text-zinc-300" : "text-zinc-400"
-              )}>Buen día, Operador</p>
+              )}>
+                Buen día, <span className="font-bold text-white capitalize">{user?.user_metadata?.name || user?.user_metadata?.full_name || (user?.email ? user.email.split('@')[0] : 'Operador')}</span>
+              </p>
               <h1 className="text-3xl lg:text-5xl font-black tracking-tight leading-tight mt-1 uppercase italic text-white">
                 {isShiftActive ? "En Servicio" : "Listo para Iniciar"}
               </h1>

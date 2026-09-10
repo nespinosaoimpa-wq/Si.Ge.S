@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Search, Plus, ChevronRight, MapPin, Building2, Phone, X, 
@@ -31,24 +31,32 @@ export default function ObjetivosPage() {
   const [isSearching, setIsSearching] = useState(false);
   const [selectedCoords, setSelectedCoords] = useState<{lat: number, lng: number} | null>(null);
 
+  const searchTimeout = useRef<NodeJS.Timeout | null>(null);
+
   const handleAddressChange = async (val: string) => {
     setNewObjective(prev => ({ ...prev, address: val }));
     setSelectedCoords(null);
+    
+    if (searchTimeout.current) {
+      clearTimeout(searchTimeout.current);
+    }
     
     if (val.length < 3) {
       setSuggestions([]);
       return;
     }
 
-    setIsSearching(true);
-    try {
-      const results = await searchAddresses(val);
-      setSuggestions(results);
-    } catch (err) {
-      console.error("Error fetching suggestions:", err);
-    } finally {
-      setIsSearching(false);
-    }
+    searchTimeout.current = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const results = await searchAddresses(val);
+        setSuggestions(results);
+      } catch (err) {
+        console.error("Error fetching suggestions:", err);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 500);
   };
 
   const handleSelectSuggestion = async (sug: any) => {

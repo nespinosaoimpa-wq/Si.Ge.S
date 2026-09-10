@@ -153,24 +153,49 @@ export async function POST(request: Request) {
     // CRITICAL: Always use a valid UUID for guard_shifts.operator_id
     const finalResourceId = resourceRecord.id;
 
-    // 3.5 Prevent Duplicate Active Shifts
+    // 3.5 Prevent Duplicate Active Shifts & Auto-Close Stale Shifts (>24h)
     const { data: existingActiveShift } = await supabase
       .from('guard_shifts')
       .select('*')
       .eq('operator_id', finalResourceId)
-      .eq('status', 'activo')
+      .in('status', ['activo', 'active'])
+      .order('checkin_time', { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     if (existingActiveShift) {
-      // Si ya hay un turno activo, devolverlo sin crear otro
-      return NextResponse.json({
-        shift: existingActiveShift,
-        resource_id: finalResourceId,
-        isWithinGeofence: existingActiveShift.checkin_within_geofence,
-        objectiveLocation,
-        geofenceRadius: targetRadius,
-        warning: 'Turno recuperado (ya tenías un turno activo).'
-      });
+      const checkinTimeMs = existingActiveShift.checkin_time ? new Date(existingActiveShift.checkin_time).getTime() : Date.now();
+      const hoursActive = (Date.now() - checkinTimeMs) / (1000 * 3600);
+
+      if (hoursActive > 24) {
+        // Auto-close stale shift from past days/weeks to prevent multi-hundred hour shift pollution
+        const autoCheckout = new Date(checkinTimeMs + 8 * 3600 * 1000).toISOString();
+        await supabase
+          .from('guard_shifts')
+          .update({
+            checkout_time: autoCheckout,
+            status: 'completado',
+            duration_minutes: 480,
+            gross_duration_minutes: 480,
+            total_hours: 8
+          })
+          .eq('id', existingActiveShift.id);
+
+        await supabase
+          .from('resources')
+          .update({ current_shift_id: null, status: 'disponible' })
+          .eq('id', finalResourceId);
+      } else {
+        // Legitimate active shift within 24h — recover it
+        return NextResponse.json({
+          shift: existingActiveShift,
+          resource_id: finalResourceId,
+          isWithinGeofence: existingActiveShift.checkin_within_geofence,
+          objectiveLocation,
+          geofenceRadius: targetRadius,
+          warning: 'Turno recuperado (ya tenías un turno activo).'
+        });
+      }
     }
 
     // 4. Resolve tenant_id for the operator and shift
