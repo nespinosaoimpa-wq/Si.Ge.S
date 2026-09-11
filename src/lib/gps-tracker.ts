@@ -26,6 +26,30 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * c;
 }
 
+/**
+ * Ray-Casting Algorithm for Point-in-Polygon (PIP) Geofence Evaluation.
+ * Evaluates complex/irregular polygonal geofences directly in client JS/TS without DB/PostGIS queries.
+ */
+export function isPointInPolygon(
+  point: [number, number], // [latitude, longitude]
+  polygon: [number, number][] // Array of [lat, lng] vertex pairs
+): boolean {
+  if (!polygon || polygon.length < 3) return false;
+  const [x, y] = point;
+  let inside = false;
+
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i][0], yi = polygon[i][1];
+    const xj = polygon[j][0], yj = polygon[j][1];
+
+    const intersect = ((yi > y) !== (yj > y)) &&
+      (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+
+  return inside;
+}
+
 const GRACE_PERIOD_MS = 30000; // 30 seconds
 const ADAPTIVE_STATIONARY_SPEED = 0.27; // ~1 km/h in m/s
 const STATIONARY_TIME_THRESHOLD = 120000; // 2 minutes
@@ -55,6 +79,7 @@ export class GPSTracker {
 
   private objectiveLocation?: { lat: number, lng: number };
   private geofenceRadius?: number;
+  private objectivePolygon?: [number, number][];
   private objectiveId?: string;
 
   // Geofencing state
@@ -102,7 +127,7 @@ export class GPSTracker {
     operatorId: string,
     onUpdate: (pos: any) => void,
     onError: (err: string) => void,
-    objectiveData?: { location: { lat: number, lng: number }, radius: number, id: string }
+    objectiveData?: { location: { lat: number, lng: number }, radius: number, id: string, polygon?: [number, number][] }
   ) {
     const isShiftValid = typeof shiftId === 'string' && shiftId.length > 5;
     const isOperatorValid = typeof operatorId === 'string' && operatorId.length > 2;
@@ -115,8 +140,13 @@ export class GPSTracker {
     this.boundVisibilityHandler = this.handleVisibilityChange.bind(this);
     this.boundOnlineHandler = this.handleOnline.bind(this);
 
-    if (objectiveData && isValidCoordinatePair(objectiveData.location?.lat, objectiveData.location?.lng)) {
-      this.objectiveLocation = { lat: Number(objectiveData.location.lat), lng: Number(objectiveData.location.lng) };
+    if (objectiveData) {
+      if (objectiveData.polygon && Array.isArray(objectiveData.polygon) && objectiveData.polygon.length >= 3) {
+        this.objectivePolygon = objectiveData.polygon;
+      }
+      if (isValidCoordinatePair(objectiveData.location?.lat, objectiveData.location?.lng)) {
+        this.objectiveLocation = { lat: Number(objectiveData.location.lat), lng: Number(objectiveData.location.lng) };
+      }
       this.geofenceRadius = objectiveData.radius;
       this.objectiveId = objectiveData.id;
       if (!this.geofenceRadius && this.objectiveId) {
@@ -384,36 +414,46 @@ export class GPSTracker {
     const isStationaryInside = isStationary && !this.isCurrentlyOutside;
     const currentInterval = isStationaryInside ? 60000 : 12000;
 
-    // 3. Geofence Logic
+    // 3. Geofence Logic (Polygonal PIP or Radial Haversine)
     const hasValidObjLoc = this.objectiveLocation && isValidCoordinatePair(this.objectiveLocation.lat, this.objectiveLocation.lng);
     const hasValidOpLoc = isValidCoordinatePair(lat, lng);
+    const hasPolygonGeofence = Boolean(this.objectivePolygon && this.objectivePolygon.length >= 3);
 
-    if (hasValidObjLoc && hasValidOpLoc && this.geofenceRadius) {
-      const distance = calculateDistance(lat, lng, Number(this.objectiveLocation!.lat), Number(this.objectiveLocation!.lng));
-      
-      // Sanity Gate: Distances > 500km indicate invalid / unconfigured objective coordinates (e.g. 0,0)
-      if (distance <= 500000) {
-        const gpsMargin = Math.max(Number(accuracy || 0), 25);
-        const effectiveRadius = this.geofenceRadius + gpsMargin;
-        const isOutside = accuracy < 300 && distance > effectiveRadius;
+    if (hasValidOpLoc && (hasPolygonGeofence || (hasValidObjLoc && this.geofenceRadius))) {
+      let isOutside = false;
+      let calculatedDist = 0;
 
-        if (isOutside) {
-          if (!this.isCurrentlyOutside) {
-            this.isCurrentlyOutside = true;
-            this.gracePeriodStart = now;
-            this.handleGeofenceWarning({ distance, graceRemaining: GRACE_PERIOD_MS });
-          } else if (!this.alertTriggered && (now - (this.gracePeriodStart || 0) > GRACE_PERIOD_MS)) {
-            this.alertTriggered = true;
-            this.handleAbandonment({ distance, latitude: lat, longitude: lng });
-          }
-        } else {
-          if (this.isCurrentlyOutside) {
-            this.isCurrentlyOutside = false;
-            this.gracePeriodStart = null;
-            if (this.alertTriggered) {
-              this.alertTriggered = false;
-              this.handleReturn({ distance });
-            }
+      if (hasPolygonGeofence) {
+        // PIP Ray-Casting calculation (Client-Side JS, 0 PostGIS DB calls)
+        const isInsidePoly = isPointInPolygon([lat, lng], this.objectivePolygon!);
+        isOutside = !isInsidePoly && accuracy < 300;
+        calculatedDist = hasValidObjLoc ? calculateDistance(lat, lng, Number(this.objectiveLocation!.lat), Number(this.objectiveLocation!.lng)) : 0;
+      } else {
+        // Radial Haversine calculation
+        calculatedDist = calculateDistance(lat, lng, Number(this.objectiveLocation!.lat), Number(this.objectiveLocation!.lng));
+        if (calculatedDist <= 500000) {
+          const gpsMargin = Math.max(Number(accuracy || 0), 25);
+          const effectiveRadius = this.geofenceRadius! + gpsMargin;
+          isOutside = accuracy < 300 && calculatedDist > effectiveRadius;
+        }
+      }
+
+      if (isOutside) {
+        if (!this.isCurrentlyOutside) {
+          this.isCurrentlyOutside = true;
+          this.gracePeriodStart = now;
+          this.handleGeofenceWarning({ distance: calculatedDist, graceRemaining: GRACE_PERIOD_MS });
+        } else if (!this.alertTriggered && (now - (this.gracePeriodStart || 0) > GRACE_PERIOD_MS)) {
+          this.alertTriggered = true;
+          this.handleAbandonment({ distance: calculatedDist, latitude: lat, longitude: lng });
+        }
+      } else {
+        if (this.isCurrentlyOutside) {
+          this.isCurrentlyOutside = false;
+          this.gracePeriodStart = null;
+          if (this.alertTriggered) {
+            this.alertTriggered = false;
+            this.handleReturn({ distance: calculatedDist });
           }
         }
       }

@@ -44,25 +44,46 @@ export async function POST(request: Request) {
       });
     }
 
-    // SAFETY CHECK: Verify the resource has an active shift
-    const { data: activeShift, error: shiftError } = await supabase
-      .from('guard_shifts')
-      .select('id, objective_id, tenant_id')
-      .eq('operator_id', finalResourceId)
-      .in('status', ['activo', 'active'])
-      .maybeSingle();
+    // OPTIMIZATION: Fast-path Shift Validation from Session Payload Claims (0 DB SELECTs for active pulses)
+    const hasValidShiftClaim = Boolean(
+      shiftData?.id && 
+      typeof shiftData.id === 'string' && 
+      shiftData.id.length > 5 &&
+      (shiftData.status === 'activo' || shiftData.status === 'active' || shiftData.is_active || shiftData.id !== 'invalid_shift')
+    );
 
-    if (shiftError || !activeShift) {
-      // PRIVACY ENFORCEMENT: DO NOT log any points if the resource is not on an active shift.
-      return NextResponse.json({ 
-        success: false, 
-        warning: 'Transmission ignored: No active shift found for this resource. Privacy protected.' 
-      });
+    let activeShiftId = shiftData?.id || null;
+    let activeObjectiveId = objective_id || shiftData?.objective_id || null;
+    let activeTenantId = res?.tenant_id || shiftData?.tenant_id || null;
+
+    if (!hasValidShiftClaim) {
+      // Fallback DB check only if payload lacks active shift claims
+      const { data: activeShift, error: shiftError } = await supabase
+        .from('guard_shifts')
+        .select('id, objective_id, tenant_id')
+        .eq('operator_id', finalResourceId)
+        .in('status', ['activo', 'active'])
+        .maybeSingle();
+
+      if (shiftError || !activeShift) {
+        // PRIVACY ENFORCEMENT: DO NOT log any points if the resource is not on an active shift.
+        return NextResponse.json({ 
+          success: false, 
+          warning: 'Transmission ignored: No active shift found for this resource. Privacy protected.' 
+        });
+      }
+      activeShiftId = activeShift.id;
+      if (!activeObjectiveId) activeObjectiveId = activeShift.objective_id;
+      if (!activeTenantId) activeTenantId = activeShift.tenant_id;
     }
 
-    // Use current objective from shift if not provided in payload
-    const finalObjectiveId = objective_id || activeShift.objective_id;
-    const finalTenantId = res?.tenant_id || activeShift?.tenant_id || shiftData?.tenant_id;
+    const finalObjectiveId = activeObjectiveId;
+    const finalTenantId = activeTenantId;
+
+    // Preserve Hardware Timestamp from mobile sensor if provided (e.g. offline IndexedDB batch flushes)
+    const hardwareTimestamp = body.recorded_at || (body.timestamp 
+      ? (typeof body.timestamp === 'number' ? new Date(body.timestamp).toISOString() : String(body.timestamp))
+      : new Date().toISOString());
 
     // 1. Prepare async tasks without awaiting them sequentially
     const tasks: any[] = [];
@@ -84,7 +105,7 @@ export async function POST(request: Request) {
           longitude,
           accuracy,
           objective_id: finalObjectiveId,
-          recorded_at: new Date().toISOString()
+          recorded_at: hardwareTimestamp
         })
       );
     }
@@ -96,7 +117,7 @@ export async function POST(request: Request) {
       accuracy,
       speed,
       heading,
-      last_gps_update: new Date().toISOString(),
+      last_gps_update: hardwareTimestamp,
       status: 'activo' 
     };
 
