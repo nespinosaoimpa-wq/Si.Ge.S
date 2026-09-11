@@ -50,6 +50,45 @@ export function isPointInPolygon(
   return inside;
 }
 
+export interface NetworkQualityInfo {
+  network_type: string;
+  effective_type: string;
+  rtt: number | null;
+  downlink: number | null;
+  save_data: boolean;
+  online_status: 'online' | 'offline';
+  airplane_mode: boolean;
+  timestamp: string;
+}
+
+/**
+ * Audits client network connectivity API (navigator.connection / navigator.onLine)
+ */
+export function getNetworkQualityInfo(): NetworkQualityInfo {
+  const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+  const conn = typeof navigator !== 'undefined' 
+    ? ((navigator as any).connection || (navigator as any).mozConnection || (navigator as any).webkitConnection)
+    : null;
+
+  const effectiveType = conn?.effectiveType || (isOnline ? '4g' : 'offline');
+  const networkType = conn?.type || effectiveType;
+  const rtt = conn?.rtt !== undefined ? Number(conn.rtt) : null;
+  const downlink = conn?.downlink !== undefined ? Number(conn.downlink) : null;
+  const saveData = Boolean(conn?.saveData);
+  const airplaneMode = !isOnline || effectiveType === 'none';
+
+  return {
+    network_type: networkType,
+    effective_type: effectiveType,
+    rtt,
+    downlink,
+    save_data: saveData,
+    online_status: isOnline ? 'online' : 'offline',
+    airplane_mode: airplaneMode,
+    timestamp: new Date().toISOString()
+  };
+}
+
 const GRACE_PERIOD_MS = 30000; // 30 seconds
 const ADAPTIVE_STATIONARY_SPEED = 0.27; // ~1 km/h in m/s
 const STATIONARY_TIME_THRESHOLD = 120000; // 2 minutes
@@ -779,6 +818,7 @@ export class GPSTracker {
     } catch (e) {
       // Fallback to Vercel API route if direct Supabase query fails
       try {
+        const netInfo = getNetworkQualityInfo();
         const response = await fetch('/api/tracking/update', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -790,7 +830,8 @@ export class GPSTracker {
             accuracy: point.accuracy,
             speed: point.speed,
             heading: point.heading,
-            timestamp: point.timestamp
+            timestamp: point.timestamp,
+            networkQuality: netInfo
           })
         });
         return response.ok;

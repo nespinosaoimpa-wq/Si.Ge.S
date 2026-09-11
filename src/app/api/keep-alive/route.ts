@@ -33,6 +33,16 @@ export async function GET() {
       // Non-blocking catch if RPC isn't deployed yet
     }
 
+    // Auto-Audit Coverage: Detecta operadores sin señal (>5 min sin pulso) y emite alertas preventivas
+    let staleCount = 0;
+    try {
+      const { auditStaleOperatorCoverage } = await import('@/lib/coverage-worker');
+      const staleOps = await auditStaleOperatorCoverage(supabase);
+      staleCount = staleOps.length;
+    } catch (covErr) {
+      console.warn('[Keep-Alive Coverage Audit Warning]:', covErr);
+    }
+
     if (error) {
       console.error('[Health-Check Error]:', error.message);
       return NextResponse.json({

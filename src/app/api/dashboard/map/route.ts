@@ -81,6 +81,10 @@ export async function GET(req: NextRequest) {
           await supabase.from('alarms').insert(alarmsToInsert);
         }
       }
+
+      // Auto-Audit Coverage: Marca operadores sin señal (>5 min) en estado 'sin_cobertura' y genera alerta en central
+      const { auditStaleOperatorCoverage } = await import('@/lib/coverage-worker');
+      await auditStaleOperatorCoverage(supabase, isSuper ? undefined : (tenantId || undefined));
     } catch (e) {
       console.error('[AUTO_ALERT_SCHEDULER_ERROR]', e);
     }

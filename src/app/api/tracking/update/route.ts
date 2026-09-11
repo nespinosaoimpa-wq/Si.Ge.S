@@ -110,6 +110,35 @@ export async function POST(request: Request) {
       );
     }
 
+    // Network Quality Audit metadata (navigator.connection: 4G/Wi-Fi, RTT, Downlink, Airplane Mode)
+    const netInfo = body.networkQuality || body.connectionInfo || body.networkInfo || {
+      network_type: '4g',
+      effective_type: '4g',
+      rtt: null,
+      downlink: null,
+      save_data: false,
+      online_status: 'online',
+      airplane_mode: false,
+      timestamp: hardwareTimestamp
+    };
+
+    let updatedPerformanceData = res?.performance_data;
+    if (Array.isArray(updatedPerformanceData)) {
+      updatedPerformanceData = {
+        history: updatedPerformanceData,
+        network_audit: netInfo
+      };
+    } else if (typeof updatedPerformanceData === 'object' && updatedPerformanceData !== null) {
+      updatedPerformanceData = {
+        ...updatedPerformanceData,
+        network_audit: netInfo
+      };
+    } else {
+      updatedPerformanceData = {
+        network_audit: netInfo
+      };
+    }
+
     // 2. Update resource status and position for live map display
     const updatePayload: any = { 
       latitude, 
@@ -118,7 +147,8 @@ export async function POST(request: Request) {
       speed,
       heading,
       last_gps_update: hardwareTimestamp,
-      status: 'activo' 
+      status: 'activo',
+      performance_data: updatedPerformanceData
     };
 
     if (finalObjectiveId) {
