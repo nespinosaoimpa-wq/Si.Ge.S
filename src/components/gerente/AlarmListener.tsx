@@ -61,12 +61,12 @@ export function AlarmListener() {
 
     fetchActiveAlarms();
 
-    // 2. Real-time subscription (stable)
+    // 2. Real-time subscription (stable with server-side tenant filtering)
     const channel = supabase
       .channel('global-alarms-tactical')
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'alarms' },
+        { event: 'INSERT', schema: 'public', table: 'alarms', filter: currentTenantId ? `tenant_id=eq.${currentTenantId}` : undefined },
         (payload) => {
           const newAlarm = payload.new as any;
           if (currentTenantId && newAlarm.tenant_id && newAlarm.tenant_id !== currentTenantId) {
@@ -86,7 +86,7 @@ export function AlarmListener() {
       )
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'alarms' },
+        { event: 'UPDATE', schema: 'public', table: 'alarms', filter: currentTenantId ? `tenant_id=eq.${currentTenantId}` : undefined },
         (payload) => {
           const updated = payload.new as any;
           if (currentTenantId && updated.tenant_id && updated.tenant_id !== currentTenantId) {
@@ -100,7 +100,7 @@ export function AlarmListener() {
       )
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'incidents' },
+        { event: 'INSERT', schema: 'public', table: 'incidents', filter: currentTenantId ? `tenant_id=eq.${currentTenantId}` : undefined },
         (payload) => {
           const newIncident = payload.new as any;
           if (currentTenantId && newIncident.tenant_id && newIncident.tenant_id !== currentTenantId) {

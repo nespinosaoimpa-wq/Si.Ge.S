@@ -8,8 +8,33 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || PROD_SUPABA
 
 export const isConfigured = !!(supabaseUrl && supabaseAnonKey);
 
+/**
+ * Generates a W3C Trace Context traceparent header (00-traceId-spanId-flags)
+ * Propagates client trace_id to match Supabase server logs 1:1.
+ */
+export function generateW3CTraceParent(): string {
+  const hex = (len: number) => {
+    let result = '';
+    while (result.length < len) {
+      result += Math.floor(Math.random() * 16).toString(16);
+    }
+    return result.slice(0, len);
+  };
+  return `00-${hex(32)}-${hex(16)}-01`;
+}
+
 export const createClient = () => {
-  return createSupabaseClient(supabaseUrl, supabaseAnonKey);
+  const traceParent = generateW3CTraceParent();
+  const traceId = traceParent.split('-')[1];
+
+  return createSupabaseClient(supabaseUrl, supabaseAnonKey, {
+    global: {
+      headers: {
+        'traceparent': traceParent,
+        'x-sigpad-trace-id': traceId
+      }
+    }
+  });
 };
 
 // Singleton instance
@@ -17,7 +42,7 @@ let _supabase: any = null;
 
 export const supabase = (() => {
   if (typeof window === 'undefined') {
-    return createSupabaseClient(supabaseUrl, supabaseAnonKey) as any;
+    return createClient() as any;
   }
   
   if (!_supabase) {
