@@ -86,7 +86,85 @@ export async function GET(request: NextRequest) {
       data = fb.data;
     }
 
-    const entries = data || [];
+    const rawEntries = data || [];
+
+    // 🚀 INCLUIR TURNOS (INICIOS Y CIERRES) EN EL LIBRO GENERAL DE NOVEDADES
+    let syntheticShiftEntries: any[] = [];
+    if (!entryType || entryType === 'all' || entryType === 'fichaje') {
+      try {
+        let shiftsQuery = supabase.from('guard_shifts').select('*').order('checkin_time', { ascending: false }).limit(limit);
+        if (!isSuper && tenantId) shiftsQuery = shiftsQuery.eq('tenant_id', tenantId);
+        if (objectiveId && objectiveId !== 'all') shiftsQuery = shiftsQuery.eq('objective_id', objectiveId);
+        
+        if (date && date !== 'all') {
+          shiftsQuery = shiftsQuery
+            .gte('checkin_time', `${date}T00:00:00.000Z`)
+            .lte('checkin_time', `${date}T23:59:59.999Z`);
+        } else if (startDate || endDate) {
+          if (startDate) shiftsQuery = shiftsQuery.gte('checkin_time', `${startDate}T00:00:00.000Z`);
+          if (endDate) shiftsQuery = shiftsQuery.lte('checkin_time', `${endDate}T23:59:59.999Z`);
+        }
+
+        const { data: shiftsData } = await shiftsQuery;
+        if (shiftsData && shiftsData.length > 0) {
+          shiftsData.forEach((shift: any) => {
+            if (shift.checkin_time) {
+              syntheticShiftEntries.push({
+                id: `shift-checkin-${shift.id}`,
+                objective_id: shift.objective_id,
+                operator_id: shift.operator_id,
+                resource_id: shift.operator_id,
+                entry_type: 'fichaje',
+                content: `🚀 INICIO DE TURNO (Check-in)${shift.checkin_within_geofence === false ? ' ⚠️ FUERA DE GEOCERCA' : ''}`,
+                urgency: shift.checkin_within_geofence === false ? 'alta' : 'normal',
+                created_at: shift.checkin_time,
+                tenant_id: shift.tenant_id,
+                is_synthetic_shift: true
+              });
+            }
+
+            if (shift.checkout_time) {
+              const durText = shift.total_hours ? `${shift.total_hours} hs` : (shift.duration_minutes ? `${shift.duration_minutes} min` : '');
+              syntheticShiftEntries.push({
+                id: `shift-checkout-${shift.id}`,
+                objective_id: shift.objective_id,
+                operator_id: shift.operator_id,
+                resource_id: shift.operator_id,
+                entry_type: 'fichaje',
+                content: `🛑 CIERRE DE TURNO (Check-out)${durText ? ` - Duración: ${durText}` : ''}`,
+                urgency: 'normal',
+                created_at: shift.checkout_time,
+                tenant_id: shift.tenant_id,
+                is_synthetic_shift: true
+              });
+            }
+          });
+        }
+      } catch (e) {
+        console.warn('[GUARD_BOOK_GET] Shift synthesis notice:', e);
+      }
+    }
+
+    // Merge and deduplicate by content & operator within 30 seconds interval
+    const combined = [...rawEntries, ...syntheticShiftEntries];
+    const uniqueEntries = combined.filter((entry, idx, self) => {
+      if (!entry.is_synthetic_shift) return true;
+      const opId = entry.operator_id || entry.resource_id;
+      const entryTime = new Date(entry.created_at).getTime();
+      const existingReal = self.find((other, otherIdx) => 
+        otherIdx !== idx && 
+        !other.is_synthetic_shift &&
+        (other.operator_id || other.resource_id) === opId &&
+        other.objective_id === entry.objective_id &&
+        Math.abs(new Date(other.created_at).getTime() - entryTime) < 60000 &&
+        (entry.content.includes('INICIO') && other.content?.toLowerCase().includes('inicio') ||
+         entry.content.includes('CIERRE') && other.content?.toLowerCase().includes('cierre'))
+      );
+      return !existingReal;
+    });
+
+    uniqueEntries.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    const entries = uniqueEntries.slice(0, limit);
 
     // Calcular abandono en incidentes
     const enriched = entries.map(entry => {

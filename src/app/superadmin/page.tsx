@@ -88,8 +88,19 @@ const BILLING_EVENT_LABELS: Record<string, { label: string; color: string }> = {
   account_reactivated: { label: 'Cuenta Reactivada', color: 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/30' },
 };
 
+interface FinancialRecord {
+  id: string;
+  type: 'gasto' | 'ingreso' | 'inversion';
+  category: string;
+  description: string;
+  amount: number;
+  currency: string;
+  status: string;
+  created_at: string;
+}
+
 export default function SuperAdminDashboard() {
-  const [activeTab, setActiveTab] = useState<'tenants' | 'audit'>('tenants');
+  const [activeTab, setActiveTab] = useState<'tenants' | 'audit' | 'finance'>('tenants');
   const [tenants, setTenants] = useState<TenantMetric[]>([]);
   const [deletedTenantIds, setDeletedTenantIds] = useState<string[]>(() => {
     if (typeof window !== 'undefined') {
@@ -104,6 +115,20 @@ export default function SuperAdminDashboard() {
   const [billingEvents, setBillingEvents] = useState<BillingEvent[]>([]);
   const [recentShifts, setRecentShifts] = useState<GuardShift[]>([]);
   const [criticalAlarms, setCriticalAlarms] = useState<Alarm[]>([]);
+
+  // Finance & Market state
+  const [financialRecords, setFinancialRecords] = useState<FinancialRecord[]>([]);
+  const [finType, setFinType] = useState<'gasto' | 'ingreso' | 'inversion'>('gasto');
+  const [finCategory, setFinCategory] = useState('Servicios / Hosting');
+  const [finDescription, setFinDescription] = useState('');
+  const [finAmount, setFinAmount] = useState('');
+  const [finCurrency, setFinCurrency] = useState('ARS');
+  const [isAddingFinRecord, setIsAddingFinRecord] = useState(false);
+
+  // Market Simulator State
+  const [simGuards, setSimGuards] = useState(15);
+  const [simObjectives, setSimObjectives] = useState(3);
+  const [simPricePerGuard, setSimPricePerGuard] = useState(45000);
 
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -261,14 +286,66 @@ export default function SuperAdminDashboard() {
     }
   }, []);
 
+  const fetchFinancialRecords = useCallback(async () => {
+    try {
+      const res = await fetch('/api/superadmin/finance');
+      if (res.ok) {
+        const data = await res.json();
+        setFinancialRecords(data.records || []);
+      }
+    } catch (e) {
+      console.warn('[FINANCE_FETCH] Error:', e);
+    }
+  }, []);
+
   useEffect(() => {
     fetchTenants();
     fetchAuditLogs();
-  }, [fetchTenants, fetchAuditLogs]);
+    fetchFinancialRecords();
+  }, [fetchTenants, fetchAuditLogs, fetchFinancialRecords]);
 
   const handleRefresh = () => {
     fetchTenants();
     fetchAuditLogs();
+    fetchFinancialRecords();
+  };
+
+  const handleAddFinancialRecord = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!finDescription || !finAmount) return;
+    setIsAddingFinRecord(true);
+    try {
+      const res = await fetch('/api/superadmin/finance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: finType,
+          category: finCategory,
+          description: finDescription,
+          amount: parseFloat(finAmount),
+          currency: finCurrency,
+        }),
+      });
+      if (res.ok) {
+        setFinDescription('');
+        setFinAmount('');
+        fetchFinancialRecords();
+      }
+    } catch (err: any) {
+      alert(`Error al guardar: ${err.message}`);
+    } finally {
+      setIsAddingFinRecord(false);
+    }
+  };
+
+  const handleDeleteFinancialRecord = async (id: string) => {
+    if (!confirm('¿Eliminar este registro financiero?')) return;
+    try {
+      await fetch(`/api/superadmin/finance?id=${id}`, { method: 'DELETE' });
+      fetchFinancialRecords();
+    } catch (e) {
+      console.warn('[FINANCE_DELETE] Error:', e);
+    }
   };
 
   const updateTenant = async (tenantId: string, updates: Record<string, string>) => {
@@ -363,6 +440,15 @@ export default function SuperAdminDashboard() {
             >
               <Activity size={13} className="inline mr-1.5" />
               Auditoría Global
+            </button>
+            <button
+              onClick={() => setActiveTab('finance')}
+              className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                activeTab === 'finance' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-md' : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              <DollarSign size={13} className="inline mr-1.5" />
+              Finanzas y Mercado
             </button>
           </div>
 
@@ -699,6 +785,289 @@ export default function SuperAdminDashboard() {
                       </div>
                     ))
                   )}
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* ─── TAB 3: FINANZAS Y ESTUDIO DE MERCADO ─── */}
+          {activeTab === 'finance' && (
+            <motion.div
+              key="finance"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="space-y-8"
+            >
+              {/* Financial KPIs Summary */}
+              {(() => {
+                const totalGastos = financialRecords
+                  .filter(r => r.type === 'gasto')
+                  .reduce((sum, r) => sum + r.amount, 0);
+                const totalIngresos = financialRecords
+                  .filter(r => r.type === 'ingreso')
+                  .reduce((sum, r) => sum + r.amount, 0);
+                const totalInversiones = financialRecords
+                  .filter(r => r.type === 'inversion')
+                  .reduce((sum, r) => sum + r.amount, 0);
+                const resultadoNeto = totalIngresos - totalGastos;
+                const margenPct = totalIngresos > 0 ? ((resultadoNeto / totalIngresos) * 100).toFixed(1) : '100';
+
+                return (
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="bg-zinc-900/60 border border-zinc-800 rounded-3xl p-5 shadow-xl">
+                      <div className="flex items-center gap-2 mb-2 text-emerald-400">
+                        <TrendingUp size={16} />
+                        <span className="text-zinc-400 text-xs font-bold uppercase tracking-wider">Ingresos Totales</span>
+                      </div>
+                      <div className="text-2xl font-black text-emerald-400 font-mono">$ {totalIngresos.toLocaleString('es-AR')}</div>
+                      <div className="text-[10px] text-zinc-500 mt-1">Cobros de membresías SaaS + Venta directa</div>
+                    </div>
+
+                    <div className="bg-zinc-900/60 border border-zinc-800 rounded-3xl p-5 shadow-xl">
+                      <div className="flex items-center gap-2 mb-2 text-red-400">
+                        <DollarSign size={16} />
+                        <span className="text-zinc-400 text-xs font-bold uppercase tracking-wider">Gastos Operativos</span>
+                      </div>
+                      <div className="text-2xl font-black text-red-400 font-mono">$ {totalGastos.toLocaleString('es-AR')}</div>
+                      <div className="text-[10px] text-zinc-500 mt-1">Hosting, Vercel, Supabase, Servicios</div>
+                    </div>
+
+                    <div className="bg-zinc-900/60 border border-zinc-800 rounded-3xl p-5 shadow-xl">
+                      <div className="flex items-center gap-2 mb-2 text-amber-400">
+                        <Zap size={16} />
+                        <span className="text-zinc-400 text-xs font-bold uppercase tracking-wider">Inversiones en Desarrollo</span>
+                      </div>
+                      <div className="text-2xl font-black text-amber-400 font-mono">$ {totalInversiones.toLocaleString('es-AR')}</div>
+                      <div className="text-[10px] text-zinc-500 mt-1">Publicidad, equipamiento y licencias</div>
+                    </div>
+
+                    <div className="bg-zinc-900/60 border border-amber-500/30 bg-amber-500/5 rounded-3xl p-5 shadow-xl">
+                      <div className="flex items-center gap-2 mb-2 text-amber-300">
+                        <Crown size={16} />
+                        <span className="text-zinc-300 text-xs font-bold uppercase tracking-wider">Resultado Neto (Profit)</span>
+                      </div>
+                      <div className="text-2xl font-black text-white font-mono">$ {resultadoNeto.toLocaleString('es-AR')}</div>
+                      <div className="text-[10px] text-emerald-400 font-bold mt-1">Margen Neto: {margenPct}%</div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Column 1 & 2: Financial Movements & Form */}
+                <div className="lg:col-span-2 space-y-6">
+                  {/* Register New Movement */}
+                  <div className="bg-zinc-900/40 border border-zinc-800 rounded-3xl p-6 shadow-xl">
+                    <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-2">
+                      <Plus size={16} className="text-amber-400" />
+                      Registrar Movimiento Financiero (Gasto / Ingreso / Inversión)
+                    </h3>
+                    <form onSubmit={handleAddFinancialRecord} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                      <div>
+                        <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Tipo de Flujo</label>
+                        <select
+                          value={finType}
+                          onChange={e => setFinType(e.target.value as any)}
+                          className="w-full h-10 px-3 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500 font-semibold"
+                        >
+                          <option value="gasto">🔻 Gasto Operativo</option>
+                          <option value="ingreso">🟢 Ingreso / Cobro</option>
+                          <option value="inversion">⚡ Inversión / Capital</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Categoría</label>
+                        <select
+                          value={finCategory}
+                          onChange={e => setFinCategory(e.target.value)}
+                          className="w-full h-10 px-3 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500 font-semibold"
+                        >
+                          <option value="Servicios / Hosting">Servicios / Hosting (Supabase, Vercel)</option>
+                          <option value="Marketing / Publicidad">Marketing / Publicidad</option>
+                          <option value="Desarrollo / Personal">Desarrollo / Personal</option>
+                          <option value="Membresía Cliente">Membresía Cliente (Ingreso)</option>
+                          <option value="Equipamiento / Licencias">Equipamiento / Licencias</option>
+                          <option value="Otros Gastos">Otros Gastos</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Monto ($)</label>
+                        <input
+                          type="number"
+                          step="any"
+                          required
+                          value={finAmount}
+                          onChange={e => setFinAmount(e.target.value)}
+                          placeholder="Ej: 25000"
+                          className="w-full h-10 px-3 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-white placeholder:text-zinc-600 focus:outline-none focus:border-amber-500 font-mono"
+                        />
+                      </div>
+
+                      <div className="sm:col-span-2 lg:col-span-4 flex gap-3 items-end">
+                        <div className="flex-1">
+                          <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Descripción</label>
+                          <input
+                            type="text"
+                            required
+                            value={finDescription}
+                            onChange={e => setFinDescription(e.target.value)}
+                            placeholder="Ej: Pago mensual Supabase Pro + Vercel"
+                            className="w-full h-10 px-3 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-white placeholder:text-zinc-600 focus:outline-none focus:border-amber-500"
+                          />
+                        </div>
+                        <button
+                          type="submit"
+                          disabled={isAddingFinRecord}
+                          className="h-10 px-6 bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold rounded-xl transition-all shadow-md shadow-amber-500/10 whitespace-nowrap disabled:opacity-50"
+                        >
+                          {isAddingFinRecord ? 'Guardando...' : '+ Guardar'}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+
+                  {/* Movements Table */}
+                  <div className="bg-zinc-900/40 border border-zinc-800 rounded-3xl p-6 shadow-xl">
+                    <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-4">Historial de Movimientos Registrados</h3>
+                    {financialRecords.length === 0 ? (
+                      <div className="text-center py-10 text-zinc-500 text-xs font-semibold">
+                        No hay movimientos registrados. Agrega gastos, ingresos o inversiones arriba.
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b border-zinc-800 text-left text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+                              <th className="py-3 px-4">Fecha</th>
+                              <th className="py-3 px-4">Tipo</th>
+                              <th className="py-3 px-4">Categoría</th>
+                              <th className="py-3 px-4">Descripción</th>
+                              <th className="py-3 px-4 text-right">Monto</th>
+                              <th className="py-3 px-4 text-center">Acción</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-zinc-800/40">
+                            {financialRecords.map(rec => (
+                              <tr key={rec.id} className="hover:bg-zinc-800/20 text-xs">
+                                <td className="py-3 px-4 font-mono text-zinc-400">
+                                  {new Date(rec.created_at).toLocaleDateString('es-AR')}
+                                </td>
+                                <td className="py-3 px-4">
+                                  <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                                    rec.type === 'ingreso' ? 'bg-emerald-500/10 text-emerald-400' :
+                                    rec.type === 'inversion' ? 'bg-amber-500/10 text-amber-400' : 'bg-red-500/10 text-red-400'
+                                  }`}>
+                                    {rec.type}
+                                  </span>
+                                </td>
+                                <td className="py-3 px-4 text-zinc-300 font-semibold">{rec.category}</td>
+                                <td className="py-3 px-4 text-zinc-400">{rec.description}</td>
+                                <td className={`py-3 px-4 text-right font-mono font-bold ${
+                                  rec.type === 'ingreso' ? 'text-emerald-400' : 'text-red-400'
+                                }`}>
+                                  {rec.type === 'ingreso' ? '+' : '-'}$ {rec.amount.toLocaleString('es-AR')}
+                                </td>
+                                <td className="py-3 px-4 text-center">
+                                  <button
+                                    onClick={() => handleDeleteFinancialRecord(rec.id)}
+                                    className="p-1 hover:text-red-400 text-zinc-600 transition-colors"
+                                  >
+                                    <Trash2 size={13} />
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Column 3: Market Study & Pricing Simulator */}
+                <div className="bg-zinc-900/40 border border-amber-500/20 rounded-3xl p-6 shadow-xl space-y-6">
+                  <div className="border-b border-zinc-800 pb-3">
+                    <div className="flex items-center gap-2 text-amber-400">
+                      <Star size={18} />
+                      <h3 className="text-sm font-black text-white uppercase tracking-wider">Simulador de Cotización y Mercado</h3>
+                    </div>
+                    <p className="text-[11px] text-zinc-400 mt-1">Calcula el margen neto antes de enviar una propuesta comercial a una empresa cliente.</p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">
+                        Cantidad de Guardias del Cliente: <strong className="text-amber-400 font-mono text-xs">{simGuards}</strong>
+                      </label>
+                      <input
+                        type="range"
+                        min={1}
+                        max={200}
+                        value={simGuards}
+                        onChange={e => setSimGuards(parseInt(e.target.value) || 1)}
+                        className="w-full accent-amber-500 cursor-pointer"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">
+                        Puestos / Objetivos Activos: <strong className="text-amber-400 font-mono text-xs">{simObjectives}</strong>
+                      </label>
+                      <input
+                        type="range"
+                        min={1}
+                        max={50}
+                        value={simObjectives}
+                        onChange={e => setSimObjectives(parseInt(e.target.value) || 1)}
+                        className="w-full accent-amber-500 cursor-pointer"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">
+                        Tarifa Estimada Membresía ($/mes)
+                      </label>
+                      <input
+                        type="number"
+                        step="1000"
+                        value={simPricePerGuard}
+                        onChange={e => setSimPricePerGuard(parseFloat(e.target.value) || 0)}
+                        className="w-full h-10 px-3 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-white font-mono font-bold focus:outline-none focus:border-amber-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Simulator Results */}
+                  {(() => {
+                    const ingresoMensual = simPricePerGuard;
+                    // Costo infra aproximado (Supabase/Vercel) asignable por cliente
+                    const costoInfraEstimado = 3500 + (simGuards * 150);
+                    const gananciaNeta = ingresoMensual - costoInfraEstimado;
+                    const margenPct = ingresoMensual > 0 ? ((gananciaNeta / ingresoMensual) * 100).toFixed(1) : '0';
+
+                    return (
+                      <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 space-y-3">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-zinc-400">Ingreso Mensual Cobrado:</span>
+                          <span className="font-mono font-bold text-emerald-400">$ {ingresoMensual.toLocaleString('es-AR')}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-zinc-400">Costo Servidor Atribuido:</span>
+                          <span className="font-mono font-bold text-red-400">$ {costoInfraEstimado.toLocaleString('es-AR')}</span>
+                        </div>
+                        <div className="border-t border-zinc-800 pt-2 flex justify-between items-center text-sm">
+                          <span className="text-white font-bold">Ganancia Neta Estimada:</span>
+                          <span className="font-mono font-black text-amber-400">$ {gananciaNeta.toLocaleString('es-AR')}</span>
+                        </div>
+                        <div className="text-right text-[10px] font-bold text-emerald-400">
+                          Margen Neto de Rentabilidad: {margenPct}%
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             </motion.div>

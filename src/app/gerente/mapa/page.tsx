@@ -161,10 +161,46 @@ export default function MapaOperativoPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
+      
+      // 🚀 1. PROBAR API CENTRALIZADA DEL MAPA CON RESOLUCIÓN DE COORDENADAS Y NOVEDADES
+      let mapDataResponse: any = null;
+      try {
+        const mapApiRes = await fetch('/api/dashboard/map');
+        if (mapApiRes.ok) {
+          mapDataResponse = await mapApiRes.json();
+        }
+      } catch (e) {
+        console.warn("[MAPA] Direct API fetch notice, using Supabase fallback:", e);
+      }
+
+      if (mapDataResponse && !mapDataResponse.error && Array.isArray(mapDataResponse.objectives)) {
+        setData(mapDataResponse);
+
+        if (Array.isArray(mapDataResponse.recentIncidents)) {
+          const activeCritical = mapDataResponse.recentIncidents.find((inc: any) => {
+            const isResolved = inc.status === 'resolved' || inc.status === 'resuelto' || inc.status === 'acknowledged';
+            if (isResolved) return false;
+            const type = (inc.entry_type || '').toLowerCase();
+            const content = (inc.content || '').toLowerCase();
+            return type === 'panic' || type === 'panico' || type === 'emergencia' || type === 'sos_panic' || inc.urgency === 'critica' || content.includes('pánico') || content.includes('panico') || content.includes('sos');
+          });
+
+          if (activeCritical) {
+            startAlarm();
+            setActiveAlert(activeCritical);
+            if (activeCritical.latitude && activeCritical.longitude) {
+              setMapCenter([Number(activeCritical.latitude), Number(activeCritical.longitude)]);
+            }
+          }
+        }
+        return;
+      }
+
+      // 🚀 2. FALLBACK A CONSULTAS DIRECTAS DE SUPABASE
       const [objRes, guardRes, incRes] = await Promise.all([
         supabase.from('objectives').select('*').order('created_at', { ascending: false }),
         supabase.from('resources').select('*, profiles:profile_id(avatar_url, full_name)').in('status', ['activo', 'active', 'En Turno', 'en_turno', 'disponible']),
-        supabase.from('guard_book_entries').select('*').in('urgency', ['critica', 'alta']).order('created_at', { ascending: false }).limit(20)
+        supabase.from('guard_book_entries').select('*').neq('entry_type', 'fichaje').order('created_at', { ascending: false }).limit(30)
       ]);
 
       const res = {
