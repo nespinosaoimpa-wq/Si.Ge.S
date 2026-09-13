@@ -34,10 +34,10 @@ export default function GuardBookPage() {
   const { isShiftActive, shiftData, theme } = useShift();
   const { user } = useAuth();
 
-  const objectiveId =
-    (shiftData as any)?.objective_id || (shiftData as any)?.current_objective_id;
+  const [resolvedObjId, setResolvedObjId] = useState<string | null>(null);
+
   const resourceId  =
-    (shiftData as any)?.operator_id  || (shiftData as any)?.resource_id;
+    (shiftData as any)?.operator_id  || (shiftData as any)?.resource_id || user?.id;
   const tenantId =
     (user as any)?.user_metadata?.tenant_id || (user as any)?.tenant_id || (shiftData as any)?.tenant_id;
 
@@ -53,9 +53,25 @@ export default function GuardBookPage() {
   const [submitting,   setSubmitting]   = useState(false);
   const [submitError,  setSubmitError]  = useState<string | null>(null);
 
-  // ── Fetch Entries ────────────────────────────────────────────────────────
+  // ── 1. Resolve Objective ID from Shift or Profile Fallback ──────────────
   useEffect(() => {
-    if (!objectiveId) {
+    const directId = (shiftData as any)?.objective_id || (shiftData as any)?.current_objective_id;
+    if (directId) {
+      setResolvedObjId(directId);
+    } else if (user?.id) {
+      import('@/lib/profile-resolver').then(({ resolveOperatorProfileDirect }) => {
+        resolveOperatorProfileDirect(user.id, user.email).then(prof => {
+          if (prof?.assignedObjective?.id) {
+            setResolvedObjId(prof.assignedObjective.id);
+          }
+        });
+      });
+    }
+  }, [shiftData, user]);
+
+  // ── 2. Fetch Entries from API Endpoint (/api/guard-book) ─────────────────
+  useEffect(() => {
+    if (!resolvedObjId) {
       setLoading(false);
       return;
     }
@@ -63,25 +79,25 @@ export default function GuardBookPage() {
     const fetchEntries = async () => {
       setLoading(true);
       try {
-        let { data, error } = await supabase
+        const url = `/api/guard-book?objective_id=${resolvedObjId}${filterDate ? `&date=${filterDate}` : ''}`;
+        const res = await fetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            setEntries(data);
+            setLoading(false);
+            return;
+          }
+        }
+
+        // Fallback to direct Supabase select if API fails
+        let { data } = await supabase
           .from('guard_book_entries')
-          .select('*, resources:resource_id(id, name, role, avatar_url)')
-          .eq('objective_id', objectiveId)
+          .select('*')
+          .eq('objective_id', resolvedObjId)
           .order('created_at', { ascending: false })
           .limit(200);
 
-        if (error && error.message.includes('resource_id')) {
-          const fallback = await supabase
-            .from('guard_book_entries')
-            .select('*, resources:operator_id(id, name, role, avatar_url)')
-            .eq('objective_id', objectiveId)
-            .order('created_at', { ascending: false })
-            .limit(200);
-          data = fallback.data;
-          error = fallback.error;
-        }
-
-        if (error) throw error;
         setEntries(data || []);
       } catch (err) {
         console.error('[GuardBook] Fetch error:', err);
@@ -94,24 +110,24 @@ export default function GuardBookPage() {
 
     // Realtime — new entries appear instantly
     const channel = supabase
-      .channel(`guard-book-operator-${objectiveId}`)
+      .channel(`guard-book-operator-${resolvedObjId}`)
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
         table: 'guard_book_entries',
-        filter: `objective_id=eq.${objectiveId}`,
+        filter: `objective_id=eq.${resolvedObjId}`,
       }, (payload) => {
         setEntries((prev) => [payload.new, ...prev]);
       })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [objectiveId, filterDate]);
+  }, [resolvedObjId, filterDate]);
 
   // ── Submit new entry ─────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newContent.trim() || !objectiveId) return;
+    if (!newContent.trim() || !resolvedObjId) return;
 
     setSubmitting(true);
     setSubmitError(null);
@@ -119,7 +135,7 @@ export default function GuardBookPage() {
     try {
       const { error: dbErr } = await supabase.from('guard_book_entries').insert({
         tenant_id: tenantId,
-        objective_id: objectiveId,
+        objective_id: resolvedObjId,
         operator_id: resourceId || user?.id,
         entry_type: newType,
         content: newContent.trim(),
