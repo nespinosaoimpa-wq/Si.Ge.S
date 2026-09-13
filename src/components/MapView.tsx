@@ -989,18 +989,17 @@ export default function MapView({
           );
         })}
 
-        {/* Objective Markers — Base foundation with optional corner avatar badge for on-shift operators */}
+        {/* Objective Markers — Base foundation with optional attached avatar badge for active on-shift operators */}
         {(objectives || []).filter(o => o.latitude && o.longitude && !isNaN(Number(o.latitude)) && !isNaN(Number(o.longitude))).map((obj) => {
           if (!obj.latitude || !obj.longitude) return null;
           const isSelected = selectedObjectiveId === obj.id || selectedObjective?.id === obj.id;
           const hasIncident = activeIncidents.some(inc => (inc as any).objective_id === obj.id);
           const enrichedObj = hasIncident ? { ...obj, status: 'critica' } : obj;
 
-          // Resolve active guard on shift at this objective
+          // 🚨 STRICT SHIFT VERIFICATION: Resolve active guard ON SHIFT at this objective (NO FALLBACK TO OFF-SHIFT ASSIGNED PERSONNEL)
           const activeGuardAtObj = (guards || []).find(g => {
             const isAtThisObj = g.current_objective_id === obj.id || 
-                                g.id === (obj as any).current_operator_id ||
-                                (obj.assigned_personnel || []).some((p: any) => p.id === g.id || p.assigned_to === g.id);
+                                g.id === (obj as any).current_operator_id;
             const isActive = Boolean(g.isOnShift) || 
                              g.status === 'activo' || 
                              g.status === 'active' || 
@@ -1009,7 +1008,7 @@ export default function MapView({
                              g.status === 'online' || 
                              Boolean((g as any).current_shift_id);
             return isAtThisObj && isActive;
-          }) || ((obj.assigned_personnel && obj.assigned_personnel.length > 0) ? obj.assigned_personnel[0] : null);
+          }) || null; // 🚨 STRICT NULL: No ghost photo when no operator is actively on shift!
 
           const activeGuardAvatar = activeGuardAtObj ? getAvatarUrl(activeGuardAtObj) : null;
           const activeGuardName = activeGuardAtObj ? activeGuardAtObj.name : null;
@@ -1043,12 +1042,18 @@ export default function MapView({
           );
         })}
 
-        {/* Standalone Guard Markers — Only for active personnel on shift */}
+        {/* Standalone Guard Markers — Only for active roaming personnel NOT stationed on an objective pin */}
         {(guards || []).filter(g => {
           if (!isValidCoords(g.latitude, g.longitude)) return false;
-          // IMPORTANT: Do NOT render standalone guard markers for off-shift / disconnected personnel that default to objective coords
+          // Must be actively on shift
           const isOnShift = Boolean(g.isOnShift) || g.status === 'activo' || g.status === 'active' || g.status === 'En Turno' || g.status === 'en_turno' || g.status === 'online';
-          return isOnShift;
+          if (!isOnShift) return false;
+
+          // 🚨 DEDUPING: If guard is stationed at an objective (avatar already rendered attached to objective pin), skip standalone marker
+          const isStationedAtObj = (objectives || []).some(o => o.id === g.current_objective_id);
+          if (isStationedAtObj) return false;
+
+          return true;
         }).map((g) => {
           const isSelected = selectedGuard?.id === g.id;
           const isAbandoned = g.status === 'abandoned';
