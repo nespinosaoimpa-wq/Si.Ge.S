@@ -1,22 +1,39 @@
 import { supabase } from './supabase';
+import { compressImage } from './storage-utils';
 
 /**
  * Direct Browser-to-Supabase Storage Uploader (0 Vercel Origin Bytes)
  * Uploads evidence, photos, and audio files directly to Supabase Storage.
+ * ⚡ AUTO-COMPRESSION: Downscales images to max 1280px JPEG (~100KB) to protect DB storage & bandwidth.
  */
-export async function uploadMediaDirect(file: Blob, filename?: string): Promise<{ url: string; path: string }> {
-  const isAudio = file.type.startsWith('audio/');
+export async function uploadMediaDirect(file: Blob | File, filename?: string): Promise<{ url: string; path: string }> {
+  const isAudio = file.type?.startsWith('audio/');
   const folder = isAudio ? 'audios' : 'imagenes';
   const timestamp = Date.now();
   const rand = Math.random().toString(36).slice(2, 8);
   const ext = (filename || 'file').split('.').pop() || (isAudio ? 'mp3' : 'jpg');
   const storagePath = `${folder}/${timestamp}-${rand}.${ext}`;
 
+  // 🛡️ Client-side Image Compression Engine (10MB -> ~100KB)
+  let uploadBlob: Blob = file;
+  if (!isAudio) {
+    try {
+      if (file instanceof File) {
+        uploadBlob = await compressImage(file, 1280, 0.82);
+      } else {
+        const tempFile = new File([file], filename || 'photo.jpg', { type: file.type || 'image/jpeg' });
+        uploadBlob = await compressImage(tempFile, 1280, 0.82);
+      }
+    } catch (e) {
+      console.warn('[StorageDirect] Image compression fallback to raw blob:', e);
+    }
+  }
+
   // Try bucket 'novedades-media'
   const { error: uploadError } = await supabase.storage
     .from('novedades-media')
-    .upload(storagePath, file, {
-      contentType: file.type || (isAudio ? 'audio/mpeg' : 'image/jpeg'),
+    .upload(storagePath, uploadBlob, {
+      contentType: isAudio ? 'audio/mpeg' : 'image/jpeg',
       upsert: true
     });
 

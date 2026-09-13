@@ -141,6 +141,29 @@ export async function POST(request: Request) {
           })
           .eq('id', currentShift.objective_id);
       }
+
+      // 📜 AUTO-LOG SHIFT CHECKOUT IN GUARD BOOK (DIGITAL AUDIT TRAIL)
+      try {
+        const tenantId = currentShift?.tenant_id || null;
+        const opName = currentShift?.operator_name || 'Operador';
+        const abandonInfo = abandonedMinutes > 0 ? ` (Deducción por abandono: ${abandonedMinutes} min)` : '';
+        
+        await supabase.from('guard_book_entries').insert({
+          objective_id: currentShift.objective_id || null,
+          operator_id: finalOpId || currentShift.operator_id,
+          operator_name: opName,
+          entry_type: 'checkout',
+          content: `🔴 CIERRE DE TURNO: Servicio finalizado por ${opName}. Duración bruta: ${grossHours} hs | Neto computable: ${totalNetHours} hs${abandonInfo}.`,
+          latitude: latitude || currentShift?.checkin_latitude || 0,
+          longitude: longitude || currentShift?.checkin_longitude || 0,
+          urgency: 'normal',
+          status: 'cerrado',
+          created_at: checkoutTime,
+          ...(tenantId ? { tenant_id: tenantId } : {})
+        } as any);
+      } catch (logErr) {
+        console.warn('[CHECKOUT] Guard book entry notice:', logErr);
+      }
     }
 
     // 5. Update resource back to disponible

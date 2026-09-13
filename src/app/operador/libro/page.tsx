@@ -479,9 +479,17 @@ export default function GuardBookPage() {
                           <img
                             src={entry.image_url}
                             alt="Foto novedad"
-                            className="h-28 w-auto rounded-xl object-cover border border-white/10 cursor-zoom-in"
+                            className="h-28 w-auto rounded-xl object-cover border border-white/10 cursor-zoom-in shadow-md"
                             onClick={() => window.open(entry.image_url, '_blank')}
                           />
+                        </div>
+                      )}
+
+                      {/* Adjunto de Audio en Operador si existe */}
+                      {entry.audio_url && (
+                        <div className="mt-2.5 p-3 bg-black/30 rounded-xl border border-white/10 space-y-1">
+                          <p className="text-[9px] font-black text-primary uppercase tracking-wider">🎙️ Nota de voz registrada</p>
+                          <audio controls src={entry.audio_url} className="w-full h-8 rounded-lg" />
                         </div>
                       )}
 
