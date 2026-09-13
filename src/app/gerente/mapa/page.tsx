@@ -290,61 +290,57 @@ export default function MapaOperativoPage() {
         if (payload.eventType === 'UPDATE') {
           const updated = payload.new as any;
           if (updated.status === 'resolved' || updated.status === 'resuelto') {
-            // Eliminar alerta activa si coincide
             setActiveAlert((prev: any) => prev?.id === updated.id ? null : prev);
-            // También podemos forzar fetch para limpiar cualquier otro listado si lo hubiera
             fetchData();
           }
           return;
         }
 
-        if (payload.eventType === 'INSERT') {
+        if (payload.eventType === 'INSERT' && newEntry) {
+          // ⚡ Instant Background Sync
           fetchData(); 
           
-        if (newEntry) {
           const isCritical = newEntry.entry_type === 'panic' || newEntry.entry_type === 'emergencia' || 
                              newEntry.status === 'critica' || newEntry.status === 'crítica' ||
                              (newEntry.content || '').toLowerCase().includes('pánico') || 
                              (newEntry.content || '').toLowerCase().includes('panic');
-          if (isCritical) {
-            // Try to fetch operator name for rich display
-            const opId = newEntry.operator_id || newEntry.resource_id;
-            let operatorName = 'Operador';
-            if (opId) {
+
+          // Fetch operator name for immediate display
+          const opId = newEntry.operator_id || newEntry.resource_id;
+          let operatorName = 'Operador';
+          if (opId) {
+            const cachedRes = dataRef.current.resources?.find((r: any) => r.id === opId);
+            if (cachedRes?.name) {
+              operatorName = cachedRes.name;
+            } else {
               try {
                 const { data: res } = await supabase.from('resources').select('name').eq('id', opId).single();
                 if (res?.name) operatorName = res.name;
-              } catch (e) {
-                console.error("Error fetching operator name:", e);
-              }
+              } catch (e) {}
             }
-            
-            const enrichedAlert = { 
-              ...newEntry, 
-              operator_name: operatorName,
-              urgency: 'critica'
-            };
-            
-            // Trigger audio siren loop
+          }
+          
+          const enrichedAlert = { 
+            ...newEntry, 
+            operator_name: operatorName,
+            urgency: isCritical ? 'critica' : (newEntry.urgency || 'alta')
+          };
+          
+          if (isCritical) {
             startAlarm();
-            
-            // Set active alert state
             setActiveAlert(enrichedAlert);
-            
-            // Center map on emergency coordinates
-            if (newEntry.latitude && newEntry.longitude) {
-              setMapCenter([newEntry.latitude, newEntry.longitude]);
+            if (newEntry.latitude && newEntry.longitude && !isNaN(Number(newEntry.latitude))) {
+              setMapCenter([Number(newEntry.latitude), Number(newEntry.longitude)]);
             }
           }
         }
-        } // Missing closing brace for payload.eventType === 'INSERT' added here
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'alarms' }, async (payload) => {
         const newAlarm = payload.new as any;
         if (tenantId && newAlarm?.tenant_id && newAlarm.tenant_id !== tenantId) return;
         fetchData();
-        if (newAlarm && newAlarm.status === 'active') {
-          // Trigger audio siren loop
+
+        if (newAlarm && (newAlarm.status === 'active' || newAlarm.status === 'abierto' || !newAlarm.status)) {
           startAlarm();
           
           let resourceName = newAlarm.operator_name || 'Operador';
@@ -382,7 +378,8 @@ export default function MapaOperativoPage() {
 
           const enrichedAlert = {
             ...newAlarm,
-            entry_type: newAlarm.alarm_type === 'panico' || newAlarm.alarm_type === 'sos_panic' ? 'emergencia' : (newAlarm.alarm_type || 'emergencia'),
+            entry_type: 'emergencia',
+            urgency: 'critica',
             content: newAlarm.message || 'Alerta de pánico activada por operador',
             operator_name: resourceName,
             latitude: latitude,
@@ -393,42 +390,39 @@ export default function MapaOperativoPage() {
           setActiveAlert(enrichedAlert);
           
           if (enrichedAlert.latitude && enrichedAlert.longitude) {
-            setMapCenter([enrichedAlert.latitude, enrichedAlert.longitude]);
+            setMapCenter([Number(enrichedAlert.latitude), Number(enrichedAlert.longitude)]);
           }
         }
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'guard_book_entries' }, async (payload) => {
         fetchData(); 
         
-        // Listen for new critical alerts
         if (payload.eventType === 'INSERT') {
           const newEntry = payload.new as any;
           if (newEntry) {
-            const isCritical = newEntry.urgency === 'critica' || newEntry.urgency === 'alta' || newEntry.entry_type === 'emergencia';
+            const isCritical = newEntry.urgency === 'critica' || newEntry.urgency === 'alta' || newEntry.entry_type === 'emergencia' || newEntry.entry_type === 'panic';
             if (isCritical) {
-              // Try to fetch operator name for rich display
               const opId = newEntry.operator_id || newEntry.resource_id;
               let operatorName = 'Operador';
               if (opId) {
-                try {
-                  const { data: res } = await supabase.from('resources').select('name').eq('id', opId).single();
-                  if (res?.name) operatorName = res.name;
-                } catch (e) {
-                  console.error("Error fetching operator name:", e);
+                const cachedRes = dataRef.current.resources?.find((r: any) => r.id === opId);
+                if (cachedRes?.name) {
+                  operatorName = cachedRes.name;
+                } else {
+                  try {
+                    const { data: res } = await supabase.from('resources').select('name').eq('id', opId).single();
+                    if (res?.name) operatorName = res.name;
+                  } catch (e) {}
                 }
               }
               
-              const enrichedAlert = { ...newEntry, operator_name: operatorName };
+              const enrichedAlert = { ...newEntry, operator_name: operatorName, urgency: 'critica' };
               
-              // Trigger audio siren loop
               startAlarm();
-              
-              // Set active alert state
               setActiveAlert(enrichedAlert);
               
-              // Center map on emergency coordinates
-              if (newEntry.latitude && newEntry.longitude) {
-                setMapCenter([newEntry.latitude, newEntry.longitude]);
+              if (newEntry.latitude && newEntry.longitude && !isNaN(Number(newEntry.latitude))) {
+                setMapCenter([Number(newEntry.latitude), Number(newEntry.longitude)]);
               }
             }
           }
@@ -438,11 +432,11 @@ export default function MapaOperativoPage() {
         console.log(`[MAP_REALTIME] Subscription status: ${status}`, err || '');
       });
 
-    // ⚡ Smart Frugal Auto-Sync Poll (25s Interval, Active Tab Only) to minimize Vercel/Supabase bandwidth
+    // ⚡ Smart Frugal Auto-Sync Poll (15s Interval, Active Tab Only) for ultra-fluid synchronization
     const pollInterval = setInterval(() => {
-      if (typeof document !== 'undefined' && document.hidden) return; // Skip if tab is hidden
+      if (typeof document !== 'undefined' && document.hidden) return;
       fetchData();
-    }, 25000);
+    }, 15000);
 
     return () => {
       clearInterval(pollInterval);
