@@ -242,51 +242,46 @@ export default function MapaOperativoPage() {
     const tenantId = (user as any)?.user_metadata?.tenant_id || (user as any)?.tenant_id;
 
     const channel = supabase
-      .channel('map-realtime-v4')
+      .channel('map-realtime-v5')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'resources' }, (payload) => {
         const updatedResource = payload.new as any;
         if (tenantId && updatedResource?.tenant_id && updatedResource.tenant_id !== tenantId) return;
         
-        if (payload.eventType === 'UPDATE') {
-          const isActuallyActive = updatedResource.status === 'activo' || updatedResource.status === 'active' || updatedResource.status === 'En Turno';
+        if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
+          const isNotBaja = updatedResource.status !== 'baja';
           
           setData((prev: any) => {
             const exists = prev.resources?.some((r: any) => r.id === updatedResource.id);
             let resources;
 
             if (exists) {
-              if (isActuallyActive) {
-                // Update existing active resource
+              if (isNotBaja) {
+                // Update existing resource in real-time
                 resources = prev.resources.map((r: any) => 
                   r.id === updatedResource.id ? { ...r, ...updatedResource, profiles: r.profiles } : r
                 );
               } else {
-                // Remove if no longer active
+                // Remove if status is baja
                 resources = prev.resources.filter((r: any) => r.id !== updatedResource.id);
               }
-            } else if (isActuallyActive) {
-              // Add new active resource to the map
+            } else if (isNotBaja) {
+              // Add new active resource to the map immediately
               resources = [updatedResource, ...(prev.resources || [])];
             } else {
               resources = prev.resources;
             }
             return { ...prev, resources };
           });
-        } else if (payload.eventType === 'INSERT') {
-          // If a completely new resource is created and active, fetch or push it
-          const isActuallyActive = updatedResource.status === 'activo' || updatedResource.status === 'active' || updatedResource.status === 'En Turno';
-          if (isActuallyActive) {
-             setData((prev: any) => ({
-               ...prev,
-               resources: [updatedResource, ...(prev.resources || [])]
-             }));
-          }
         }
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'objectives' }, (payload) => {
         const updated = payload.new as any;
         if (tenantId && updated?.tenant_id && updated.tenant_id !== tenantId) return;
         fetchData(); 
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'guard_shifts' }, () => {
+        // Instant sync when an operator checks in or out
+        fetchData();
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'incidents' }, async (payload) => {
         const newEntry = payload.new as any;
@@ -443,7 +438,13 @@ export default function MapaOperativoPage() {
         console.log(`[MAP_REALTIME] Subscription status: ${status}`, err || '');
       });
 
+    // ⚡ Background Auto-Sync Poll (5s Interval) as a zero-latency fallback
+    const pollInterval = setInterval(() => {
+      fetchData();
+    }, 5000);
+
     return () => {
+      clearInterval(pollInterval);
       supabase.removeChannel(channel);
       stopAlarm();
     };
