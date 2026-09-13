@@ -295,7 +295,7 @@ const ObjectiveMarkerContent = React.memo(({
   const isCritical = obj.status === 'critica' || obj.status === 'alerta' || obj.status === 'emergency';
 
   return (
-    <div className="relative w-10 h-10 flex items-center justify-center group cursor-pointer pointer-events-none select-none">
+    <div className="relative w-10 h-10 flex flex-col items-center justify-center group cursor-pointer pointer-events-none select-none">
       {/* Relocation visual hint */}
       {isRelocating && isSelected && (
         <div className="absolute -top-16 left-1/2 -translate-x-1/2 bg-zinc-950 text-white text-[8px] font-black uppercase px-2.5 py-1.5 rounded-lg whitespace-nowrap animate-bounce border-2 border-[#0F4C5C] shadow-2xl z-[60]">
@@ -317,16 +317,16 @@ const ObjectiveMarkerContent = React.memo(({
         <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-zinc-950 rotate-45 border-r border-b border-white/20" />
       </div>
 
-      {/* Sleek Tactical Dark Obsidian Card with Building Icon */}
+      {/* Main Circular Tactical Objective Badge */}
       <div className={cn(
-        "w-10 h-10 rounded-xl bg-zinc-950 backdrop-blur-md flex items-center justify-center shadow-[0_6px_20px_rgba(0,0,0,0.5)] cursor-pointer border-2 transition-[color,background-color,border-color,box-shadow,opacity] duration-300 relative pointer-events-auto",
+        "w-10 h-10 rounded-full bg-zinc-950 flex items-center justify-center shadow-[0_6px_20px_rgba(0,0,0,0.6)] cursor-pointer border-2 transition-all duration-300 relative pointer-events-auto",
         isCritical
           ? "border-red-500 text-white scale-125 z-50 animate-bounce shadow-[0_0_20px_rgba(239,68,68,0.6)]"
           : isManned
-          ? "border-emerald-500/80 shadow-[0_2px_12px_rgba(16,185,129,0.2)] group-hover:border-emerald-400 group-hover:scale-110"
+          ? "border-[#0F4C5C] text-emerald-400 shadow-[0_2px_12px_rgba(15,76,92,0.4)] group-hover:scale-110"
           : isSelected
           ? "border-[#0F4C5C] scale-125 z-50 shadow-2xl ring-2 ring-[#0F4C5C]/30"
-          : "border-amber-400/60 shadow-[0_2px_12px_rgba(251,191,36,0.15)] group-hover:border-amber-400 group-hover:scale-110"
+          : "border-amber-400/60 text-amber-400 shadow-[0_2px_12px_rgba(251,191,36,0.2)] group-hover:scale-110"
       )}>
         {isCritical ? (
           <Zap className="w-5 h-5 text-amber-300 animate-pulse" />
@@ -334,23 +334,19 @@ const ObjectiveMarkerContent = React.memo(({
           <Building2 className={cn("w-5 h-5", isManned ? "text-emerald-400" : "text-[#0F4C5C]")} />
         )}
 
-        {/* Active Operator Avatar Badge (Top-Right Corner Overlay) */}
-        {isManned && activeGuardAvatar ? (
-          <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full border-2 border-emerald-500 bg-zinc-900 overflow-hidden shadow-lg z-20 transition-transform group-hover:scale-125">
-            <img src={activeGuardAvatar} className="w-full h-full object-cover" alt={activeGuardName || 'Operador'} />
-          </div>
-        ) : (
-          /* Precision Status Dot (Subtle Accent, Top-Right Corner) */
-          <span className={cn(
-            "absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-zinc-950 shadow-md",
-            isCritical
-              ? "bg-red-500 animate-ping"
-              : isManned
-              ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]"
-              : "bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.6)]"
-          )} />
-        )}
+        {/* Status Dot (Top-Right Accent) */}
+        <span className={cn(
+          "absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-zinc-950 shadow-md",
+          isCritical ? "bg-red-500 animate-ping" : isManned ? "bg-emerald-400" : "bg-amber-400"
+        )} />
       </div>
+
+      {/* Operator Photo Attached Below Objective Pin (Matching User Mockup) */}
+      {isManned && activeGuardAvatar && (
+        <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-7 h-7 rounded-full border-2 border-emerald-500 bg-zinc-900 overflow-hidden shadow-xl z-20 transition-transform group-hover:scale-125">
+          <img src={activeGuardAvatar} className="w-full h-full object-cover" alt={activeGuardName || 'Operador'} />
+        </div>
+      )}
     </div>
   );
 });
