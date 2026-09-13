@@ -5,7 +5,8 @@ import { serverCache } from '@/lib/cache';
 const ALLOWED_OBJECTIVE_COLUMNS = new Set([
   'name', 'address', 'client_name', 'contact_phone',
   'latitude', 'longitude', 'geofence_radius',
-  'is_active', 'hourly_billing_rate', 'tenant_id', 'updated_at'
+  'is_active', 'hourly_billing_rate', 'tenant_id', 'updated_at',
+  'image_url', 'photo_url'
 ]);
 
 export async function GET(

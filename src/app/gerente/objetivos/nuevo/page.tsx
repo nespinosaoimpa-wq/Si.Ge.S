@@ -26,18 +26,36 @@ import dynamic from 'next/dynamic';
 import { api } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { searchAddresses, GeocodingResult, searchBoxRetrieve } from '@/lib/geocoding';
+import { uploadMediaDirect } from '@/lib/storage-direct';
 
 const MapView = dynamic(() => import('@/components/MapView'), { ssr: false });
 
 export default function NuevoObjetivo() {
   const router = useRouter();
   const [coords, setCoords] = useState<{lat: number, lng: number}>({ lat: -31.6107, lng: -60.6973 }); // SIGPAD default
-  const [formData, setFormData] = useState({ name: '', address: '', client_name: '', contact_phone: '', geofence_radius: 200 });
+  const [formData, setFormData] = useState({ name: '', address: '', client_name: '', contact_phone: '', geofence_radius: 200, image_url: '' });
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<GeocodingResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+
+  const handlePhotoUpload = async (file: File) => {
+    if (!file) return;
+    setIsUploadingPhoto(true);
+    try {
+      const res: any = await uploadMediaDirect(file, 'objectives');
+      const publicUrl = typeof res === 'string' ? res : res?.url || null;
+      if (publicUrl) {
+        setFormData(prev => ({ ...prev, image_url: publicUrl }));
+      }
+    } catch (e: any) {
+      alert("Error al subir foto del objetivo: " + e.message);
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
 
   const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -358,13 +376,53 @@ export default function NuevoObjetivo() {
 
                   <div className="space-y-4">
                     <UploadCard icon={FileText} label="Plan de Seguridad" sub="PDF (Max 10MB)" />
-                    <UploadCard icon={Camera} label="Foto del Puesto" sub="JPG, PNG" />
+                    
+                    {/* Interactive Objective Photo Upload Card */}
+                    <div className="relative">
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        id="objective-photo-input" 
+                        className="hidden" 
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handlePhotoUpload(file);
+                        }}
+                      />
+                      <label 
+                        htmlFor="objective-photo-input"
+                        className="p-6 border-2 border-dashed border-gray-100 rounded-3xl bg-gray-50/50 flex items-center justify-between group hover:border-primary/50 hover:bg-white cursor-pointer transition-all block"
+                      >
+                        <div className="flex items-center gap-4">
+                          {formData.image_url ? (
+                            <img 
+                              src={formData.image_url} 
+                              alt="Vista previa del objetivo" 
+                              className="w-14 h-14 rounded-2xl object-cover border border-primary/30 shadow-md"
+                            />
+                          ) : (
+                            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center group-hover:bg-primary/10 transition-colors shadow-sm">
+                              <Camera size={20} className="text-gray-400 group-hover:text-primary" />
+                            </div>
+                          )}
+                          <div>
+                            <p className="text-sm font-bold text-gray-900 uppercase">
+                              {formData.image_url ? 'Foto del Puesto Subida ✅' : 'Foto Identificatoria del Puesto'}
+                            </p>
+                            <p className="text-[10px] text-gray-500 font-medium uppercase">
+                              {isUploadingPhoto ? 'Comprimiendo y subiendo foto...' : formData.image_url ? 'Tocá para cambiar imagen' : 'JPG, PNG (Compresión automática HD)'}
+                            </p>
+                          </div>
+                        </div>
+                        <Upload size={18} className="text-gray-300 group-hover:text-primary transition-colors" />
+                      </label>
+                    </div>
                     
                     <div className="pt-10 flex gap-3">
                       <Button variant="outline" onClick={() => setStep(2)} className="h-12 flex-1 uppercase font-black text-xs">Atrás</Button>
                       <Button 
                         onClick={handleSubmit} 
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || isUploadingPhoto}
                         className="h-12 flex-1 uppercase font-black text-xs"
                       >
                         {isSubmitting ? 'Registrando...' : 'Finalizar Alta'}
@@ -440,7 +498,7 @@ export default function NuevoObjetivo() {
                 </div>
                 <div className="flex flex-col gap-3">
                   <Button className="h-14 font-black uppercase text-xs" onClick={() => router.push('/gerente')}>Ver en el Mapa</Button>
-                  <Button variant="outline" className="h-14 font-black uppercase text-xs" onClick={() => { setStep(1); setFormData({ name: '', address: '', client_name: '', contact_phone: '', geofence_radius: 200 }); }}>Cargar Otro</Button>
+                  <Button variant="outline" className="h-14 font-black uppercase text-xs" onClick={() => { setStep(1); setFormData({ name: '', address: '', client_name: '', contact_phone: '', geofence_radius: 200, image_url: '' }); }}>Cargar Otro</Button>
                 </div>
              </div>
           </motion.div>

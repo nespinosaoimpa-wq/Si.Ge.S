@@ -257,6 +257,12 @@ export function ObjectiveSidebar({
                                 className="w-full h-full object-cover" 
                                 alt={obj.name} 
                               />
+                            ) : (obj.image_url || obj.photo_url) ? (
+                              <img 
+                                src={obj.image_url || obj.photo_url} 
+                                className="w-full h-full object-cover" 
+                                alt={obj.name} 
+                              />
                             ) : isManned ? (
                               <User size={18} className="text-[#0F4C5C]" />
                             ) : (

@@ -27,6 +27,8 @@ interface Objective {
   is_manned?: boolean;
   occupant_name?: string;
   assigned_personnel?: any[]; // For deep join results
+  image_url?: string | null;
+  photo_url?: string | null;
 }
 
 interface Guard {
@@ -304,10 +306,10 @@ const ObjectiveMarkerContent = React.memo(({
         </div>
       )}
 
-      {/* Objective Name Label */}
+      {/* Objective Name Label (Rendered on hover ONLY when Popup card is closed) */}
       <div className={cn(
-        "absolute -top-10 left-1/2 -translate-x-1/2 px-2.5 py-1 bg-zinc-950 text-white text-[9px] font-black uppercase tracking-widest rounded-lg border border-white/20 shadow-2xl transition-opacity duration-300 pointer-events-none whitespace-nowrap z-50 flex items-center gap-1.5",
-        isSelected ? "opacity-100 scale-100 -translate-y-1" : "opacity-0 scale-90 translate-y-2 group-hover:opacity-100 group-hover:scale-100 group-hover:translate-y-0"
+        "absolute -top-10 left-1/2 -translate-x-1/2 px-2.5 py-1 bg-zinc-950 text-white text-[9px] font-black uppercase tracking-widest rounded-lg border border-white/20 shadow-2xl transition-all duration-200 pointer-events-none whitespace-nowrap z-50 flex items-center gap-1.5",
+        isSelected ? "opacity-0 scale-90 pointer-events-none" : "opacity-0 scale-90 translate-y-2 group-hover:opacity-100 group-hover:scale-100 group-hover:translate-y-0"
       )}>
         <span className={cn(
           "w-2 h-2 rounded-full",
@@ -331,6 +333,8 @@ const ObjectiveMarkerContent = React.memo(({
       )}>
         {isCritical ? (
           <Zap className="w-5 h-5 text-amber-300 animate-pulse" />
+        ) : (obj.image_url || obj.photo_url) && !isManned ? (
+          <img src={String(obj.image_url || obj.photo_url)} className="w-full h-full rounded-full object-cover p-0.5" alt={obj.name} />
         ) : (
           <Building2 className={cn("w-5 h-5", isManned ? "text-emerald-400" : "text-[#0F4C5C]")} />
         )}

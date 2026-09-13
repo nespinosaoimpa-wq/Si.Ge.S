@@ -31,7 +31,9 @@ import {
   Smartphone,
   Zap,
   BookOpen,
-  Printer
+  Printer,
+  Camera,
+  Upload
 } from 'lucide-react';
 import { printGuardBookSheet } from '@/lib/printGuardBook';
 import { Card } from '@/components/ui/Card';
@@ -44,6 +46,7 @@ import { api } from '@/lib/api';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Input } from '@/components/ui/Input';
 import { geocodeForward } from '@/lib/geocoding';
+import { uploadMediaDirect } from '@/lib/storage-direct';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const MapView = dynamic(() => import('@/components/MapView'), { ssr: false });
@@ -106,9 +109,11 @@ export default function ObjectiveDetail() {
     geofence_radius: 150,
     hourly_billing_rate: '',
     status: 'Activo',
-    notes: ''
+    notes: '',
+    image_url: ''
   });
   const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [isUploadingEditPhoto, setIsUploadingEditPhoto] = useState(false);
   const [observations, setObservations] = useState('');
   const [isSavingNotes, setIsSavingNotes] = useState(false);
 
@@ -179,7 +184,8 @@ export default function ObjectiveDetail() {
           geofence_radius: data.objective.geofence_radius_meters || data.objective.geofence_radius || 150,
           hourly_billing_rate: data.objective.hourly_billing_rate?.toString() || '',
           status: data.objective.status || 'Activo',
-          notes: data.objective.notes || ''
+          notes: data.objective.notes || '',
+          image_url: data.objective.image_url || data.objective.photo_url || ''
         });
         setShifts(Array.isArray(data.shifts) ? data.shifts : []);
         setCheckpoints(Array.isArray(data.checkpoints) ? data.checkpoints : []);
@@ -443,7 +449,8 @@ export default function ObjectiveDetail() {
         geofence_radius_meters: Number(editForm.geofence_radius) || 150,
         hourly_billing_rate: editForm.hourly_billing_rate ? Number(editForm.hourly_billing_rate) : null,
         status: editForm.status,
-        notes: editForm.notes.trim()
+        notes: editForm.notes.trim(),
+        image_url: editForm.image_url || null
       };
 
       await api.objectives.update(id, updates);
@@ -603,8 +610,16 @@ export default function ObjectiveDetail() {
         
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
           <div className="flex items-center gap-5">
-            <div className="w-16 h-16 bg-[#0F4C5C] rounded-2xl flex items-center justify-center shadow-lg shadow-[#0F4C5C]/20">
-               <MapPin size={32} className="text-black" />
+            <div className="w-16 h-16 bg-[#0F4C5C] rounded-2xl flex items-center justify-center shadow-lg shadow-[#0F4C5C]/20 overflow-hidden shrink-0 border-2 border-[#0F4C5C]/40">
+               {objective.image_url || objective.photo_url ? (
+                 <img 
+                   src={objective.image_url || objective.photo_url} 
+                   alt={objective.name} 
+                   className="w-full h-full object-cover"
+                 />
+               ) : (
+                 <MapPin size={32} className="text-black" />
+               )}
             </div>
             <div>
               <div className="flex items-center gap-3 mb-1">
@@ -636,7 +651,8 @@ export default function ObjectiveDetail() {
                   geofence_radius: objective.geofence_radius_meters || objective.geofence_radius || 150,
                   hourly_billing_rate: objective.hourly_billing_rate?.toString() || '',
                   status: objective.status || 'Activo',
-                  notes: objective.notes || observations || ''
+                  notes: objective.notes || observations || '',
+                  image_url: objective.image_url || objective.photo_url || ''
                 });
                 setIsEditModalOpen(true);
               }}
@@ -680,21 +696,23 @@ export default function ObjectiveDetail() {
                 <div>
                   <h3 className="text-[11px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-6">Especificaciones</h3>
                   <div className="space-y-4">
-                    <div className="flex items-center gap-2 group/geo">
-                      <div className="flex-1 overflow-hidden">
-                        <InfoItem icon={MapPin} label="Dirección" value={objective.address} />
-                      </div>
-                      <Button 
-                        onClick={handleGeocode}
-                        disabled={isUpdating}
-                        variant="ghost" 
-                        size="sm" 
-                        className="h-8 px-2 text-[9px] font-black uppercase tracking-widest bg-zinc-50 border border-zinc-100 hover:bg-[#0F4C5C] hover:text-black transition-all shrink-0"
-                      >
-                        {isUpdating ? <Loader2 size={12} className="animate-spin" /> : <MapIcon size={12} className="mr-1" />}
-                        Geolocalizar
-                      </Button>
-                    </div>
+                    <InfoItem 
+                      icon={MapPin} 
+                      label="Dirección" 
+                      value={objective.address} 
+                      action={
+                        <Button 
+                          onClick={handleGeocode}
+                          disabled={isUpdating}
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-7 px-2.5 text-[9px] font-black uppercase tracking-wider bg-zinc-100/80 border border-zinc-200 hover:bg-[#0F4C5C] hover:text-white transition-all shrink-0 rounded-lg"
+                        >
+                          {isUpdating ? <Loader2 size={12} className="animate-spin" /> : <MapIcon size={12} className="mr-1" />}
+                          Geolocalizar
+                        </Button>
+                      }
+                    />
                     <InfoItem icon={Phone} label="Contacto" value={objective.contact_phone || 'N/A'} />
                     <InfoItem icon={Shield} label="Protocolo" value="ESTÁNDAR" />
                     <InfoItem icon={Calendar} label="Vigencia" value="ACTIVO" />
@@ -1942,15 +1960,18 @@ export default function ObjectiveDetail() {
   );
 }
 
-function InfoItem({ icon: Icon, label, value }: { icon: any, label: string, value: string }) {
+function InfoItem({ icon: Icon, label, value, action }: { icon: any, label: string, value: string, action?: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-4 py-1.5 px-1 hover:translate-x-1 transition-transform cursor-default group">
-      <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shrink-0 border border-zinc-200 shadow-sm group-hover:border-[#0F4C5C]/50 group-hover:shadow-[#0F4C5C]/10 transition-all">
+    <div className="flex items-start gap-3.5 py-2 px-1 hover:bg-zinc-50/50 rounded-xl transition-all group">
+      <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shrink-0 border border-zinc-200 shadow-sm group-hover:border-[#0F4C5C]/50 group-hover:shadow-[#0F4C5C]/10 transition-all mt-0.5">
         <Icon size={16} className="text-[#0F4C5C]" />
       </div>
-      <div className="flex-1 border-b border-zinc-100 pb-1.5 group-hover:border-[#0F4C5C]/20 transition-colors">
-        <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{label}</p>
-        <p className="text-sm font-black text-zinc-900 mt-0.5 tracking-tight uppercase truncate">{value || 'No definido'}</p>
+      <div className="min-w-0 flex-1 border-b border-zinc-100 pb-2 group-hover:border-[#0F4C5C]/20 transition-colors">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{label}</p>
+          {action}
+        </div>
+        <p className="text-xs font-black text-zinc-900 mt-1 tracking-tight uppercase break-words leading-relaxed">{value || 'No definido'}</p>
       </div>
     </div>
   );
