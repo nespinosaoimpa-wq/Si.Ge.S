@@ -29,9 +29,12 @@ export default function PWARegistration() {
       }
     };
     window.addEventListener('unhandledrejection', handleUnhandledRejection);
-    // 1. Check if already running as installed PWA
+    // 1. Check if already running as installed PWA or previously installed
+    const alreadyInstalled = localStorage.getItem('SIGPAD_pwa_installed') === 'true';
     const standalone = window.matchMedia('(display-mode: standalone)').matches
-      || (window.navigator as any).standalone === true;
+      || (window.navigator as any).standalone === true
+      || alreadyInstalled;
+      
     setIsStandalone(standalone);
 
     // 2. Detect iOS device
@@ -63,14 +66,33 @@ export default function PWARegistration() {
       setDeferredPrompt(e);
       (window as any).deferredPrompt = e;
 
+      // 🛡️ DO NOT SHOW BANNER IF ALREADY INSTALLED OR RUNNING STANDALONE
+      if (standalone || localStorage.getItem('SIGPAD_pwa_installed') === 'true') {
+        setShowBottomBanner(false);
+        return;
+      }
+
       const dismissed = localStorage.getItem('SIGPAD_pwa_dismissed');
       if (!dismissed || Date.now() - parseInt(dismissed) > 24 * 60 * 60 * 1000) {
         setShowBottomBanner(true);
       }
     };
 
-    // 5. Global trigger event listener (Always Active!)
+    // 5. Listen for appinstalled event (Native PWA Install Complete)
+    const handleAppInstalled = () => {
+      console.log('[PWA] Evento appinstalled detectado — Ocultando banners.');
+      setIsStandalone(true);
+      setShowBottomBanner(false);
+      localStorage.setItem('SIGPAD_pwa_installed', 'true');
+    };
+
+    // 6. Global trigger event listener (Always Active!)
     const handleTriggerInstall = () => {
+      if (isStandalone || localStorage.getItem('SIGPAD_pwa_installed') === 'true') {
+        setIsModalOpen(true);
+        return;
+      }
+
       const prompt = (window as any).deferredPrompt || deferredPrompt;
       const isIOSCurrent = typeof navigator !== 'undefined' && 
         (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent)));
@@ -87,6 +109,8 @@ export default function PWARegistration() {
               setDeferredPrompt(null);
               (window as any).deferredPrompt = null;
               setShowBottomBanner(false);
+              localStorage.setItem('SIGPAD_pwa_installed', 'true');
+              setIsStandalone(true);
             } else {
               setIsModalOpen(true);
             }
@@ -100,7 +124,7 @@ export default function PWARegistration() {
     };
 
     // Auto-show banner for iOS on first visit if not standalone
-    if (isIOSDevice && !standalone) {
+    if (isIOSDevice && !standalone && localStorage.getItem('SIGPAD_pwa_installed') !== 'true') {
       const dismissed = localStorage.getItem('SIGPAD_pwa_dismissed');
       if (!dismissed || Date.now() - parseInt(dismissed) > 24 * 60 * 60 * 1000) {
         setShowBottomBanner(true);
@@ -108,11 +132,13 @@ export default function PWARegistration() {
     }
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+    window.addEventListener('appinstalled', handleAppInstalled);
     window.addEventListener('trigger-pwa-install', handleTriggerInstall);
 
     return () => {
       window.removeEventListener('unhandledrejection', handleUnhandledRejection);
       window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+      window.removeEventListener('appinstalled', handleAppInstalled);
       window.removeEventListener('trigger-pwa-install', handleTriggerInstall);
     };
   }, []);
