@@ -981,64 +981,13 @@ export default function MapView({
           );
         })}
 
-        {/* Guard Markers with Professional Animation and Heading */}
-        {(guards || []).filter(g => isValidCoords(g.latitude, g.longitude)).map((g) => {
-          
-          const isSelected = selectedGuard?.id === g.id;
-          const isAbandoned = g.status === 'abandoned';
-          
-          return (
-            <Marker
-              key={`guard-${g.id}`}
-              latitude={Number(g.latitude)}
-              longitude={Number(g.longitude)}
-              anchor="center"
-              rotationAlignment="viewport"
-              pitchAlignment="viewport"
-              onClick={e => {
-                e.originalEvent.stopPropagation();
-                setSelectedGuard(g);
-              }}
-            >
-              <GuardMarkerContent
-                name={g.name}
-                speed={g.speed}
-                heading={g.heading}
-                isOnShift={!!g.isOnShift}
-                isAbandoned={isAbandoned}
-                avatarUrl={getAvatarUrl(g)}
-                status={g.status}
-                isSelected={isSelected}
-                accuracy={g.accuracy}
-              />
-            </Marker>
-          );
-        })}
-
-        {/* Objective Markers */}
+        {/* Objective Markers — Rendered FIRST as base foundation */}
         {(objectives || []).filter(o => o.latitude && o.longitude && !isNaN(Number(o.latitude)) && !isNaN(Number(o.longitude))).map((obj) => {
           if (!obj.latitude || !obj.longitude) return null;
           const isSelected = selectedObjectiveId === obj.id || selectedObjective?.id === obj.id;
           const hasIncident = activeIncidents.some(inc => (inc as any).objective_id === obj.id);
           const enrichedObj = hasIncident ? { ...obj, status: 'critica' } : obj;
 
-          // Resolve active guard on shift at this objective to display avatar photo!
-          const activeGuardAtObj = (guards || []).find(g => {
-            const isAtThisObj = g.current_objective_id === obj.id || 
-                                g.id === (obj as any).current_operator_id ||
-                                (obj.assigned_personnel || []).some((p: any) => p.id === g.id || p.assigned_to === g.id);
-            const isActive = g.status === 'activo' || 
-                             g.status === 'active' || 
-                             g.status === 'En Turno' || 
-                             g.status === 'en_turno' || 
-                             g.status === 'online' || 
-                             Boolean(g.isOnShift) || 
-                             Boolean((g as any).current_shift_id);
-            return isAtThisObj && isActive;
-          }) || ((obj.assigned_personnel && obj.assigned_personnel.length > 0) ? obj.assigned_personnel[0] : null);
-
-          const activeGuardAvatar = activeGuardAtObj ? getAvatarUrl(activeGuardAtObj) : null;
-          
           return (
             <Marker
               key={`obj-${obj.id}`}
@@ -1047,6 +996,7 @@ export default function MapView({
               anchor="center"
               rotationAlignment="viewport"
               pitchAlignment="viewport"
+              style={{ zIndex: isSelected ? 40 : 10 }}
               draggable={isRelocating && isSelected}
               onDragEnd={(e) => {
                 if (onRelocationEnd) onRelocationEnd(obj.id, e.lngLat.lat, e.lngLat.lng);
@@ -1060,6 +1010,41 @@ export default function MapView({
                 obj={enrichedObj}
                 isSelected={isSelected}
                 isRelocating={isRelocating}
+              />
+            </Marker>
+          );
+        })}
+
+        {/* Guard Markers — Rendered SECOND (on top in front of objectives) */}
+        {(guards || []).filter(g => isValidCoords(g.latitude, g.longitude)).map((g) => {
+          const isSelected = selectedGuard?.id === g.id;
+          const isAbandoned = g.status === 'abandoned';
+          const isOnShift = !!g.isOnShift;
+
+          return (
+            <Marker
+              key={`guard-${g.id}`}
+              latitude={Number(g.latitude)}
+              longitude={Number(g.longitude)}
+              anchor="center"
+              rotationAlignment="viewport"
+              pitchAlignment="viewport"
+              style={{ zIndex: isSelected ? 50 : isAbandoned ? 45 : isOnShift ? 30 : 20 }}
+              onClick={e => {
+                e.originalEvent.stopPropagation();
+                setSelectedGuard(g);
+              }}
+            >
+              <GuardMarkerContent
+                name={g.name}
+                speed={g.speed}
+                heading={g.heading}
+                isOnShift={isOnShift}
+                isAbandoned={isAbandoned}
+                avatarUrl={getAvatarUrl(g)}
+                status={g.status}
+                isSelected={isSelected}
+                accuracy={g.accuracy}
               />
             </Marker>
           );
