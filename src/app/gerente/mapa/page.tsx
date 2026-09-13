@@ -438,10 +438,11 @@ export default function MapaOperativoPage() {
         console.log(`[MAP_REALTIME] Subscription status: ${status}`, err || '');
       });
 
-    // ⚡ Background Auto-Sync Poll (5s Interval) as a zero-latency fallback
+    // ⚡ Smart Frugal Auto-Sync Poll (25s Interval, Active Tab Only) to minimize Vercel/Supabase bandwidth
     const pollInterval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return; // Skip if tab is hidden
       fetchData();
-    }, 5000);
+    }, 25000);
 
     return () => {
       clearInterval(pollInterval);
