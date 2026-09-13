@@ -281,11 +281,15 @@ GuardMarkerContent.displayName = 'GuardMarkerContent';
 const ObjectiveMarkerContent = React.memo(({
   obj,
   isSelected,
-  isRelocating
+  isRelocating,
+  activeGuardAvatar,
+  activeGuardName
 }: {
   obj: Objective;
   isSelected: boolean;
   isRelocating: boolean;
+  activeGuardAvatar?: string | null;
+  activeGuardName?: string | null;
 }) => {
   const isManned = obj.is_manned || (obj.assigned_personnel && obj.assigned_personnel.length > 0) || Boolean(obj.occupant_name);
   const isCritical = obj.status === 'critica' || obj.status === 'alerta' || obj.status === 'emergency';
@@ -309,6 +313,7 @@ const ObjectiveMarkerContent = React.memo(({
           isCritical ? "bg-red-400 animate-ping" : isManned ? "bg-emerald-400" : "bg-amber-400"
         )} />
         {obj.name}
+        {activeGuardName && <span className="text-emerald-400 font-bold">({activeGuardName.split(' ')[0]})</span>}
         <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-zinc-950 rotate-45 border-r border-b border-white/20" />
       </div>
 
@@ -329,15 +334,22 @@ const ObjectiveMarkerContent = React.memo(({
           <Building2 className={cn("w-5 h-5", isManned ? "text-emerald-400" : "text-[#0F4C5C]")} />
         )}
 
-        {/* Precision Status Dot (Subtle Accent, Top-Right Corner) */}
-        <span className={cn(
-          "absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-zinc-950 shadow-md",
-          isCritical
-            ? "bg-red-500 animate-ping"
-            : isManned
-            ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]"
-            : "bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.6)]"
-        )} />
+        {/* Active Operator Avatar Badge (Top-Right Corner Overlay) */}
+        {isManned && activeGuardAvatar ? (
+          <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full border-2 border-emerald-500 bg-zinc-900 overflow-hidden shadow-lg z-20 transition-transform group-hover:scale-125">
+            <img src={activeGuardAvatar} className="w-full h-full object-cover" alt={activeGuardName || 'Operador'} />
+          </div>
+        ) : (
+          /* Precision Status Dot (Subtle Accent, Top-Right Corner) */
+          <span className={cn(
+            "absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-zinc-950 shadow-md",
+            isCritical
+              ? "bg-red-500 animate-ping"
+              : isManned
+              ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]"
+              : "bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.6)]"
+          )} />
+        )}
       </div>
     </div>
   );
@@ -981,12 +993,30 @@ export default function MapView({
           );
         })}
 
-        {/* Objective Markers — Rendered FIRST as base foundation */}
+        {/* Objective Markers — Base foundation with optional corner avatar badge for on-shift operators */}
         {(objectives || []).filter(o => o.latitude && o.longitude && !isNaN(Number(o.latitude)) && !isNaN(Number(o.longitude))).map((obj) => {
           if (!obj.latitude || !obj.longitude) return null;
           const isSelected = selectedObjectiveId === obj.id || selectedObjective?.id === obj.id;
           const hasIncident = activeIncidents.some(inc => (inc as any).objective_id === obj.id);
           const enrichedObj = hasIncident ? { ...obj, status: 'critica' } : obj;
+
+          // Resolve active guard on shift at this objective
+          const activeGuardAtObj = (guards || []).find(g => {
+            const isAtThisObj = g.current_objective_id === obj.id || 
+                                g.id === (obj as any).current_operator_id ||
+                                (obj.assigned_personnel || []).some((p: any) => p.id === g.id || p.assigned_to === g.id);
+            const isActive = Boolean(g.isOnShift) || 
+                             g.status === 'activo' || 
+                             g.status === 'active' || 
+                             g.status === 'En Turno' || 
+                             g.status === 'en_turno' || 
+                             g.status === 'online' || 
+                             Boolean((g as any).current_shift_id);
+            return isAtThisObj && isActive;
+          }) || ((obj.assigned_personnel && obj.assigned_personnel.length > 0) ? obj.assigned_personnel[0] : null);
+
+          const activeGuardAvatar = activeGuardAtObj ? getAvatarUrl(activeGuardAtObj) : null;
+          const activeGuardName = activeGuardAtObj ? activeGuardAtObj.name : null;
 
           return (
             <Marker
@@ -1010,16 +1040,22 @@ export default function MapView({
                 obj={enrichedObj}
                 isSelected={isSelected}
                 isRelocating={isRelocating}
+                activeGuardAvatar={activeGuardAvatar}
+                activeGuardName={activeGuardName}
               />
             </Marker>
           );
         })}
 
-        {/* Guard Markers — Rendered SECOND (on top in front of objectives) */}
-        {(guards || []).filter(g => isValidCoords(g.latitude, g.longitude)).map((g) => {
+        {/* Standalone Guard Markers — Only for active personnel on shift */}
+        {(guards || []).filter(g => {
+          if (!isValidCoords(g.latitude, g.longitude)) return false;
+          // IMPORTANT: Do NOT render standalone guard markers for off-shift / disconnected personnel that default to objective coords
+          const isOnShift = Boolean(g.isOnShift) || g.status === 'activo' || g.status === 'active' || g.status === 'En Turno' || g.status === 'en_turno' || g.status === 'online';
+          return isOnShift;
+        }).map((g) => {
           const isSelected = selectedGuard?.id === g.id;
           const isAbandoned = g.status === 'abandoned';
-          const isOnShift = !!g.isOnShift;
 
           return (
             <Marker
@@ -1029,7 +1065,7 @@ export default function MapView({
               anchor="center"
               rotationAlignment="viewport"
               pitchAlignment="viewport"
-              style={{ zIndex: isSelected ? 50 : isAbandoned ? 45 : isOnShift ? 30 : 20 }}
+              style={{ zIndex: isSelected ? 50 : isAbandoned ? 45 : 30 }}
               onClick={e => {
                 e.originalEvent.stopPropagation();
                 setSelectedGuard(g);
@@ -1039,7 +1075,7 @@ export default function MapView({
                 name={g.name}
                 speed={g.speed}
                 heading={g.heading}
-                isOnShift={isOnShift}
+                isOnShift={true}
                 isAbandoned={isAbandoned}
                 avatarUrl={getAvatarUrl(g)}
                 status={g.status}
