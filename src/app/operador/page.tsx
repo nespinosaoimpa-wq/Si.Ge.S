@@ -19,6 +19,7 @@ import { supabase } from '@/lib/supabase';
 import { resolveOperatorProfileDirect } from '@/lib/profile-resolver';
 import { useAuth } from '@/components/providers/AuthProvider';
 import PanicTriggerModal from '@/components/operador/PanicTriggerModal';
+import BatteryOptimizationGuide from '@/components/operador/BatteryOptimizationGuide';
 
 export default function GuardiaDashboard() {
   const { isShiftActive, isCheckingShift, shiftId, shiftData, startShift, theme, toggleTheme, updateShiftData } = useShift();
@@ -446,6 +447,11 @@ export default function GuardiaDashboard() {
             </motion.div>
           );
         })()}
+
+        {/* 💡 Battery & Background GPS Optimization Guide */}
+        <div className="mb-6">
+          <BatteryOptimizationGuide />
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
