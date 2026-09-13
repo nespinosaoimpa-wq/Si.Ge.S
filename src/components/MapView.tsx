@@ -1001,11 +1001,8 @@ export default function MapView({
             const isAtThisObj = g.current_objective_id === obj.id || 
                                 g.id === (obj as any).current_operator_id;
             const isActive = Boolean(g.isOnShift) || 
-                             g.status === 'activo' || 
-                             g.status === 'active' || 
                              g.status === 'En Turno' || 
                              g.status === 'en_turno' || 
-                             g.status === 'online' || 
                              Boolean((g as any).current_shift_id);
             return isAtThisObj && isActive;
           }) || null; // 🚨 STRICT NULL: No ghost photo when no operator is actively on shift!
@@ -1045,8 +1042,8 @@ export default function MapView({
         {/* Standalone Guard Markers — Only for active roaming personnel NOT stationed on an objective pin */}
         {(guards || []).filter(g => {
           if (!isValidCoords(g.latitude, g.longitude)) return false;
-          // Must be actively on shift
-          const isOnShift = Boolean(g.isOnShift) || g.status === 'activo' || g.status === 'active' || g.status === 'En Turno' || g.status === 'en_turno' || g.status === 'online';
+          // 🚨 STRICT ACTIVE SHIFT: Must have an open active shift (g.status === 'activo' is ACCOUNT status, NOT shift status!)
+          const isOnShift = Boolean(g.isOnShift) || g.status === 'En Turno' || g.status === 'en_turno' || Boolean((g as any).current_shift_id);
           if (!isOnShift) return false;
 
           // 🚨 DEDUPING: If guard is stationed at an objective (avatar already rendered attached to objective pin), skip standalone marker

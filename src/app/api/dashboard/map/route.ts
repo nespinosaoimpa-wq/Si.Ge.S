@@ -175,13 +175,36 @@ export async function GET(req: NextRequest) {
     if (rawIncidentsRes.error) console.error("❌ Raw incidents fetch error:", JSON.stringify(rawIncidentsRes.error));
     if (alarmsRes?.error) console.error("❌ Alarms fetch error:", JSON.stringify(alarmsRes.error));
 
-    let rawResources = resourcesRes.data || [];
+    const activeShiftsData = shiftsRes.data || [];
+    const activeShiftByOperator: Record<string, any> = {};
+    activeShiftsData.forEach((s: any) => {
+      if (s.operator_id) activeShiftByOperator[s.operator_id] = s;
+    });
+
+    let rawResources = (resourcesRes.data || []).map((r: any) => {
+      const activeShift = activeShiftByOperator[r.id] || activeShiftByOperator[r.profile_id];
+      const isOnShift = Boolean(activeShift);
+      return {
+        ...r,
+        isOnShift,
+        current_shift_id: activeShift?.id || null,
+        current_objective_id: activeShift ? activeShift.objective_id : r.current_objective_id
+      };
+    });
+
     if (resourcesRes.error) {
       console.error("❌ Resources fetch error:", JSON.stringify(resourcesRes.error));
       let fallbackQuery = supabase.from('resources').select('id, name, role, status, latitude, longitude, accuracy, speed, heading, battery_level, last_gps_update, phone, email, avatar_url, current_objective_id, profile_id, tenant_id').neq('status', 'baja');
       if (!isSuper && tenantId) fallbackQuery = fallbackQuery.eq('tenant_id', tenantId);
       const fb = await fallbackQuery;
-      rawResources = fb.data || [];
+      rawResources = (fb.data || []).map((r: any) => {
+        const activeShift = activeShiftByOperator[r.id] || activeShiftByOperator[r.profile_id];
+        return {
+          ...r,
+          isOnShift: Boolean(activeShift),
+          current_shift_id: activeShift?.id || null
+        };
+      });
     }
 
     // Map assigned personnel in memory cleanly
