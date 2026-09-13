@@ -29,7 +29,7 @@ export async function POST(request: Request) {
 
     // Fallback: search by operator_id or email for active shift if shift_id was missing/stale
     if (!currentShift && (operator_id || email)) {
-      let query = supabase.from('guard_shifts').select('*').in('status', ['activo', 'active']);
+      let query = supabase.from('guard_shifts').select('*').is('checkout_time', null);
       
       let resId: string | null = null;
       if (operator_id) {
@@ -118,7 +118,7 @@ export async function POST(request: Request) {
           .from('guard_shifts')
           .update({ ...basePayload, total_hours: totalNetHours })
           .eq('operator_id', finalOpId)
-          .in('status', ['activo', 'active']);
+          .is('checkout_time', null);
       } catch (e) {}
     }
 

@@ -72,8 +72,9 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
           const storedUserId = parsed.data?.user_id;
           const storedEmail = parsed.data?.operator_email;
 
-          const isDifferentUser = (storedUserId && user.id && String(storedUserId) !== String(user.id)) &&
-                                  (storedEmail && user.email && String(storedEmail).toLowerCase() !== String(user.email).toLowerCase());
+          // 🚨 STRICT SESSION ISOLATION: Purge cache if user ID or Email does not match logged in user
+          const isDifferentUser = Boolean((storedUserId && user.id && String(storedUserId) !== String(user.id)) ||
+                                  (storedEmail && user.email && String(storedEmail).toLowerCase() !== String(user.email).toLowerCase()));
 
           const startTimeMs = parsed.data?.startTime ? new Date(parsed.data.startTime).getTime() : (parsed.data?.time ? new Date(parsed.data.time).getTime() : (parsed.data?.checkin_time ? new Date(parsed.data.checkin_time).getTime() : Date.now()));
           const hoursOld = (Date.now() - startTimeMs) / (1000 * 3600);
@@ -83,6 +84,8 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
             setShiftData(parsed.data);
             setShiftId(parsed.id);
             restoredFromLocal = true;
+          } else {
+            localStorage.removeItem('704_active_shift');
           }
         } catch (e) {
           localStorage.removeItem('704_active_shift');
@@ -122,10 +125,11 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
           }
         }
 
+        // 🚨 AUTHORITATIVE SHIFT RECOVERY: Check guard_shifts where checkout_time IS NULL (open active shift)
         const { data: activeShifts, error } = await supabase
           .from('guard_shifts')
           .select('*, objectives:objective_id(latitude, longitude, geofence_radius, geofence_radius_meters, name)')
-          .in('status', ['activo', 'active'])
+          .is('checkout_time', null)
           .order('checkin_time', { ascending: false });
 
         const activeShift = (activeShifts || []).find((s: any) => 
