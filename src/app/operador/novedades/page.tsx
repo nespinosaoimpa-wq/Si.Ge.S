@@ -150,18 +150,20 @@ export default function NovedadesPage() {
         if (gbErr) throw gbErr;
 
         // Also insert into incidents table for instant multi-channel map pin rendering
-        await supabase.from('incidents').insert({
-          tenant_id: tenantId,
-          objective_id: objectiveId || null,
-          operator_id: resourceId,
-          entry_type: entryType,
-          urgency: selectedData.urgency,
-          content: contentText,
-          latitude: lat,
-          longitude: lng,
-          status: 'pendiente',
-          created_at: nowIso
-        } as any).catch(() => {});
+        try {
+          await supabase.from('incidents').insert({
+            tenant_id: tenantId,
+            objective_id: objectiveId || null,
+            operator_id: resourceId,
+            entry_type: entryType,
+            urgency: selectedData.urgency,
+            content: contentText,
+            latitude: lat,
+            longitude: lng,
+            status: 'pendiente',
+            created_at: nowIso
+          } as any);
+        } catch (e) {}
       }
       
       setSuccess(true);
