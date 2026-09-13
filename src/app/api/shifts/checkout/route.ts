@@ -156,7 +156,6 @@ export async function POST(request: Request) {
         .update({ 
           status: 'disponible',
           current_shift_id: null,
-          current_objective_id: null,
           latitude: null,
           longitude: null
         })
