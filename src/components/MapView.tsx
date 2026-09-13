@@ -291,7 +291,8 @@ const ObjectiveMarkerContent = React.memo(({
   activeGuardAvatar?: string | null;
   activeGuardName?: string | null;
 }) => {
-  const isManned = obj.is_manned || (obj.assigned_personnel && obj.assigned_personnel.length > 0) || Boolean(obj.occupant_name);
+  // 🚨 STRICT ON-SHIFT OCCUPANCY: Manned ONLY if an active guard avatar/personnel is present on shift
+  const isManned = Boolean(activeGuardAvatar) || (Boolean(obj.assigned_personnel && obj.assigned_personnel.length > 0) && Boolean(obj.is_manned));
   const isCritical = obj.status === 'critica' || obj.status === 'alerta' || obj.status === 'emergency';
 
   return (
@@ -996,14 +997,11 @@ export default function MapView({
           const hasIncident = activeIncidents.some(inc => (inc as any).objective_id === obj.id);
           const enrichedObj = hasIncident ? { ...obj, status: 'critica' } : obj;
 
-          // 🚨 STRICT SHIFT VERIFICATION: Resolve active guard ON SHIFT at this objective (NO FALLBACK TO OFF-SHIFT ASSIGNED PERSONNEL)
+          // 🚨 STRICT SHIFT VERIFICATION: Resolve active guard ON SHIFT at this objective
           const activeGuardAtObj = (guards || []).find(g => {
             const isAtThisObj = g.current_objective_id === obj.id || 
                                 g.id === (obj as any).current_operator_id;
-            const isActive = Boolean(g.isOnShift) || 
-                             g.status === 'En Turno' || 
-                             g.status === 'en_turno' || 
-                             Boolean((g as any).current_shift_id);
+            const isActive = Boolean(g.isOnShift);
             return isAtThisObj && isActive;
           }) || null; // 🚨 STRICT NULL: No ghost photo when no operator is actively on shift!
 

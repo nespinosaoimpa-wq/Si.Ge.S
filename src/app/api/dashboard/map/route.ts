@@ -188,7 +188,8 @@ export async function GET(req: NextRequest) {
         ...r,
         isOnShift,
         current_shift_id: activeShift?.id || null,
-        current_objective_id: activeShift ? activeShift.objective_id : r.current_objective_id
+        // 🚨 STRICT OPERATIONAL BINDING: Off-shift resources have NULL operational objective id
+        current_objective_id: activeShift ? activeShift.objective_id : null
       };
     });
 
@@ -202,15 +203,16 @@ export async function GET(req: NextRequest) {
         return {
           ...r,
           isOnShift: Boolean(activeShift),
-          current_shift_id: activeShift?.id || null
+          current_shift_id: activeShift?.id || null,
+          current_objective_id: activeShift ? activeShift.objective_id : null
         };
       });
     }
 
-    // Map assigned personnel in memory cleanly
+    // 🚨 STRICT ON-SHIFT GROUPING: Map assigned personnel ONLY if actively ON SHIFT
     const resourcesByObjective: Record<string, any[]> = {};
     rawResources.forEach((r: any) => {
-      if (r.current_objective_id) {
+      if (r.isOnShift && r.current_objective_id) {
         if (!resourcesByObjective[r.current_objective_id]) {
           resourcesByObjective[r.current_objective_id] = [];
         }
@@ -225,12 +227,22 @@ export async function GET(req: NextRequest) {
       return isNaN(num) ? fallback : num;
     };
 
-    const mappedObjectives = rawObjectives.map((obj: any) => ({
-      ...obj,
-      latitude: parseCoord(obj.latitude, -31.6107),
-      longitude: parseCoord(obj.longitude, -60.6973),
-      assigned_personnel: resourcesByObjective[obj.id] || []
-    }));
+    const mappedObjectives = rawObjectives.map((obj: any) => {
+      const assignedOnShift = resourcesByObjective[obj.id] || [];
+      const isManned = assignedOnShift.length > 0;
+      const occupantName = isManned ? assignedOnShift[0].name : null;
+      const currentOperatorId = isManned ? assignedOnShift[0].id : null;
+
+      return {
+        ...obj,
+        latitude: parseCoord(obj.latitude, -31.6107),
+        longitude: parseCoord(obj.longitude, -60.6973),
+        is_manned: isManned,
+        occupant_name: occupantName,
+        current_operator_id: currentOperatorId,
+        assigned_personnel: assignedOnShift
+      };
+    });
 
     // Build lookup map for resolving missing coordinates from objectives
     const objectiveCoordMap: Record<string, { latitude: number; longitude: number }> = {};

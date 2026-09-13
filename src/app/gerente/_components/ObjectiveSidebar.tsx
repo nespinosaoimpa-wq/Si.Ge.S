@@ -221,74 +221,76 @@ export function ObjectiveSidebar({
                 )
               ) : (
                 <div className="p-3 space-y-2">
-                  {filteredObjectives.map((obj: any) => (
-                    <button
-                      key={obj.id}
-                      onClick={() => {
-                        setSelectedObjective(obj);
-                        if (isMobile) setIsSidebarOpen(false);
-                      }}
-                      className={cn(
-                        "w-full text-left p-4 rounded-xl transition-all border shadow-sm",
-                        selectedObjective?.id === obj.id
-                          ? "bg-white border-[#0F4C5C]/50 ring-1 ring-[#0F4C5C]/20"
-                          : "bg-white border-zinc-200 hover:border-zinc-300"
-                      )}
-                    >
-                      <div className="flex items-start gap-3 overflow-hidden">
-                        <div className={cn(
-                          "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border transition-all overflow-hidden bg-zinc-50 mt-0.5",
-                          obj.is_manned ? "border-[#0F4C5C]/30 shadow-sm" : "border-zinc-200"
-                        )}>
-                          {obj.is_manned && (
-                            obj.assigned_personnel?.[0]?.profiles?.avatar_url || 
-                            obj.assigned_personnel?.[0]?.avatar_url ||
-                            (activeGuards || []).find((g: any) => g.current_objective_id === obj.id)?.profiles?.avatar_url ||
-                            (activeGuards || []).find((g: any) => g.current_objective_id === obj.id)?.avatar_url
-                          ) ? (
-                            <img 
-                              src={
-                                obj.assigned_personnel?.[0]?.profiles?.avatar_url || 
-                                obj.assigned_personnel?.[0]?.avatar_url ||
-                                (activeGuards || []).find((g: any) => g.current_objective_id === obj.id)?.profiles?.avatar_url ||
-                                (activeGuards || []).find((g: any) => g.current_objective_id === obj.id)?.avatar_url
-                              } 
-                              className="w-full h-full object-cover" 
-                              alt={obj.name} 
-                            />
-                          ) : obj.is_manned ? (
-                            <User size={18} className="text-[#0F4C5C]" />
-                          ) : (
-                            <MapPin size={18} className="text-zinc-400" />
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1 overflow-hidden">
-                          <h3 className="text-xs font-semibold text-zinc-900 truncate leading-tight">{obj.name}</h3>
-                          {obj.occupant_name ? (
-                            <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
-                              <div className="w-1.5 h-1.5 rounded-full bg-[#0F4C5C] shrink-0" />
-                              <p className="text-[11px] text-[#0F4C5C] font-medium truncate">{obj.occupant_name}</p>
-                            </div>
-                          ) : (
-                            obj.address && <p className="text-[11px] text-zinc-500 font-normal truncate mt-0.5">{obj.address}</p>
-                          )}
-                          <div className="flex items-center gap-2 mt-2 flex-wrap">
-                            <span className={cn(
-                              "text-[10px] font-medium leading-none shrink-0",
-                              obj.is_manned ? "text-[#0F4C5C]" : "text-zinc-500"
-                            )}>
-                              {obj.is_manned ? '• Cubierto' : (obj.status || 'Activo')}
-                            </span>
-                            <span className="text-zinc-300 text-[10px] shrink-0">|</span>
-                            <span className="text-[10px] text-zinc-400 font-mono truncate max-w-[120px]">
-                              {String(obj.id || '').startsWith('OBJ-') ? obj.id : `OBJ-${String(obj.id || '').substring(0, 8)}`}
-                            </span>
+                  {filteredObjectives.map((obj: any) => {
+                    const activeGuardOnShift = (activeGuards || []).find((g: any) => g.current_objective_id === obj.id && g.isOnShift);
+                    const isManned = Boolean(obj.is_manned && (obj.assigned_personnel?.length > 0 || activeGuardOnShift));
+                    const avatarUrl = isManned ? (
+                      obj.assigned_personnel?.[0]?.profiles?.avatar_url || 
+                      obj.assigned_personnel?.[0]?.avatar_url ||
+                      activeGuardOnShift?.profiles?.avatar_url ||
+                      activeGuardOnShift?.avatar_url
+                    ) : null;
+                    const occupantName = isManned ? (obj.occupant_name || activeGuardOnShift?.name || obj.assigned_personnel?.[0]?.name) : null;
+
+                    return (
+                      <button
+                        key={obj.id}
+                        onClick={() => {
+                          setSelectedObjective(obj);
+                          if (isMobile) setIsSidebarOpen(false);
+                        }}
+                        className={cn(
+                          "w-full text-left p-4 rounded-xl transition-all border shadow-sm",
+                          selectedObjective?.id === obj.id
+                            ? "bg-white border-[#0F4C5C]/50 ring-1 ring-[#0F4C5C]/20"
+                            : "bg-white border-zinc-200 hover:border-zinc-300"
+                        )}
+                      >
+                        <div className="flex items-start gap-3 overflow-hidden">
+                          <div className={cn(
+                            "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border transition-all overflow-hidden bg-zinc-50 mt-0.5",
+                            isManned ? "border-[#0F4C5C]/30 shadow-sm" : "border-zinc-200"
+                          )}>
+                            {isManned && avatarUrl ? (
+                              <img 
+                                src={avatarUrl} 
+                                className="w-full h-full object-cover" 
+                                alt={obj.name} 
+                              />
+                            ) : isManned ? (
+                              <User size={18} className="text-[#0F4C5C]" />
+                            ) : (
+                              <MapPin size={18} className="text-zinc-400" />
+                            )}
                           </div>
+                          <div className="min-w-0 flex-1 overflow-hidden">
+                            <h3 className="text-xs font-semibold text-zinc-900 truncate leading-tight">{obj.name}</h3>
+                            {occupantName ? (
+                              <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
+                                <div className="w-1.5 h-1.5 rounded-full bg-[#0F4C5C] shrink-0" />
+                                <p className="text-[11px] text-[#0F4C5C] font-medium truncate">{occupantName}</p>
+                              </div>
+                            ) : (
+                              obj.address && <p className="text-[11px] text-zinc-500 font-normal truncate mt-0.5">{obj.address}</p>
+                            )}
+                            <div className="flex items-center gap-2 mt-2 flex-wrap">
+                              <span className={cn(
+                                "text-[10px] font-medium leading-none shrink-0",
+                                isManned ? "text-[#0F4C5C]" : "text-zinc-500"
+                              )}>
+                                {isManned ? '• Cubierto' : (obj.status || 'Activo')}
+                              </span>
+                              <span className="text-zinc-300 text-[10px] shrink-0">|</span>
+                              <span className="text-[10px] text-zinc-400 font-mono truncate max-w-[120px]">
+                                {String(obj.id || '').startsWith('OBJ-') ? obj.id : `OBJ-${String(obj.id || '').substring(0, 8)}`}
+                              </span>
+                            </div>
+                          </div>
+                          <ChevronRight size={16} className={cn("mt-1 shrink-0 transition-colors", selectedObjective?.id === obj.id ? "text-[#0F4C5C]" : "text-zinc-300")} />
                         </div>
-                        <ChevronRight size={16} className={cn("mt-1 shrink-0 transition-colors", selectedObjective?.id === obj.id ? "text-[#0F4C5C]" : "text-zinc-300")} />
-                      </div>
-                    </button>
-                  ))}
+                      </button>
+                    );
+                  })}
                 </div>
               )
             ) : (
