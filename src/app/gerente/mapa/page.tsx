@@ -199,7 +199,7 @@ export default function MapaOperativoPage() {
       // 🚀 2. FALLBACK A CONSULTAS DIRECTAS DE SUPABASE
       const [objRes, guardRes, incRes] = await Promise.all([
         supabase.from('objectives').select('*').order('created_at', { ascending: false }),
-        supabase.from('resources').select('*, profiles:profile_id(avatar_url, full_name)').in('status', ['activo', 'active', 'En Turno', 'en_turno', 'disponible']),
+        supabase.from('resources').select('*, profiles:profile_id(avatar_url, full_name)').neq('status', 'baja'),
         supabase.from('guard_book_entries').select('*').neq('entry_type', 'fichaje').order('created_at', { ascending: false }).limit(30)
       ]);
 
