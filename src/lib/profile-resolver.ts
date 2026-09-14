@@ -134,52 +134,7 @@ export async function resolveOperatorProfileDirect(
 
     let targetObjId = resource.current_objective_id;
 
-    // 3. Multi-layer Fallback 1: Scheduled or active guard shifts
-    if (!targetObjId) {
-      const { data: activeShift } = await supabase
-        .from('guard_shifts')
-        .select('objective_id, objectives(id, name)')
-        .or(`operator_id.eq.${resource.id},operator_id.eq.${userId}`)
-        .in('status', ['programado', 'activo', 'active'])
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (activeShift?.objective_id) {
-        targetObjId = activeShift.objective_id;
-      }
-    }
-
-    // 4. Multi-layer Fallback 2: Shift Requirements / Assignments by Operator ID or Name
-    if (!targetObjId) {
-      const nameFilter = resource.name ? `,assigned_operator_name.ilike.%${resource.name.split(' ')[0]}%` : '';
-      const { data: req } = await supabase
-        .from('shift_requirements')
-        .select('objective_id')
-        .or(`assigned_operator_id.eq.${resource.id},assigned_operator_id.eq.${userId}${nameFilter}`)
-        .limit(1)
-        .maybeSingle();
-
-      if (req?.objective_id) {
-        targetObjId = req.objective_id;
-      }
-    }
-
-    // 5. Multi-layer Fallback 3: Objective resources junction table
-    if (!targetObjId) {
-      const { data: objRes } = await supabase
-        .from('objective_resources')
-        .select('objective_id')
-        .or(`resource_id.eq.${resource.id},resource_id.eq.${userId}`)
-        .limit(1)
-        .maybeSingle();
-
-      if (objRes?.objective_id) {
-        targetObjId = objRes.objective_id;
-      }
-    }
-
-    // 6. Fetch full objective record
+    // Fetch full objective record directly from assigned current_objective_id
     let assignedObjective: any = null;
     if (targetObjId) {
       const { data: obj } = await supabase
@@ -198,15 +153,6 @@ export async function resolveOperatorProfileDirect(
           geofence_radius: Number(obj.geofence_radius_meters || obj.geofence_radius || 150),
           geofence_radius_meters: Number(obj.geofence_radius_meters || obj.geofence_radius || 150)
         };
-
-        // Self-heal resource table asynchronously (<5ms)
-        if (!resource.current_objective_id) {
-          supabase
-            .from('resources')
-            .update({ current_objective_id: obj.id })
-            .eq('id', resource.id)
-            .then(() => {});
-        }
       }
     }
 

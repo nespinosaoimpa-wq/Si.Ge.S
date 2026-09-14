@@ -135,8 +135,14 @@ export async function PATCH(
             resource_id: resId
           });
       } else {
-        // 3. 🚨 OPERATOR RELEASED: Close any active shift for this operator to prevent stale shifts from reverting assignment
+        // 3. 🚨 OPERATOR RELEASED: Unassign shift_requirements and close active guard_shifts
         const nowIso = new Date().toISOString();
+        
+        await supabase
+          .from('shift_requirements')
+          .update({ assigned_operator_id: null, assigned_operator_name: null })
+          .or(`assigned_operator_id.eq.${resId},assigned_operator_id.eq.${id}`);
+
         await supabase
           .from('guard_shifts')
           .update({ checkout_time: nowIso, status: 'completado' })
