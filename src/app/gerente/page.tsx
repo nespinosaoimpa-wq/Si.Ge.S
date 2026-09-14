@@ -464,8 +464,17 @@ export default function AdminDashboard() {
       setData((prev: any) => ({
         ...prev,
         resources: (prev.resources || []).map((r: any) =>
-          r.id === targetOperator ? { ...r, current_objective_id: newObjId } : r
-        )
+          r.id === targetOperator ? { ...r, current_objective_id: newObjId, isOnShift: newObjId ? r.isOnShift : false } : r
+        ),
+        objectives: (prev.objectives || []).map((o: any) => {
+          if (o.id === objectiveId) {
+            const updatedPersonnel = newObjId
+              ? [...(o.assigned_personnel || []).filter((p: any) => p.id !== targetOperator), { id: targetOperator }]
+              : (o.assigned_personnel || []).filter((p: any) => p.id !== targetOperator);
+            return { ...o, assigned_personnel: updatedPersonnel, is_manned: updatedPersonnel.length > 0 };
+          }
+          return o;
+        })
       }));
 
       if (selectedObjective?.id === objectiveId) {
@@ -474,7 +483,7 @@ export default function AdminDashboard() {
           const updatedPersonnel = newObjId
             ? [...(prev.assigned_personnel || []).filter((p: any) => p.id !== targetOperator), { id: targetOperator }]
             : (prev.assigned_personnel || []).filter((p: any) => p.id !== targetOperator);
-          return { ...prev, assigned_personnel: updatedPersonnel };
+          return { ...prev, assigned_personnel: updatedPersonnel, is_manned: updatedPersonnel.length > 0 };
         });
       }
 

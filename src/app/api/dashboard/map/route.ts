@@ -188,8 +188,8 @@ export async function GET(req: NextRequest) {
         ...r,
         isOnShift,
         current_shift_id: activeShift?.id || null,
-        // 🚨 STRICT OPERATIONAL BINDING: Off-shift resources have NULL operational objective id
-        current_objective_id: activeShift ? activeShift.objective_id : null
+        // Respect resources.current_objective_id (set by manager assignment)
+        current_objective_id: r.current_objective_id || null
       };
     });
 
@@ -204,15 +204,15 @@ export async function GET(req: NextRequest) {
           ...r,
           isOnShift: Boolean(activeShift),
           current_shift_id: activeShift?.id || null,
-          current_objective_id: activeShift ? activeShift.objective_id : null
+          current_objective_id: r.current_objective_id || null
         };
       });
     }
 
-    // 🚨 STRICT ON-SHIFT GROUPING: Map assigned personnel ONLY if actively ON SHIFT
+    // Group assigned personnel by objective
     const resourcesByObjective: Record<string, any[]> = {};
     rawResources.forEach((r: any) => {
-      if (r.isOnShift && r.current_objective_id) {
+      if (r.current_objective_id) {
         if (!resourcesByObjective[r.current_objective_id]) {
           resourcesByObjective[r.current_objective_id] = [];
         }
