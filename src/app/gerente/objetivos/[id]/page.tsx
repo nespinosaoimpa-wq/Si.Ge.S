@@ -1187,47 +1187,140 @@ export default function ObjectiveDetail() {
 
               {/* Listado de Entradas */}
               <Card className="overflow-hidden border-none shadow-2xl shadow-gray-200/30 rounded-3xl bg-white">
-                <div className="divide-y divide-gray-50">
+                <div className="divide-y divide-gray-100">
                   {guardBook.length > 0 ? guardBook.map((entry: any) => {
+                    let extractedNameFromContent: string | null = null;
+                    if (entry.content && entry.content.includes('Pendiente de confirmación por ')) {
+                      extractedNameFromContent = entry.content.split('Pendiente de confirmación por ')[1]?.trim() || null;
+                    }
+
                     const authorName = 
-                      entry.author_name ||
                       entry.resources?.name ||
+                      entry.author_name ||
+                      entry.written_by ||
+                      extractedNameFromContent ||
                       (entry.content?.startsWith('[GERENTE]') ? 'Gerente Operativo (Mesa de Control)' : null) ||
                       (entry.entry_type === 'fichaje' ? 'Sistema / Fichaje Automático' : null) ||
                       'Personal Autorizado';
+
                     const isGerente = entry.content?.startsWith('[GERENTE]');
+                    const authorRole = entry.resources?.role || (isGerente ? 'Gerente' : 'Vigilador');
+                    const avatarUrl = entry.resources?.avatar_url || entry.author_avatar_url || entry.avatar_url;
+                    const createdDate = new Date(entry.created_at);
+
+                    const initials = authorName
+                      ? authorName.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()
+                      : 'OP';
 
                     return (
-                      <div key={entry.id} className="px-8 py-6 flex items-start gap-6 hover:bg-gray-50/30 transition-colors border-b border-gray-50 last:border-b-0">
-                        <div className={cn(
-                          "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm",
-                          entry.entry_type === 'incidente' ? "bg-red-600 text-white" : "bg-blue-600 text-white"
-                        )}>
-                          {entry.entry_type === 'incidente' ? <AlertCircle size={20} /> : <MessageSquare size={20} />}
+                      <div key={entry.id} className="p-6 lg:p-7 flex flex-col md:flex-row items-start gap-5 hover:bg-zinc-50/50 transition-colors border-b border-zinc-100 last:border-b-0">
+                        {/* Avatar & Tipo Icon */}
+                        <div className="flex items-center gap-3 shrink-0">
+                          <div className="relative">
+                            {avatarUrl ? (
+                              <img 
+                                src={avatarUrl} 
+                                alt={authorName}
+                                className="w-12 h-12 rounded-2xl object-cover border-2 border-zinc-200 shadow-sm"
+                                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                              />
+                            ) : (
+                              <div className="w-12 h-12 rounded-2xl bg-zinc-900 text-white flex items-center justify-center font-bold text-xs shadow-sm border border-zinc-800">
+                                {initials}
+                              </div>
+                            )}
+                            <div className={cn(
+                              "absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-[10px] text-white shadow-sm border border-white",
+                              entry.entry_type === 'incidente' ? "bg-red-600" : entry.entry_type === 'emergencia' ? "bg-red-600" : "bg-[#0F4C5C]"
+                            )}>
+                              {entry.entry_type === 'incidente' ? '⚠️' : '📝'}
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex-1">
-                          <div className="flex justify-between items-start mb-2">
-                            <div className="flex items-center gap-3">
+
+                        <div className="flex-1 min-w-0 space-y-3 w-full">
+                          {/* Top row: Name, Role, Entry type & Timestamp */}
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-100 pb-3">
+                            <div className="flex items-center gap-2.5 flex-wrap">
+                              <h4 className="text-sm font-bold text-zinc-950 tracking-tight">
+                                {authorName}
+                              </h4>
                               <span className={cn(
-                                "text-[10px] font-black uppercase tracking-[0.2em]",
-                                entry.entry_type === 'incidente' ? "text-red-600" : "text-blue-600"
-                              )}>{entry.entry_type}</span>
-                              <span className={cn(
-                                "px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider flex items-center gap-1",
-                                isGerente ? "bg-amber-100 text-amber-900 border border-amber-200" : "bg-zinc-100 text-zinc-700"
+                                "px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider border",
+                                isGerente ? "bg-amber-100 text-amber-800 border-amber-200" : "bg-zinc-100 text-zinc-700 border-zinc-200"
                               )}>
-                                ✍️ {authorName}
+                                {authorRole}
+                              </span>
+                              <span className={cn(
+                                "px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border",
+                                entry.entry_type === 'incidente' ? "bg-red-50 text-red-600 border-red-200" : "bg-blue-50 text-blue-600 border-blue-200"
+                              )}>
+                                {entry.entry_type}
                               </span>
                             </div>
-                            <span className="text-[10px] font-black text-gray-400">{new Date(entry.created_at).toLocaleString('es-AR')}</span>
+
+                            {/* Date & Time badges */}
+                            <div className="flex items-center gap-2 text-xs font-mono font-medium text-zinc-600 bg-zinc-100/80 px-3 py-1 rounded-xl border border-zinc-200/80 shrink-0">
+                              <Calendar size={12} className="text-zinc-400" />
+                              <span>{createdDate.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
+                              <span className="text-zinc-300">|</span>
+                              <Clock size={12} className="text-zinc-400" />
+                              <span>{createdDate.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })} hs</span>
+                            </div>
                           </div>
-                          <p className="text-base font-bold text-gray-800 italic leading-relaxed">"{entry.content}"</p>
+
+                          {/* Content Body */}
+                          <div className="bg-zinc-50/80 p-4 rounded-2xl border border-zinc-100">
+                            <p className="text-sm text-zinc-900 font-normal leading-relaxed whitespace-pre-wrap">
+                              {entry.content}
+                            </p>
+                          </div>
+
+                          {/* Media Attachments: Image & Audio */}
+                          {(entry.image_url || entry.audio_url) && (
+                            <div className="flex flex-wrap gap-4 pt-1">
+                              {entry.image_url && (
+                                <div className="relative group/img overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50 shadow-sm transition-all hover:shadow-md">
+                                  <img 
+                                    src={entry.image_url} 
+                                    alt="Evidencia visual" 
+                                    className="h-36 w-auto object-cover cursor-zoom-in transition-transform group-hover/img:scale-105"
+                                    onClick={() => window.open(entry.image_url, '_blank')}
+                                  />
+                                  <div className="absolute bottom-2 left-2 bg-black/75 text-white text-[9px] font-bold px-2.5 py-1 rounded-lg backdrop-blur-sm flex items-center gap-1.5 shadow-sm">
+                                    <Camera size={11} className="text-primary" />
+                                    <span>Ver foto HD 🔍</span>
+                                  </div>
+                                </div>
+                              )}
+                              {entry.audio_url && (
+                                <div className="flex flex-col gap-2 p-3 bg-zinc-100 border border-zinc-200 rounded-2xl w-full max-w-[320px] shadow-sm">
+                                  <p className="text-[10px] font-black text-zinc-700 uppercase tracking-wider flex items-center gap-1.5">
+                                    <Zap size={12} className="text-[#0F4C5C]" />
+                                    Nota de Voz Grabada
+                                  </p>
+                                  <audio controls className="h-8 w-full">
+                                    <source src={entry.audio_url} type="audio/mpeg" />
+                                    Tu navegador no soporta audio.
+                                  </audio>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* GPS Footer */}
+                          {entry.latitude && (
+                            <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 font-mono font-medium pt-1">
+                              <MapPin size={12} className="text-zinc-400" />
+                              <span>GPS: {Number(entry.latitude).toFixed(5)}, {Number(entry.longitude).toFixed(5)}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     );
                   }) : (
                     <div className="py-24 text-center">
-                      <MessageSquare size={48} className="text-gray-100 mx-auto mb-4" />
+                      <MessageSquare size={48} className="text-gray-200 mx-auto mb-4" />
                       <p className="text-sm font-black text-gray-400 uppercase tracking-widest italic">Diario de guardia vacío</p>
                     </div>
                   )}
