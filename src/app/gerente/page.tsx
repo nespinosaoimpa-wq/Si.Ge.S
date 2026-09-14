@@ -455,13 +455,33 @@ export default function AdminDashboard() {
 
   const handleAssignOperator = async (objectiveId: string, operatorId: string) => {
     try {
-      // Free operator first if assigning an empty string, or update existing
       const targetOperator = operatorId || (data.resources.find((r: any) => r.current_objective_id === objectiveId)?.id);
       if (!targetOperator) return;
+
+      const newObjId = operatorId ? objectiveId : null;
+
+      // ⚡ 0ms Optimistic UI Update for instant operator assignment/release
+      setData((prev: any) => ({
+        ...prev,
+        resources: (prev.resources || []).map((r: any) =>
+          r.id === targetOperator ? { ...r, current_objective_id: newObjId } : r
+        )
+      }));
+
+      if (selectedObjective?.id === objectiveId) {
+        setSelectedObjective((prev: any) => {
+          if (!prev) return prev;
+          const updatedPersonnel = newObjId
+            ? [...(prev.assigned_personnel || []).filter((p: any) => p.id !== targetOperator), { id: targetOperator }]
+            : (prev.assigned_personnel || []).filter((p: any) => p.id !== targetOperator);
+          return { ...prev, assigned_personnel: updatedPersonnel };
+        });
+      }
+
       await api.staff.update(targetOperator, {
-        current_objective_id: operatorId ? objectiveId : null
+        current_objective_id: newObjId
       });
-      fetchData(); // Refresh the data
+      fetchData();
     } catch (err) {
       alert("Error al asignar operador: " + (err as any).message);
     }

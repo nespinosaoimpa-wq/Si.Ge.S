@@ -304,11 +304,9 @@ export default function FichajePage() {
         const profile = await resolveOperatorProfileDirect(OPERATOR_ID, user?.email);
         if (profile) {
           if (profile.avatar_url) setAvatarUrl(profile.avatar_url);
-          if (profile.assignedObjective) {
-            if (!profile.assignedObjective.latitude || !profile.assignedObjective.longitude) {
-              alert(`⚠️ ERROR DE ASIGNACIÓN: El objetivo "${profile.assignedObjective.name}" no tiene coordenadas configuradas. Contacte a soporte.`);
-            }
-            setAssignedObjective(profile.assignedObjective);
+          setAssignedObjective(profile.assignedObjective || null);
+          if (profile.assignedObjective && (!profile.assignedObjective.latitude || !profile.assignedObjective.longitude)) {
+            alert(`⚠️ ERROR DE ASIGNACIÓN: El objetivo "${profile.assignedObjective.name}" no tiene coordenadas configuradas. Contacte a soporte.`);
           }
         }
       } catch (e) {
@@ -335,9 +333,9 @@ export default function FichajePage() {
           (user?.email && updated.email && updated.email.toLowerCase() === user.email.toLowerCase())
         )) {
           const fresh = await resolveOperatorProfileDirect(OPERATOR_ID, user?.email, true);
-          if (fresh?.assignedObjective) {
-            setAssignedObjective(fresh.assignedObjective);
-            if ("vibrate" in navigator) navigator.vibrate([200, 100, 200, 100, 300]);
+          setAssignedObjective(fresh?.assignedObjective || null);
+          if (fresh?.assignedObjective && "vibrate" in navigator) {
+            navigator.vibrate([200, 100, 200, 100, 300]);
           }
         }
       })

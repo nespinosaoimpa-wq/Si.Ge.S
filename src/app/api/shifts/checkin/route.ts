@@ -4,19 +4,85 @@ import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
   try {
-    const { operator_id, email, objective_id, latitude, longitude, accuracy = 0, auto_sync_location = false } = await request.json();
+    const { operator_id, email, objective_id: requestedObjectiveId, latitude, longitude, accuracy = 0 } = await request.json();
 
-    if (!objective_id || objective_id === 'null' || String(objective_id).trim() === '') {
+    const supabase = createServiceClient();
+    const tenantCtx = await resolveTenantFromRequest(request);
+
+    // 1. Resolve the resource record first to verify current assignment
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(operator_id);
+    let resourceRecord: any = null;
+
+    if (isUUID) {
+      const { data: byId } = await supabase
+        .from('resources')
+        .select('id, assigned_to, email, name, role, status, current_objective_id, tenant_id')
+        .or(`id.eq.${operator_id},assigned_to.eq.${operator_id}`)
+        .order('status', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      
+      if (byId) resourceRecord = byId;
+    }
+
+    if (!resourceRecord && email) {
+      const { data: activeByEmail } = await supabase
+        .from('resources')
+        .select('id, assigned_to, email, name, role, status, current_objective_id, tenant_id')
+        .ilike('email', email.trim())
+        .neq('status', 'baja')
+        .limit(1)
+        .maybeSingle();
+
+      if (activeByEmail) {
+        resourceRecord = activeByEmail;
+      } else {
+        const { data: inactiveByEmail } = await supabase
+          .from('resources')
+          .select('id, assigned_to, email, name, role, status, current_objective_id, tenant_id')
+          .ilike('email', email.trim())
+          .limit(1)
+          .maybeSingle();
+        if (inactiveByEmail) resourceRecord = inactiveByEmail;
+      }
+    }
+
+    if (resourceRecord && resourceRecord.status === 'baja') {
+      return NextResponse.json({ 
+        error: 'ACCESO DENEGADO',
+        message: 'Tu legajo se encuentra de baja en el sistema. Consulta con administración.' 
+      }, { status: 403 });
+    }
+
+    // 🔒 STRICT OBJECTIVE ASSIGNMENT ENFORCEMENT
+    // An operator MUST check in ONLY to their assigned objective (resourceRecord.current_objective_id)
+    const assignedObjectiveId = resourceRecord?.current_objective_id || requestedObjectiveId;
+
+    if (!assignedObjectiveId || assignedObjectiveId === 'null' || String(assignedObjectiveId).trim() === '') {
       return NextResponse.json({
         error: 'SIN OBJETIVO ASIGNADO',
         message: 'No tenés ningún objetivo asignado por gerencia. Contactá a tu supervisor para que te asigne un puesto de servicio antes de iniciar el turno.'
       }, { status: 400 });
     }
 
-    const supabase = createServiceClient();
-    const tenantCtx = await resolveTenantFromRequest(request);
+    // If operator has an assigned objective in database, enforce that objective strictly!
+    if (resourceRecord?.current_objective_id && requestedObjectiveId && resourceRecord.current_objective_id !== requestedObjectiveId) {
+      // Fetch target objective name for clear feedback
+      const { data: targetObj } = await supabase
+        .from('objectives')
+        .select('name')
+        .eq('id', resourceRecord.current_objective_id)
+        .maybeSingle();
 
-    // 1. Fetch Objective specific radius if available
+      return NextResponse.json({
+        error: 'OBJETIVO NO ASIGNADO',
+        message: `Estás asignado a "${targetObj?.name || 'otro puesto'}". Solo podés iniciar turno en tu puesto asignado.`
+      }, { status: 403 });
+    }
+
+    const objective_id = assignedObjectiveId;
+
+    // 2. Fetch Objective specific radius & location
     let targetRadius = 100;
     let objectiveLocation: { lat: number, lng: number } | null = null;
     let objectiveName = '';
@@ -36,7 +102,6 @@ export async function POST(request: Request) {
           let lat = Number(objective.latitude);
           let lng = Number(objective.longitude);
 
-          // Detect swapped coordinates
           if (lat < -50 && lng > -50 && lng < 0) {
             const tmp = lat;
             lat = lng;
@@ -45,16 +110,14 @@ export async function POST(request: Request) {
 
           objectiveLocation = { lat, lng };
         }
-
       } catch (e) {}
     }
 
-    // 2. Verify Geofence (DYNAMIC TOLERANCE: Radio + Accuracy + Minimum Indoor Margin)
+    // 3. Verify Geofence strictly
     let isWithinGeofence = true;
     let distanceToObjective = 0;
     
     if (objective_id && objective_id !== 'null' && objectiveLocation && objectiveLocation.lat !== 0 && objectiveLocation.lng !== 0) {
-      // Calculate real distance using Haversine
       const R = 6371e3; // meters
       const φ1 = latitude * Math.PI / 180;
       const φ2 = objectiveLocation.lat * Math.PI / 180;
@@ -67,91 +130,24 @@ export async function POST(request: Request) {
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
       distanceToObjective = R * c;
 
-      // FORMULA: Distance <= (Target Radius + Dynamic Margin for GPS Accuracy)
       const gpsMargin = Math.max(Number(accuracy || 0), 25);
       const dynamicTolerance = targetRadius + gpsMargin;
       isWithinGeofence = distanceToObjective <= dynamicTolerance;
       
-      // AUTO-SYNC LOCATION OR STRICT BLOCK
+      // STRICT BLOCK WHEN OUTSIDE GEOFENCE
       if (!isWithinGeofence) {
-        if (auto_sync_location) {
-          // Update objective position to match current operator position when requested
-          await supabase.from('objectives').update({
-            latitude,
-            longitude,
-            updated_at: new Date().toISOString()
-          }).eq('id', objective_id);
-          isWithinGeofence = true;
-          distanceToObjective = 0;
-        } else {
-          return NextResponse.json({ 
-            error: 'FUERA DE RANGO',
-            message: `Estás a ${Math.round(distanceToObjective)}m del objetivo "${objectiveName || 'Asignado'}". El radio permitido es ${targetRadius}m (+${Math.round(gpsMargin)}m de margen GPS).`,
-            isWithinGeofence: false,
-            targetRadius,
-            distance: Math.round(distanceToObjective),
-            accuracy
-          }, { status: 403 });
-        }
-      }
-    }
-
-    // 3. Resolve the resource record — ALWAYS use resources.id for guard_shifts
-    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(operator_id);
-
-    let resourceRecord: any = null;
-
-    // First try to find by exact ID or assigned_to (UUID check)
-    if (isUUID) {
-      const { data: byId } = await supabase
-        .from('resources')
-        .select('id, assigned_to, email, name, role, status, current_objective_id, tenant_id')
-        .or(`id.eq.${operator_id},assigned_to.eq.${operator_id}`)
-        .order('status', { ascending: true })
-        .limit(1)
-        .maybeSingle();
-      
-      if (byId) {
-        resourceRecord = byId;
-      }
-    }
-
-    // If not resolved by direct ID, search by email
-    if (!resourceRecord && email) {
-      // First try to find an active resource with this email
-      const { data: activeByEmail } = await supabase
-        .from('resources')
-        .select('id, assigned_to, email, name, role, status, current_objective_id, tenant_id')
-        .ilike('email', email.trim())
-        .neq('status', 'baja')
-        .limit(1)
-        .maybeSingle();
-
-      if (activeByEmail) {
-        resourceRecord = activeByEmail;
-      } else {
-        // If no active resource, try to find a de-activated (baja) resource with this email
-        // so we can deny access instead of creating a new active profile.
-        const { data: inactiveByEmail } = await supabase
-          .from('resources')
-          .select('id, assigned_to, email, name, role, status, current_objective_id, tenant_id')
-          .ilike('email', email.trim())
-          .limit(1)
-          .maybeSingle();
-        
-        if (inactiveByEmail) {
-          resourceRecord = inactiveByEmail;
-        }
+        return NextResponse.json({ 
+          error: 'FUERA DE RANGO',
+          message: `Estás a ${Math.round(distanceToObjective)}m del objetivo "${objectiveName || 'Asignado'}". El radio permitido es ${targetRadius}m (+${Math.round(gpsMargin)}m de margen GPS).`,
+          isWithinGeofence: false,
+          targetRadius,
+          distance: Math.round(distanceToObjective),
+          accuracy
+        }, { status: 403 });
       }
     }
 
     if (resourceRecord) {
-      if (resourceRecord.status === 'baja') {
-        return NextResponse.json({ 
-          error: 'ACCESO DENEGADO',
-          message: 'Tu legajo se encuentra de baja en el sistema. Consulta con administración.' 
-        }, { status: 403 });
-      }
       // Auto-link Auth UUID ↔ resource if not yet linked
       if (isUUID && resourceRecord.assigned_to !== operator_id) {
         await supabase.from('resources').update({ assigned_to: operator_id }).eq('id', resourceRecord.id);
@@ -165,7 +161,7 @@ export async function POST(request: Request) {
       });
     } else {
       // UUID user not found in resources — create a resource record using the Auth UUID
-      const tempId = operator_id; // USE THE UUID DIRECTLY!
+      const tempId = operator_id;
       const { data: newResource } = await supabase.from('resources').upsert({
         id: tempId,
         name: email?.split('@')[0] || 'Operador',
@@ -175,6 +171,7 @@ export async function POST(request: Request) {
         assigned_to: operator_id,
         latitude,
         longitude,
+        current_objective_id: objective_id
       }, { onConflict: 'id' }).select().single();
 
       resourceRecord = newResource || { id: tempId };
