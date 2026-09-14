@@ -209,10 +209,10 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // Group assigned personnel by objective
+    // Group assigned personnel by objective (ONLY IF ACTIVELY ON SHIFT)
     const resourcesByObjective: Record<string, any[]> = {};
     rawResources.forEach((r: any) => {
-      if (r.current_objective_id) {
+      if (r.current_objective_id && r.isOnShift) {
         if (!resourcesByObjective[r.current_objective_id]) {
           resourcesByObjective[r.current_objective_id] = [];
         }

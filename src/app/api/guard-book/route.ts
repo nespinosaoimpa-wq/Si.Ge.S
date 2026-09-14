@@ -265,6 +265,7 @@ export async function GET(request: NextRequest) {
 
       return {
         ...e,
+        image_url: e.image_url || e.photo_url || e.media_url || e.attachment_url || null,
         resources: resObj,
         author_name: e.author_name || resObj?.name || matchedRes?.name || null,
         author_avatar_url: e.author_avatar_url || resObj?.avatar_url || matchedRes?.avatar_url || null,

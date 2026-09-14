@@ -134,14 +134,71 @@ async function getIncidents(id: string) {
 async function getEvidence(id: string) {
   try {
     const supabaseAdmin = createServiceClient();
-    const { data } = await supabaseAdmin
-      .from('digital_evidence')
-      .select('*, objectives(name)')
-      .or(`operator_id.eq.${id},resource_id.eq.${id}`)
-      .order('created_at', { ascending: false })
-      .limit(8);
-    return Array.isArray(data) ? data : [];
-  } catch {
+    const candidateIds = [id];
+    
+    // Also resolve candidate resource IDs if id is profile_id or user_id
+    const { data: res } = await supabaseAdmin
+      .from('resources')
+      .select('id, user_id, profile_id, assigned_to')
+      .or(`id.eq.${id},assigned_to.eq.${id},user_id.eq.${id},profile_id.eq.${id}`);
+
+    if (res) {
+      res.forEach(r => {
+        if (r.id) candidateIds.push(r.id);
+        if (r.user_id) candidateIds.push(r.user_id);
+        if (r.profile_id) candidateIds.push(r.profile_id);
+        if (r.assigned_to) candidateIds.push(r.assigned_to);
+      });
+    }
+
+    const uniqueIds = Array.from(new Set(candidateIds.filter(Boolean)));
+    const conditions = uniqueIds.map(uid => `operator_id.eq.${uid}`).join(',');
+    const resourceConditions = uniqueIds.map(uid => `resource_id.eq.${uid}`).join(',');
+
+    const [evRes, gbRes] = await Promise.all([
+      supabaseAdmin
+        .from('digital_evidence')
+        .select('*, objectives(name)')
+        .or(`${conditions},${resourceConditions}`)
+        .order('created_at', { ascending: false })
+        .limit(20),
+      supabaseAdmin
+        .from('guard_book_entries')
+        .select('*, objectives(name)')
+        .or(conditions)
+        .order('created_at', { ascending: false })
+        .limit(30)
+    ]);
+
+    const evItems = (evRes.data || []).map(e => ({
+      id: e.id,
+      title: e.title || e.category || 'Evidencia Multimedia',
+      content: e.description || e.notes || 'Evidencia subida desde app',
+      image_url: e.file_url || e.url || e.image_url || e.photo_url || null,
+      created_at: e.created_at,
+      objective_name: e.objectives?.name || 'Objetivo General',
+      entry_type: 'evidencia'
+    }));
+
+    const gbItems = (gbRes.data || [])
+      .filter(g => Boolean(g.image_url || g.photo_url || g.media_url || g.attachment_url || g.content))
+      .map(g => ({
+        id: g.id,
+        title: g.entry_type === 'novedad' ? 'Novedad Operativa' : (g.entry_type || 'Bitácora'),
+        content: g.content || 'Registro de novedades',
+        image_url: g.image_url || g.photo_url || g.media_url || g.attachment_url || null,
+        created_at: g.created_at,
+        objective_name: g.objectives?.name || 'Objetivo General',
+        entry_type: g.entry_type || 'novedad'
+      }));
+
+    // Combine and sort by created_at desc
+    const combined = [...evItems, ...gbItems].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+    return combined;
+  } catch (e) {
+    console.error('getEvidence error:', e);
     return [];
   }
 }
@@ -490,9 +547,10 @@ export default async function OperatorProfilePage(props: { params: Promise<{ id:
               <div key={doc.id} className="group relative rounded-[2.5rem] overflow-hidden border border-zinc-100 bg-zinc-50 aspect-[3/4] hover:border-[#0F4C5C]/50 transition-all shadow-md">
                 <DownloadEvidenceButton doc={doc} operatorName={operator.name} />
                 <img src={doc.image_url} alt="Evidencia" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-all duration-700 scale-110 group-hover:scale-100" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent p-8 flex flex-col justify-end">
-                  <p className="text-[10px] font-black text-[#0F4C5C] uppercase tracking-[0.2em] mb-2">{doc.objectives?.name}</p>
-                  <div className="flex items-center gap-3 opacity-80">
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-6 flex flex-col justify-end">
+                  <p className="text-[10px] font-black text-amber-400 uppercase tracking-[0.2em] mb-1">{doc.objective_name || doc.objectives?.name || 'Objetivo General'}</p>
+                  <p className="text-xs font-black text-white uppercase tracking-tight line-clamp-2 mb-2">{doc.content || doc.title}</p>
+                  <div className="flex items-center gap-2 opacity-80">
                     <Clock size={12} className="text-white" />
                     <p className="text-[10px] font-bold text-white tabular-nums">{new Date(doc.created_at).toLocaleString('es-AR')}</p>
                   </div>

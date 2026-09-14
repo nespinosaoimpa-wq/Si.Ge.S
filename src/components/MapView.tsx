@@ -1003,8 +1003,7 @@ export default function MapView({
 
           // 🚨 STRICT SHIFT VERIFICATION: Resolve active guard ON SHIFT at this objective
           const activeGuardAtObj = (guards || []).find(g => {
-            const isAtThisObj = g.current_objective_id === obj.id || 
-                                g.id === (obj as any).current_operator_id;
+            const isAtThisObj = g.current_objective_id === obj.id;
             const isActive = Boolean(g.isOnShift);
             return isAtThisObj && isActive;
           }) || null; // 🚨 STRICT NULL: No ghost photo when no operator is actively on shift!
