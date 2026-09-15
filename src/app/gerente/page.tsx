@@ -135,9 +135,25 @@ export default function AdminDashboard() {
   // --- MEMOIZED DATA (Optimization) ---
   const enrichedObjectives = useMemo(() => {
     return (data.objectives || []).map((obj: any) => {
-      // Find all occupants currently at this objective in the resources list (live pulses)
-      const liveOccupants = (data.resources || []).filter((r: any) => r.current_objective_id === obj.id);
-      const dbPersonnel = obj.assigned_personnel || [];
+      // Find all occupants currently at this objective who are ACTIVELY ON SHIFT
+      const liveOccupants = (data.resources || []).filter((r: any) => {
+        if (r.current_objective_id !== obj.id) return false;
+        const activeShift = (data.activeShifts || []).find((s: any) => 
+          (s.operator_id === r.id || s.operator_id === r.assigned_to) && 
+          !s.checkout_time && 
+          s.status !== 'completado'
+        );
+        return Boolean(activeShift) || r.status === 'en_turno';
+      });
+
+      const dbPersonnel = (obj.assigned_personnel || []).filter((p: any) => {
+        const activeShift = (data.activeShifts || []).find((s: any) => 
+          (s.operator_id === p.id || s.operator_id === p.assigned_to) && 
+          !s.checkout_time && 
+          s.status !== 'completado'
+        );
+        return Boolean(activeShift) || p.isOnShift || p.status === 'en_turno';
+      });
 
       // Combine DB personnel and live occupants without duplicate IDs
       const personnelMap = new Map();
@@ -152,7 +168,7 @@ export default function AdminDashboard() {
         assigned_personnel: finalPersonnel
       };
     });
-  }, [data.objectives, data.resources]);
+  }, [data.objectives, data.resources, data.activeShifts]);
 
   const filteredObjectives = useMemo(() => {
     const query = searchQuery.toLowerCase();
@@ -186,8 +202,10 @@ export default function AdminDashboard() {
         s.status !== 'completado'
       );
       
+      const isOnShift = Boolean(activeShift) || r.status === 'en_turno';
+      
       // If operator is NOT on an active shift, exclude from live map markers
-      if (!activeShift && r.status !== 'en_turno' && r.status !== 'activo') {
+      if (!isOnShift) {
         return null;
       }
       

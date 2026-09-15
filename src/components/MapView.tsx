@@ -294,7 +294,8 @@ const ObjectiveMarkerContent = React.memo(({
   activeGuardName?: string | null;
 }) => {
   // 🚨 STRICT ON-SHIFT OCCUPANCY: Manned ONLY if an active guard avatar/personnel is present on shift
-  const isManned = Boolean(activeGuardAvatar) || (Boolean(obj.assigned_personnel && obj.assigned_personnel.length > 0) && Boolean(obj.is_manned));
+  const hasActivePersonnel = Boolean(obj.assigned_personnel && obj.assigned_personnel.some((p: any) => Boolean(p.isOnShift) || p.status === 'en_turno'));
+  const isManned = Boolean(activeGuardAvatar) || (hasActivePersonnel && Boolean(obj.is_manned));
   const isCritical = obj.status === 'critica' || obj.status === 'alerta' || obj.status === 'emergency';
 
   return (
