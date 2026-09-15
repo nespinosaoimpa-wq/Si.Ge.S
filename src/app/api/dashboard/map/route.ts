@@ -175,7 +175,15 @@ export async function GET(req: NextRequest) {
     if (rawIncidentsRes.error) console.error("❌ Raw incidents fetch error:", JSON.stringify(rawIncidentsRes.error));
     if (alarmsRes?.error) console.error("❌ Alarms fetch error:", JSON.stringify(alarmsRes.error));
 
-    const activeShiftsData = shiftsRes.data || [];
+    const activeShiftsData = (shiftsRes.data || []).filter((s: any) => {
+      if (s.checkout_time || s.status === 'completado') return false;
+      if (s.checkin_time) {
+        const ageHours = (Date.now() - new Date(s.checkin_time).getTime()) / (1000 * 60 * 60);
+        if (ageHours > 24) return false;
+      }
+      return true;
+    });
+
     const activeShiftByOperator: Record<string, any> = {};
     activeShiftsData.forEach((s: any) => {
       if (s.operator_id) activeShiftByOperator[s.operator_id] = s;
