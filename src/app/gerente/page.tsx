@@ -539,16 +539,16 @@ export default function AdminDashboard() {
       const promises: Promise<any>[] = [
         supabase.from('incidents').update({ status: 'resolved', resolved_at: now }).eq('id', id),
         supabase.from('alarms').update({ status: 'resolved', acknowledged_at: now, resolved_at: now }).eq('id', id),
-        supabase.from('guard_book_entries').update({ status: 'resolved', resolved_at: now }).eq('id', id),
-        supabase.from('geofencing_incidents').update({ status: 'resuelto', return_at: now }).eq('id', id)
+        supabase.from('guard_book_entries').update({ resolved_at: now }).eq('id', id),
+        supabase.from('geofence_alerts').update({ resolved: true, resolved_at: now }).eq('id', id)
       ];
 
       if (targetObjId) {
         promises.push(
           supabase.from('incidents').update({ status: 'resolved', resolved_at: now }).eq('objective_id', targetObjId).neq('status', 'resolved'),
           supabase.from('alarms').update({ status: 'resolved', acknowledged_at: now, resolved_at: now }).eq('objective_id', targetObjId).neq('status', 'resolved'),
-          supabase.from('guard_book_entries').update({ status: 'resolved', resolved_at: now }).eq('objective_id', targetObjId).in('entry_type', ['panic', 'emergencia', 'alerta']).neq('status', 'resolved'),
-          supabase.from('geofencing_incidents').update({ status: 'resuelto', return_at: now }).eq('objective_id', targetObjId).neq('status', 'resuelto')
+          supabase.from('guard_book_entries').update({ resolved_at: now }).eq('objective_id', targetObjId).in('entry_type', ['panic', 'emergencia', 'alerta']).is('resolved_at', null),
+          supabase.from('geofence_alerts').update({ resolved: true, resolved_at: now }).eq('objective_id', targetObjId).eq('resolved', false)
         );
       }
 

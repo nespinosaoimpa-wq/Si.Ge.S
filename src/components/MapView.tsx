@@ -522,11 +522,19 @@ export default function MapView({
     });
   }, [incidents, objectives, guards, center]);
 
+  // Helper to check if an incident or alarm has been resolved or closed
+  const checkIsResolved = (inc: any) => {
+    if (!inc) return true;
+    if (inc.status === 'resolved' || inc.status === 'resuelto' || inc.status === 'acknowledged' || inc.status === 'cerrado' || inc.status === 'atendido') return true;
+    if (inc.resolved_at || inc.acknowledged_at) return true;
+    if ((inc.content || '').includes('[RESUELTO]')) return true;
+    return false;
+  };
+
   // Separate incidents into panic and regular alerts
   const panicIncidents = useMemo(() => {
     return resolvedIncidents.filter(inc => {
-      const isResolved = inc.status === 'resolved' || inc.status === 'resuelto' || inc.status === 'acknowledged' || (inc.content || '').includes('[RESUELTO]');
-      if (isResolved) return false;
+      if (checkIsResolved(inc)) return false;
       const type = (inc.entry_type || '').toLowerCase();
       const content = (inc.content || '').toLowerCase();
       return type === 'panic' || type === 'panico' || type === 'emergencia' || type === 'sos_panic' || type === 'sos' || content.includes('pánico') || content.includes('panico') || content.includes('sos') || (inc as any).alarm_type === 'sos_panic' || (inc as any).severity === 'critica';
@@ -535,9 +543,8 @@ export default function MapView({
 
   const regularIncidents = useMemo(() => {
     return resolvedIncidents.filter(inc => {
-      const isResolved = inc.status === 'resolved' || inc.status === 'resuelto' || inc.status === 'acknowledged' || (inc.content || '').includes('[RESUELTO]');
       const isFichaje = (inc.entry_type || '').toLowerCase().includes('fichaje') || (inc.content || '').toUpperCase().includes('FICHAJE');
-      if (isResolved || isFichaje) return false;
+      if (checkIsResolved(inc) || isFichaje) return false;
       const type = (inc.entry_type || '').toLowerCase();
       const content = (inc.content || '').toLowerCase();
       const isPanic = type === 'panic' || type === 'panico' || type === 'emergencia' || type === 'sos_panic' || type === 'sos' || content.includes('pánico') || content.includes('panico') || content.includes('sos') || (inc as any).alarm_type === 'sos_panic' || (inc as any).severity === 'critica';
@@ -547,9 +554,8 @@ export default function MapView({
 
   const activeIncidents = useMemo(() => 
     resolvedIncidents.filter(inc => {
-      const isResolved = inc.status === 'resolved' || inc.status === 'resuelto' || inc.status === 'acknowledged' || (inc.content || '').includes('[RESUELTO]');
       const isFichaje = (inc.entry_type || '').toLowerCase().includes('fichaje') || (inc.content || '').toUpperCase().includes('FICHAJE');
-      return !isResolved && !isFichaje;
+      return !checkIsResolved(inc) && !isFichaje;
     }),
   [resolvedIncidents]);
 

@@ -81,23 +81,52 @@ export default function MapaOperativoPage() {
   const handleResolveIncident = async (id: string) => {
     if (!id) return;
     try {
-      setActiveAlert((prev: any) => prev?.id === id ? null : prev);
+      const targetInc = (data.recentIncidents || []).find((inc: any) => inc.id === id);
+      const targetObjId = targetInc?.objective_id;
+      const targetOpId = targetInc?.operator_id || targetInc?.resource_id;
+
+      setActiveAlert((prev: any) => (prev?.id === id || (targetObjId && prev?.objective_id === targetObjId) ? null : prev));
       stopAlarm();
       
       setData((prev: any) => ({
         ...prev,
-        recentIncidents: (prev.recentIncidents || []).filter((inc: any) => inc.id !== id)
+        recentIncidents: (prev.recentIncidents || []).filter((inc: any) => {
+          if (inc.id === id) return false;
+          if (targetObjId && inc.objective_id === targetObjId) return false;
+          if (targetOpId && (inc.operator_id === targetOpId || inc.resource_id === targetOpId)) return false;
+          return true;
+        })
       }));
 
       const now = new Date().toISOString();
 
-      // Direct Supabase updates (0ms latency, zero Vercel invocations)
-      await Promise.allSettled([
+      // Direct Supabase updates across all correlated tables with correct schema columns
+      const promises: Promise<any>[] = [
         supabase.from('incidents').update({ status: 'resolved', resolved_at: now }).eq('id', id),
         supabase.from('alarms').update({ status: 'resolved', acknowledged_at: now, resolved_at: now }).eq('id', id),
-        supabase.from('guard_book_entries').update({ status: 'resolved', resolved_at: now }).eq('id', id),
-        supabase.from('geofencing_incidents').update({ status: 'resuelto', return_at: now }).eq('id', id)
-      ]);
+        supabase.from('guard_book_entries').update({ resolved_at: now }).eq('id', id),
+        supabase.from('geofence_alerts').update({ resolved: true, resolved_at: now }).eq('id', id)
+      ];
+
+      if (targetObjId) {
+        promises.push(
+          supabase.from('incidents').update({ status: 'resolved', resolved_at: now }).eq('objective_id', targetObjId).neq('status', 'resolved'),
+          supabase.from('alarms').update({ status: 'resolved', acknowledged_at: now, resolved_at: now }).eq('objective_id', targetObjId).neq('status', 'resolved'),
+          supabase.from('guard_book_entries').update({ resolved_at: now }).eq('objective_id', targetObjId).in('entry_type', ['panic', 'emergencia', 'alerta', 'incidente']).is('resolved_at', null),
+          supabase.from('geofence_alerts').update({ resolved: true, resolved_at: now }).eq('objective_id', targetObjId).eq('resolved', false)
+        );
+      }
+
+      if (targetOpId) {
+        promises.push(
+          supabase.from('incidents').update({ status: 'resolved', resolved_at: now }).eq('operator_id', targetOpId).neq('status', 'resolved'),
+          supabase.from('alarms').update({ status: 'resolved', acknowledged_at: now, resolved_at: now }).eq('triggered_by', targetOpId).neq('status', 'resolved'),
+          supabase.from('guard_book_entries').update({ resolved_at: now }).eq('operator_id', targetOpId).in('entry_type', ['panic', 'emergencia', 'alerta', 'incidente']).is('resolved_at', null),
+          supabase.from('geofence_alerts').update({ resolved: true, resolved_at: now }).eq('operator_id', targetOpId).eq('resolved', false)
+        );
+      }
+
+      await Promise.allSettled(promises);
 
       // Non-blocking server API fallback
       fetch(`/api/tracking/incidents/${encodeURIComponent(id)}/resolve`, {
