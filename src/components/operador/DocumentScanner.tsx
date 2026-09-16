@@ -84,6 +84,34 @@ export function DocumentScanner({ objectiveId, operatorId, location, onUploadSuc
 
       if (dbError) throw dbError;
 
+      // 3. Insert into guard_book_entries for real-time visibility in Libro de Guardia
+      try {
+        let tenantId: string | null = null;
+        if (operatorId) {
+          const { data: resData } = await supabase
+            .from('resources')
+            .select('tenant_id')
+            .eq('id', operatorId)
+            .maybeSingle();
+          if (resData?.tenant_id) tenantId = resData.tenant_id;
+        }
+
+        await supabase.from('guard_book_entries').insert({
+          tenant_id: tenantId,
+          objective_id: objectiveId || null,
+          operator_id: operatorId,
+          entry_type: 'evidencia',
+          content: '📸 EVIDENCIA DIGITAL: Acta o documento respaldatorio adjuntado por el operador.',
+          image_url: imageUrl,
+          latitude: location?.lat || null,
+          longitude: location?.lng || null,
+          urgency: 'normal',
+          created_at: new Date().toISOString()
+        } as any);
+      } catch (gbErr) {
+        console.warn('[DocumentScanner] guard_book_entries fallback notice:', gbErr);
+      }
+
       onUploadSuccess(imageUrl);
       onClose();
     } catch (e: any) {

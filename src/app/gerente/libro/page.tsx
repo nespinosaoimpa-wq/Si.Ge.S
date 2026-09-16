@@ -5,7 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   BookOpen, Search, Download, Clock, User, MapPin, AlertTriangle,
   Calendar, CheckCircle2, ChevronRight, ShieldCheck, FileText, Zap,
-  RefreshCw, Building2, Filter, Radio, Eye, Layers, Shield, Printer
+  RefreshCw, Building2, Filter, Radio, Eye, Layers, Shield, Printer,
+  Camera, ZoomIn, ExternalLink, Image as ImageIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { supabase } from '@/lib/supabase';
@@ -31,6 +32,7 @@ const TYPE_CONFIG: Record<string, { icon: React.ReactNode; barColor: string; lab
   libro_guardia:{ icon: <FileText size={15} />,      barColor: 'bg-blue-500',   label: 'Novedad' },
   ronda:        { icon: <ShieldCheck size={15} />,   barColor: 'bg-amber-500',  label: 'Ronda' },
   inventario:   { icon: <Building2 size={15} />,     barColor: 'bg-purple-500', label: 'Inventario' },
+  evidencia:    { icon: <Camera size={15} />,        barColor: 'bg-teal-500',   label: 'Evidencia' },
 };
 
 // ─── Avatar Helper ────────────────────────────────────────────────────────────
@@ -141,6 +143,7 @@ export default function GuardBookPage() {
   
   const [objectives, setObjectives] = useState<any[]>([]);
   const [newEntryFlash, setNewEntryFlash] = useState<string | null>(null);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   // New Manager Entry Modal State
   const [showNewEntryModal, setShowNewEntryModal] = useState(false);
@@ -253,6 +256,9 @@ export default function GuardBookPage() {
         } catch {
           setEntries(prev => [newEntry, ...prev]);
         }
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'digital_evidence' }, async () => {
+        fetchEntries();
       })
       .subscribe();
 
@@ -456,6 +462,7 @@ export default function GuardBookPage() {
             {[
               { id: 'all', label: 'Todos' },
               { id: 'libro_guardia', label: 'Novedades' },
+              { id: 'evidencia', label: 'Evidencias' },
               { id: 'incidente', label: 'Incidentes' },
               { id: 'emergencia', label: 'Emergencias' },
               { id: 'fichaje', label: 'Fichajes' },
@@ -624,15 +631,26 @@ export default function GuardBookPage() {
                     {(entry.image_url || entry.audio_url) && (
                       <div className="flex flex-wrap gap-4 pt-1">
                         {entry.image_url && (
-                          <div className="relative group/img overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50 shadow-sm transition-all hover:shadow-md">
-                            <img 
-                              src={entry.image_url} 
-                              alt="Evidencia visual" 
-                              className="h-36 w-auto object-cover cursor-zoom-in transition-transform group-hover/img:scale-105"
-                              onClick={() => window.open(entry.image_url, '_blank')}
-                            />
-                            <div className="absolute bottom-2 left-2 bg-black/70 text-white text-[9px] font-bold px-2 py-0.5 rounded backdrop-blur-sm">
-                              Ver foto HD 🔍
+                          <div className="flex flex-col gap-1.5">
+                            <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-2.5 py-1 rounded-lg w-fit shadow-xs">
+                              <Camera size={12} className="text-emerald-600" />
+                              <span>Evidencia Digital Adjunta</span>
+                            </div>
+                            <div className="relative group/img overflow-hidden rounded-2xl border-2 border-zinc-200 bg-zinc-950 shadow-sm transition-all hover:shadow-md max-w-sm">
+                              <img 
+                                src={entry.image_url} 
+                                alt="Evidencia visual" 
+                                className="h-44 w-auto max-w-full object-cover cursor-zoom-in transition-transform duration-300 group-hover/img:scale-105"
+                                onClick={() => setSelectedImage(entry.image_url)}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setSelectedImage(entry.image_url)}
+                                className="absolute bottom-2 left-2 bg-black/80 hover:bg-black text-white text-[10px] font-bold px-2.5 py-1 rounded-lg backdrop-blur-sm flex items-center gap-1.5 shadow-md transition-colors"
+                              >
+                                <ZoomIn size={12} className="text-emerald-400" />
+                                <span>Ver Evidencia HD</span>
+                              </button>
                             </div>
                           </div>
                         )}
@@ -801,6 +819,51 @@ export default function GuardBookPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─── MODAL LIGHTBOX DE EVIDENCIA DIGITAL EN ALTA DEFINICIÓN ─── */}
+      {selectedImage && (
+        <div 
+          className="fixed inset-0 z-[200] bg-black/85 backdrop-blur-md flex flex-col items-center justify-center p-4 sm:p-8 animate-fade-in"
+          onClick={() => setSelectedImage(null)}
+        >
+          <div 
+            className="relative max-w-4xl max-h-[90vh] bg-zinc-950 border border-zinc-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="p-4 bg-zinc-900/90 border-b border-zinc-800 flex items-center justify-between text-white">
+              <div className="flex items-center gap-2">
+                <Camera size={18} className="text-emerald-400" />
+                <span className="text-xs font-black uppercase tracking-wider">Evidencia Digital · Inspección HD</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <a
+                  href={selectedImage}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-bold flex items-center gap-1.5 transition-colors"
+                >
+                  <ExternalLink size={13} />
+                  <span>Original</span>
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setSelectedImage(null)}
+                  className="w-8 h-8 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white flex items-center justify-center font-bold text-sm transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+            <div className="p-2 sm:p-4 overflow-auto flex items-center justify-center bg-black/40">
+              <img
+                src={selectedImage}
+                alt="Evidencia digital en alta definición"
+                className="max-h-[75vh] w-auto max-w-full rounded-2xl object-contain shadow-2xl border border-zinc-800/50"
+              />
+            </div>
           </div>
         </div>
       )}

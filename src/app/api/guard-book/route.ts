@@ -145,8 +145,59 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // 📸 INCLUIR EVIDENCIAS DIGITALES (ACTAS Y FOTOS DE DOCUMENT SCANNER)
+    let syntheticEvidenceEntries: any[] = [];
+    if (!entryType || entryType === 'all' || entryType === 'evidencia' || entryType === 'libro_guardia') {
+      try {
+        let evidenceQuery = supabase
+          .from('digital_evidence')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(limit);
+
+        if (objectiveId && objectiveId !== 'all') {
+          evidenceQuery = evidenceQuery.eq('objective_id', objectiveId);
+        }
+
+        if (date && date !== 'all') {
+          evidenceQuery = evidenceQuery
+            .gte('created_at', `${date}T00:00:00.000Z`)
+            .lte('created_at', `${date}T23:59:59.999Z`);
+        } else if (startDate || endDate) {
+          if (startDate) evidenceQuery = evidenceQuery.gte('created_at', `${startDate}T00:00:00.000Z`);
+          if (endDate) evidenceQuery = evidenceQuery.lte('created_at', `${endDate}T23:59:59.999Z`);
+        }
+
+        const { data: evidenceData } = await evidenceQuery;
+        if (evidenceData && evidenceData.length > 0) {
+          const existingImages = new Set(rawEntries.map((r: any) => r.image_url).filter(Boolean));
+
+          evidenceData.forEach((ev: any) => {
+            if (ev.image_url && !existingImages.has(ev.image_url)) {
+              syntheticEvidenceEntries.push({
+                id: `evidence-${ev.id}`,
+                objective_id: ev.objective_id,
+                operator_id: ev.operator_id,
+                resource_id: ev.operator_id,
+                entry_type: 'evidencia',
+                content: ev.description ? `📸 EVIDENCIA DIGITAL: ${ev.description}` : '📸 EVIDENCIA DIGITAL: Acta o documento respaldatorio adjuntado por el operador.',
+                image_url: ev.image_url,
+                latitude: ev.latitude,
+                longitude: ev.longitude,
+                urgency: 'normal',
+                created_at: ev.created_at,
+                is_synthetic_evidence: true
+              });
+            }
+          });
+        }
+      } catch (e) {
+        console.warn('[GUARD_BOOK_GET] Digital evidence synthesis notice:', e);
+      }
+    }
+
     // Merge and deduplicate by content & operator within 30 seconds interval
-    const combined = [...rawEntries, ...syntheticShiftEntries];
+    const combined = [...rawEntries, ...syntheticShiftEntries, ...syntheticEvidenceEntries];
     const uniqueEntries = combined.filter((entry, idx, self) => {
       if (!entry.is_synthetic_shift) return true;
       const opId = entry.operator_id || entry.resource_id;
@@ -252,6 +303,21 @@ export async function GET(request: NextRequest) {
       console.warn('[GUARD_BOOK_GET] Error fetching resources map:', e);
     }
 
+    // 🏢 RESOLVER OBJETIVOS / PUESTOS PARA ENTRADAS SINTÉTICAS
+    let allObjectivesMap: Record<string, any> = {};
+    try {
+      let objQuery = supabase.from('objectives').select('id, name, address');
+      if (!isSuper && tenantId) objQuery = objQuery.eq('tenant_id', tenantId);
+      const { data: objList } = await objQuery;
+      if (objList) {
+        objList.forEach(o => {
+          if (o.id) allObjectivesMap[o.id] = o;
+        });
+      }
+    } catch (e) {
+      console.warn('[GUARD_BOOK_GET] Error fetching objectives map:', e);
+    }
+
     const finalEntries = withZones.map(e => {
       const opId = e.operator_id || e.resource_id;
       const matchedRes = allResourcesMap[opId];
@@ -263,8 +329,16 @@ export async function GET(request: NextRequest) {
         role: matchedRes.role
       } : null);
 
+      const matchedObj = allObjectivesMap[e.objective_id];
+      const objObj = (e.objectives && e.objectives.name) ? e.objectives : (matchedObj ? {
+        id: matchedObj.id,
+        name: matchedObj.name,
+        address: matchedObj.address
+      } : null);
+
       return {
         ...e,
+        objectives: objObj,
         image_url: e.image_url || e.photo_url || e.media_url || e.attachment_url || null,
         resources: resObj,
         author_name: e.author_name || resObj?.name || matchedRes?.name || null,

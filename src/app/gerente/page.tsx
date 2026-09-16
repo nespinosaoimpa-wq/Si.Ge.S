@@ -1239,6 +1239,7 @@ export default function AdminDashboard() {
           isAddingPoint={isAddingPoint}
           isMobile={isMobile}
           activeGuards={activeGuards}
+          allResources={data.resources || []}
           activeShifts={data.activeShifts || []}
           onAssignOperator={handleAssignOperator}
           setSelectedObjective={setSelectedObjective}
