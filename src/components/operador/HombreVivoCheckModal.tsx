@@ -296,13 +296,13 @@ export default function HombreVivoCheckModal({
     try {
       let lat = location?.lat || 0;
       let lng = location?.lng || 0;
+      const opId = operatorId || user?.id || userResourceRef.current?.id;
 
       await supabase.from('alarms').insert({
-        triggered_by: 'system_timeout',
-        operator_id: operatorId || user?.id,
+        triggered_by: opId || 'system_timeout',
+        operator_name: userResourceRef.current?.name || 'Operador',
         objective_id: objectiveId || null,
         alarm_type: 'hombre_vivo_sin_respuesta',
-        severity: 'critica',
         message: `🚨 HOMBRE VIVO NO ATENDIDO: El operador no respondió la verificación dentro de los 3 minutos límite.`,
         latitude: lat,
         longitude: lng,
@@ -312,7 +312,7 @@ export default function HombreVivoCheckModal({
 
       await supabase.from('guard_book_entries').insert({
         objective_id: objectiveId || null,
-        operator_id: operatorId || user?.id,
+        operator_id: opId,
         entry_type: 'hombre_vivo_sin_respuesta',
         content: `🚨 HOMBRE VIVO SIN RESPONDER - LÍMITE DE TIEMPO EXCEDIDO (3 min)`,
         latitude: lat,
@@ -320,7 +320,7 @@ export default function HombreVivoCheckModal({
         urgency: 'critica'
       });
 
-      if (alarm?.id) {
+      if (alarm?.id && !alarm.id.startsWith('manual-')) {
         await supabase.from('alarms').update({ status: 'unattended' }).eq('id', alarm.id);
       }
     } catch (e) {
@@ -353,33 +353,21 @@ export default function HombreVivoCheckModal({
       let lng = location?.lng || 0;
       const opId = operatorId || user?.id || userResourceRef.current?.id;
 
-      // 1. Log answered check in guard book
-      await supabase.from('guard_book_entries').insert({
-        objective_id: objectiveId || null,
-        operator_id: opId,
-        entry_type: 'hombre_vivo',
-        content: `✅ CONTROL HOMBRE VIVO RESPONDIDO OK - PRESENCIA CONFIRMADA`,
-        latitude: lat,
-        longitude: lng,
-        urgency: 'normal'
-      });
-
-      // 2. Mark alarm request as acknowledged in DB for this operator
-      if (activeCheck.id && !activeCheck.id.startsWith('manual-') && !activeCheck.id.startsWith('push-')) {
-        await supabase.from('alarms').update({
-          status: 'acknowledged',
-          acknowledged_at: new Date().toISOString()
-        }).eq('id', activeCheck.id);
-      }
-
-      if (opId) {
-        await supabase.from('alarms').update({
-          status: 'acknowledged',
-          acknowledged_at: new Date().toISOString()
-        })
-        .eq('status', 'active')
-        .in('alarm_type', ['hombre_vivo_solicitud', 'hombre_vivo'])
-        .or(`operator_id.eq.${opId},triggered_by.eq.${opId}`);
+      // Call secure server endpoint to resolve alarms and guard book entries reliably
+      try {
+        await fetch('/api/hombre-vivo/respond', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            alarm_id: activeCheck.id,
+            operator_id: opId,
+            objective_id: objectiveId || activeCheck.objective_id || null,
+            latitude: lat,
+            longitude: lng
+          })
+        });
+      } catch (err) {
+        console.warn('[HombreVivoModal] Server respond warning:', err);
       }
 
       setAnsweredSuccess(true);

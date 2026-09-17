@@ -97,12 +97,12 @@ export async function GET(req: NextRequest) {
 
     (alarmsRes.data || []).forEach((a: any) => {
       const elapsedMins = Math.floor((Date.now() - new Date(a.created_at).getTime()) / (1000 * 60));
-      const opId = a.operator_id || a.triggered_by;
+      const opId = a.triggered_by || a.operator_id;
       const opName = a.operator_name || resMap[opId]?.name || 'Operador';
       
       const isAcknowledged = a.status === 'acknowledged';
-      const isResolved = a.status === 'resolved' || a.status === 'resuelto';
-      const isUnanswered = a.status === 'active' || a.alarm_type === 'hombre_vivo_sin_respuesta';
+      const isResolved = a.status === 'resolved' || a.status === 'resuelto' || Boolean(a.resolved_at);
+      const isUnanswered = (a.status === 'active' || a.alarm_type === 'hombre_vivo_sin_respuesta') && !isAcknowledged && !isResolved;
 
       combined.push({
         id: a.id,
@@ -121,30 +121,49 @@ export async function GET(req: NextRequest) {
     });
 
     (bookRes.data || []).forEach((e: any) => {
-      // Only add guard book entries if not already represented by an alarm record
-      if (!combined.some(c => c.id === e.id || c.created_at === e.created_at)) {
-        const isAnswered = (e.content || '').includes('RESPONDIDO OK') || (e.content || '').includes('PRESENCIA CONFIRMADA');
-        const isResolved = e.status === 'resolved' || e.status === 'resuelto';
-        const elapsedMins = Math.floor((Date.now() - new Date(e.created_at).getTime()) / (1000 * 60));
-        const opId = e.operator_id || e.resource_id;
-        const opName = resMap[opId]?.name || 'Operador en Guardia';
+      const opId = e.operator_id || e.resource_id;
+      const opName = resMap[opId]?.name || 'Operador en Guardia';
+      const contentUpper = (e.content || '').toUpperCase();
+      const isAnswered = contentUpper.includes('RESPONDIDO OK') || 
+                         contentUpper.includes('PRESENCIA CONFIRMADA') || 
+                         contentUpper.includes('CONFIRMADO');
+      const isResolved = Boolean(e.resolved_at) || 
+                         contentUpper.includes('[DESCARGO') || 
+                         contentUpper.includes('[RESUELTO');
+      const elapsedMins = Math.floor((Date.now() - new Date(e.created_at).getTime()) / (1000 * 60));
 
-        combined.push({
-          id: e.id,
-          created_at: e.created_at,
-          operator_id: opId,
-          operator_name: opName,
-          operator_avatar: resMap[opId]?.avatar_url,
-          objective_id: e.objective_id,
-          objective_name: e.objective_id ? objMap[e.objective_id] || 'Puesto Asignado' : 'Puesto Asignado',
-          status: isResolved ? 'resuelto' : (isAnswered ? 'respondido' : 'sin_responder'),
-          time_elapsed_minutes: elapsedMins,
-          latitude: e.latitude,
-          longitude: e.longitude,
-          notes: e.content,
-          urgency: e.urgency
-        });
+      // Check if there is an alarm matching this dispatch
+      const matchingAlarm = combined.find(c => 
+        (c.id === e.id) ||
+        (c.operator_id === opId && Math.abs(new Date(c.created_at).getTime() - new Date(e.created_at).getTime()) < 15000)
+      );
+
+      if (matchingAlarm) {
+        if (isResolved) {
+          matchingAlarm.status = 'resuelto';
+          matchingAlarm.urgency = 'normal';
+        } else if (isAnswered) {
+          matchingAlarm.status = 'respondido';
+          matchingAlarm.urgency = 'normal';
+        }
+        return;
       }
+
+      combined.push({
+        id: e.id,
+        created_at: e.created_at,
+        operator_id: opId,
+        operator_name: opName,
+        operator_avatar: resMap[opId]?.avatar_url,
+        objective_id: e.objective_id,
+        objective_name: e.objective_id ? objMap[e.objective_id] || 'Puesto Asignado' : 'Puesto Asignado',
+        status: isResolved ? 'resuelto' : (isAnswered ? 'respondido' : 'sin_responder'),
+        time_elapsed_minutes: elapsedMins,
+        latitude: e.latitude,
+        longitude: e.longitude,
+        notes: e.content,
+        urgency: (!isAnswered && !isResolved) ? 'critica' : 'normal'
+      });
     });
 
     combined.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
@@ -170,15 +189,13 @@ export async function POST(request: NextRequest) {
     const nowIso = new Date().toISOString();
     const targetName = operator_name || 'operador';
 
-    // 1. Insert alarm record
+    // 1. Insert alarm record (triggered_by stores operator identifier)
     const { data: alarm, error: alarmError } = await supabase.from('alarms').insert({
-      triggered_by: 'gerente_manual',
-      operator_id: operator_id,
+      triggered_by: operator_id,
       operator_name: targetName,
       objective_id: objective_id || null,
       tenant_id: tenantId || null,
       alarm_type: 'hombre_vivo_solicitud',
-      severity: 'alta',
       message: `⚡ CONTROL HOMBRE VIVO SOLICITADO: Gerencia requiere verificación inmediata de presencia a ${targetName}.`,
       status: 'active',
       created_at: nowIso
@@ -186,7 +203,7 @@ export async function POST(request: NextRequest) {
 
     if (alarmError) console.error('[HOMBRE_VIVO_ALARM_ERROR]', alarmError);
 
-    // 2. Log in guard_book_entries
+    // 2. Log pending request in guard_book_entries
     await supabase.from('guard_book_entries').insert({
       objective_id: objective_id || null,
       operator_id: operator_id,
@@ -228,7 +245,7 @@ export async function POST(request: NextRequest) {
       console.warn('[HOMBRE_VIVO] Web Push error (non-blocking):', pushErr);
     }
 
-    // 4. Broadcast via Supabase Realtime as fallback for open tabs
+    // 4. Broadcast via Supabase Realtime with real alarm ID
     try {
       await supabase.channel('hombre-vivo-broadcast-channel').send({
         type: 'broadcast',
