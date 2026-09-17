@@ -137,12 +137,13 @@ export default function AdminDashboard() {
     return (data.objectives || []).map((obj: any) => {
       // Find all occupants currently at this objective who are ACTIVELY ON SHIFT
       const liveOccupants = (data.resources || []).filter((r: any) => {
-        if (r.current_objective_id !== obj.id) return false;
         const activeShift = (data.activeShifts || []).find((s: any) => 
           (s.operator_id === r.id || s.operator_id === r.assigned_to) && 
           !s.checkout_time && 
           s.status !== 'completado'
         );
+        const objId = r.current_objective_id || activeShift?.objective_id;
+        if (objId !== obj.id) return false;
         return Boolean(activeShift) || r.status === 'en_turno';
       });
 
@@ -158,7 +159,10 @@ export default function AdminDashboard() {
       // Combine DB personnel and live occupants without duplicate IDs
       const personnelMap = new Map();
       dbPersonnel.forEach((p: any) => personnelMap.set(p.id, p));
-      liveOccupants.forEach((p: any) => personnelMap.set(p.id, p));
+      liveOccupants.forEach((p: any) => personnelMap.set(p.id, {
+        ...p,
+        isOnShift: true
+      }));
       const finalPersonnel = Array.from(personnelMap.values());
 
       return {
@@ -233,6 +237,8 @@ export default function AdminDashboard() {
 
       return {
         ...r,
+        current_objective_id: targetObjId,
+        shiftObjectiveId: targetObjId,
         latitude: lat,
         longitude: lng,
         avatar_url: avatarUrl,

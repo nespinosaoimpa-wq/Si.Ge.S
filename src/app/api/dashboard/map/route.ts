@@ -192,12 +192,13 @@ export async function GET(req: NextRequest) {
     let rawResources = (resourcesRes.data || []).map((r: any) => {
       const activeShift = activeShiftByOperator[r.id] || activeShiftByOperator[r.profile_id];
       const isOnShift = Boolean(activeShift);
+      const targetObjId = r.current_objective_id || activeShift?.objective_id || null;
       return {
         ...r,
         isOnShift,
         current_shift_id: activeShift?.id || null,
-        // Respect resources.current_objective_id (set by manager assignment)
-        current_objective_id: r.current_objective_id || null
+        current_objective_id: targetObjId,
+        shift_objective_id: activeShift?.objective_id || null
       };
     });
 
@@ -208,11 +209,13 @@ export async function GET(req: NextRequest) {
       const fb = await fallbackQuery;
       rawResources = (fb.data || []).map((r: any) => {
         const activeShift = activeShiftByOperator[r.id] || activeShiftByOperator[r.profile_id];
+        const targetObjId = r.current_objective_id || activeShift?.objective_id || null;
         return {
           ...r,
           isOnShift: Boolean(activeShift),
           current_shift_id: activeShift?.id || null,
-          current_objective_id: r.current_objective_id || null
+          current_objective_id: targetObjId,
+          shift_objective_id: activeShift?.objective_id || null
         };
       });
     }
