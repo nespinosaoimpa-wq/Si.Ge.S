@@ -25,6 +25,7 @@ interface Objective {
   status: string;
   geofence_radius?: number;
   is_manned?: boolean;
+  is_on_shift?: boolean;
   occupant_name?: string;
   assigned_personnel?: any[]; // For deep join results
   image_url?: string | null;
@@ -302,11 +303,13 @@ const ObjectiveMarkerContent = React.memo(({
   activeGuardName?: string | null;
   guardStatus?: string | null;
 }) => {
+  const hasAssignedPersonnel = Boolean(obj.assigned_personnel && obj.assigned_personnel.length > 0);
   const hasActivePersonnel = Boolean(obj.assigned_personnel && obj.assigned_personnel.some((p: any) => Boolean(p.isOnShift) || p.status === 'en_turno'));
-  const isManned = Boolean(activeGuardAvatar) || (hasActivePersonnel && Boolean(obj.is_manned));
+  const isManned = Boolean(activeGuardName) || Boolean(activeGuardAvatar) || hasAssignedPersonnel || Boolean(obj.is_manned);
   const isGuardAbandoned = guardStatus === 'abandoned';
   const isGuardOffline = guardStatus === 'offline';
   const isCritical = obj.status === 'critica' || obj.status === 'alerta' || obj.status === 'emergency' || isGuardAbandoned;
+  const isOnShift = hasActivePersonnel || (guardStatus === 'en_turno') || (obj.is_on_shift);
 
   return (
     <div className="relative w-10 h-10 flex flex-col items-center justify-center group cursor-pointer pointer-events-none select-none">
@@ -329,10 +332,12 @@ const ObjectiveMarkerContent = React.memo(({
         {obj.name}
         {isGuardAbandoned ? (
           <span className="text-red-400 font-bold">● ALERTA: ABANDONO ({activeGuardName || 'OPERADOR'})</span>
+        ) : isOnShift ? (
+          <span className="text-emerald-400 font-bold">● EN SERVICIO: {activeGuardName || 'OPERADOR'}</span>
         ) : isManned ? (
-          <span className="text-emerald-400 font-bold">● PRESENTE: {activeGuardName || 'OPERADOR'}</span>
+          <span className="text-emerald-400 font-bold">● ASIGNADO: {activeGuardName || 'OPERADOR'}</span>
         ) : (
-          <span className="text-amber-400 font-medium">● SIN OPERADOR</span>
+          <span className="text-amber-400 font-medium">● SIN OPERADOR ASIGNADO</span>
         )}
         <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-zinc-950 rotate-45 border-r border-b border-white/20" />
       </div>
@@ -1033,17 +1038,15 @@ export default function MapView({
           const hasIncident = activeIncidents.some(inc => (inc as any).objective_id === obj.id);
           const enrichedObj = hasIncident ? { ...obj, status: 'critica' } : obj;
 
-          // 🚨 STRICT SHIFT VERIFICATION: Resolve active guard ON SHIFT at this objective
-          const activeGuardAtObj = (guards || []).find(g => {
+          // 🚨 Resolve assigned guard at this objective (checking active shifts first, then assigned personnel)
+          const assignedGuard = (guards || []).find(g => {
             const guardObjId = g.current_objective_id || (g as any).shiftObjectiveId || (g as any).shift_objective_id || (g as any).objective_id;
-            const isAtThisObj = guardObjId === obj.id;
-            const isActive = Boolean(g.isOnShift) || g.status === 'en_turno' || g.status === 'abandoned';
-            return isAtThisObj && isActive;
-          }) || null;
+            return guardObjId === obj.id;
+          }) || (obj.assigned_personnel || []).find((p: any) => Boolean(p.isOnShift)) || (obj.assigned_personnel || [])[0] || null;
 
-          const activeGuardAvatar = activeGuardAtObj ? getAvatarUrl(activeGuardAtObj) : null;
-          const activeGuardName = activeGuardAtObj ? activeGuardAtObj.name : null;
-          const guardStatus = activeGuardAtObj ? activeGuardAtObj.status : null;
+          const activeGuardAvatar = assignedGuard ? getAvatarUrl(assignedGuard) : null;
+          const activeGuardName = assignedGuard ? (assignedGuard.name || (assignedGuard as any).occupant_name) : (obj.occupant_name || null);
+          const guardStatus = assignedGuard ? assignedGuard.status : null;
 
           return (
             <Marker
@@ -1278,17 +1281,28 @@ export default function MapView({
               <h3 className="font-black text-xs uppercase tracking-tight mb-1">{activeObjective.name}</h3>
               {activeObjective.assigned_personnel && activeObjective.assigned_personnel.length > 0 ? (
                 <div className="flex flex-col gap-2 mt-3 mb-3 border-t border-zinc-100 pt-3">
-                  <p className="text-[8px] font-black text-zinc-400 uppercase tracking-widest">Fuerza Asignada</p>
+                  <p className="text-[8px] font-black text-zinc-400 uppercase tracking-widest">Fuerza Asignada al Puesto</p>
                   {activeObjective.assigned_personnel.map((p: any) => (
-                    <div key={p.id} className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-lg bg-zinc-50 flex items-center justify-center overflow-hidden border border-zinc-200">
-                        {getAvatarUrl(p) ? (
-                          <img src={getAvatarUrl(p) || ''} className="w-full h-full object-cover" alt={p.name} />
-                        ) : (
-                          <span className="text-[9px] font-black text-[#0F4C5C]">{p.name?.split(' ').map((n:any) => n[0]).join('')}</span>
-                        )}
+                    <div key={p.id} className="flex items-center justify-between gap-2 bg-zinc-50 p-2 rounded-xl border border-zinc-200/60">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg bg-zinc-100 flex items-center justify-center overflow-hidden border border-zinc-300">
+                          {getAvatarUrl(p) ? (
+                            <img src={getAvatarUrl(p) || ''} className="w-full h-full object-cover" alt={p.name} />
+                          ) : (
+                            <span className="text-[10px] font-black text-[#0F4C5C]">{p.name?.split(' ').map((n:any) => n[0]).join('')}</span>
+                          )}
+                        </div>
+                        <div>
+                          <span className="text-[11px] font-black text-zinc-900 uppercase block">{p.name}</span>
+                          <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">{p.role || 'Operador'}</span>
+                        </div>
                       </div>
-                      <span className="text-[10px] font-black text-zinc-900 uppercase">{p.name}</span>
+                      <span className={cn(
+                        "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider",
+                        p.isOnShift ? "bg-emerald-100 text-emerald-700" : "bg-zinc-200 text-zinc-600"
+                      )}>
+                        {p.isOnShift ? "En Servicio" : "Asignado"}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -1298,7 +1312,7 @@ export default function MapView({
                   <span className="text-[10px] font-black text-zinc-900 uppercase tracking-tighter">{activeObjective.occupant_name}</span>
                 </div>
               ) : (
-                <p className="text-[9px] font-black text-amber-600/80 uppercase mt-2 mb-2 tracking-widest">• Sin personal activo</p>
+                <p className="text-[9px] font-black text-amber-600/80 uppercase mt-2 mb-2 tracking-widest">• Puesto vacante / Sin operador asignado</p>
               )}
               <p className="text-[10px] text-zinc-900 font-bold uppercase tracking-widest leading-relaxed mt-2 border-t border-zinc-100 pt-2">{activeObjective.address}</p>
             </div>

@@ -135,40 +135,41 @@ export default function AdminDashboard() {
   // --- MEMOIZED DATA (Optimization) ---
   const enrichedObjectives = useMemo(() => {
     return (data.objectives || []).map((obj: any) => {
-      // Find all occupants currently at this objective who are ACTIVELY ON SHIFT
-      const liveOccupants = (data.resources || []).filter((r: any) => {
+      // Find all operators assigned to this objective or currently on shift here
+      const assignedFromResources = (data.resources || []).filter((r: any) => {
         const activeShift = (data.activeShifts || []).find((s: any) => 
           (s.operator_id === r.id || s.operator_id === r.assigned_to) && 
           !s.checkout_time && 
           s.status !== 'completado'
         );
         const objId = r.current_objective_id || activeShift?.objective_id;
-        if (objId !== obj.id) return false;
-        return Boolean(activeShift) || r.status === 'en_turno';
-      });
-
-      const dbPersonnel = (obj.assigned_personnel || []).filter((p: any) => {
+        return objId === obj.id;
+      }).map((r: any) => {
         const activeShift = (data.activeShifts || []).find((s: any) => 
-          (s.operator_id === p.id || s.operator_id === p.assigned_to) && 
+          (s.operator_id === r.id || s.operator_id === r.assigned_to) && 
           !s.checkout_time && 
           s.status !== 'completado'
         );
-        return Boolean(activeShift) || p.isOnShift || p.status === 'en_turno';
+        return {
+          ...r,
+          isOnShift: Boolean(activeShift) || r.status === 'en_turno'
+        };
       });
 
-      // Combine DB personnel and live occupants without duplicate IDs
+      // Combine DB personnel and assigned resources without duplicate IDs
       const personnelMap = new Map();
-      dbPersonnel.forEach((p: any) => personnelMap.set(p.id, p));
-      liveOccupants.forEach((p: any) => personnelMap.set(p.id, {
-        ...p,
-        isOnShift: true
-      }));
+      (obj.assigned_personnel || []).forEach((p: any) => personnelMap.set(p.id, p));
+      assignedFromResources.forEach((p: any) => personnelMap.set(p.id, p));
       const finalPersonnel = Array.from(personnelMap.values());
+
+      const onShiftPersonnel = finalPersonnel.filter((p: any) => Boolean(p.isOnShift));
+      const primaryOperator = onShiftPersonnel[0] || finalPersonnel[0] || null;
 
       return {
         ...obj,
-        occupant_name: finalPersonnel.map((p: any) => p.name).filter(Boolean).join(', ') || null,
+        occupant_name: primaryOperator ? primaryOperator.name : null,
         is_manned: finalPersonnel.length > 0,
+        is_on_shift: onShiftPersonnel.length > 0,
         assigned_personnel: finalPersonnel
       };
     });

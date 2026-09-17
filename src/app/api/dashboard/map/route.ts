@@ -220,10 +220,10 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // Group assigned personnel by objective (ONLY IF ACTIVELY ON SHIFT)
+    // Group assigned personnel by objective (both active on shift and assigned)
     const resourcesByObjective: Record<string, any[]> = {};
     rawResources.forEach((r: any) => {
-      if (r.current_objective_id && r.isOnShift) {
+      if (r.current_objective_id) {
         if (!resourcesByObjective[r.current_objective_id]) {
           resourcesByObjective[r.current_objective_id] = [];
         }
@@ -239,19 +239,23 @@ export async function GET(req: NextRequest) {
     };
 
     const mappedObjectives = rawObjectives.map((obj: any) => {
-      const assignedOnShift = resourcesByObjective[obj.id] || [];
-      const isManned = assignedOnShift.length > 0;
-      const occupantName = isManned ? assignedOnShift[0].name : null;
-      const currentOperatorId = isManned ? assignedOnShift[0].id : null;
+      const assignedPersonnel = resourcesByObjective[obj.id] || [];
+      const onShiftPersonnel = assignedPersonnel.filter((p: any) => Boolean(p.isOnShift));
+      const hasAssigned = assignedPersonnel.length > 0;
+      const isManned = hasAssigned;
+      const primaryOperator = onShiftPersonnel[0] || assignedPersonnel[0] || null;
+      const occupantName = primaryOperator ? primaryOperator.name : null;
+      const currentOperatorId = primaryOperator ? primaryOperator.id : null;
 
       return {
         ...obj,
         latitude: parseCoord(obj.latitude, -31.6107),
         longitude: parseCoord(obj.longitude, -60.6973),
         is_manned: isManned,
+        is_on_shift: onShiftPersonnel.length > 0,
         occupant_name: occupantName,
         current_operator_id: currentOperatorId,
-        assigned_personnel: assignedOnShift
+        assigned_personnel: assignedPersonnel
       };
     });
 
