@@ -436,11 +436,13 @@ export async function POST(request: NextRequest) {
       .insert({
         objective_id,
         operator_id: resource_id,
+        resource_id: resource_id,
         entry_type,
         content,
         latitude,
         longitude,
         urgency,
+        status: 'pending',
         image_url,
         audio_url,
         created_at: new Date().toISOString(),

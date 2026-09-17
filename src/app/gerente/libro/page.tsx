@@ -233,11 +233,42 @@ export default function GuardBookPage() {
     }
   };
 
+  const [resolvingIds, setResolvingIds] = useState<Record<string, boolean>>({});
+
+  const handleResolveEntry = async (entryId: string, objectiveId?: string) => {
+    if (!entryId || resolvingIds[entryId]) return;
+    setResolvingIds(prev => ({ ...prev, [entryId]: true }));
+
+    const now = new Date().toISOString();
+    // ⚡ Optimistic local update
+    setEntries(prev => prev.map(e => e.id === entryId ? { ...e, status: 'resolved', resolved_at: now } : e));
+
+    try {
+      // 1. Direct Supabase updates to trigger Realtime on all open maps and devices
+      await Promise.allSettled([
+        supabase.from('guard_book_entries').update({ status: 'resolved', resolved_at: now }).eq('id', entryId),
+        supabase.from('incidents').update({ status: 'resolved', resolved_at: now }).eq('id', entryId),
+        supabase.from('alarms').update({ status: 'resolved', acknowledged_at: now, resolved_at: now }).eq('id', entryId)
+      ]);
+
+      // 2. Service Role bypass API fallback
+      await fetch(`/api/tracking/incidents/${encodeURIComponent(entryId)}/resolve`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'resolved', comment: 'Atendido y solucionado por gerencia' })
+      });
+    } catch (err: any) {
+      console.error('[LIBRO] Error resolviendo entrada:', err);
+    } finally {
+      setResolvingIds(prev => ({ ...prev, [entryId]: false }));
+    }
+  };
+
   useEffect(() => {
     fetchEntries();
   }, [filterPeriod, customStartDate, customEndDate, filterObjective, filterType, filterUrgency]);
 
-  // Realtime subscription
+  // Realtime subscription (Entradas nuevas, resoluciones y fichadas en tiempo real)
   useEffect(() => {
     const channel = supabase
       .channel('libro-gerente-realtime-page')
@@ -249,13 +280,22 @@ export default function GuardBookPage() {
           const data = await res.json();
           const entry = Array.isArray(data) ? data[0] : data;
           if (entry) {
-            setEntries(prev => [entry, ...prev]);
+            setEntries(prev => [entry, ...prev.filter(e => e.id !== entry.id)]);
             setNewEntryFlash(entry.id);
             setTimeout(() => setNewEntryFlash(null), 5000);
           }
         } catch {
-          setEntries(prev => [newEntry, ...prev]);
+          setEntries(prev => [newEntry, ...prev.filter(e => e.id !== newEntry.id)]);
         }
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'guard_book_entries' }, (payload) => {
+        const updated = payload.new as any;
+        if (!updated?.id) return;
+        setEntries(prev => prev.map(e => e.id === updated.id ? { ...e, ...updated } : e));
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'guard_shifts' }, () => {
+        // Al fichar entrada o salida, refrescar novedades de fichada automáticamente
+        fetchEntries();
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'digital_evidence' }, async () => {
         fetchEntries();
@@ -606,6 +646,13 @@ export default function GuardBookPage() {
                               {sev.label}
                             </span>
                           )}
+
+                          {['resolved', 'resuelto', 'atendido'].includes(String(entry.status).toLowerCase()) && (
+                            <span className="px-2.5 py-1 rounded-xl text-xs font-bold border uppercase tracking-wider bg-emerald-500/10 border-emerald-500/30 text-emerald-700 flex items-center gap-1 shadow-xs">
+                              <CheckCircle2 size={12} className="text-emerald-600" />
+                              <span>Solucionado</span>
+                            </span>
+                          )}
                         </div>
 
                         {/* Fecha y Hora formateada (24 hs) */}
@@ -702,9 +749,24 @@ export default function GuardBookPage() {
                         )}
                       </div>
 
-                      <div className="flex items-center gap-1.5 text-xs font-medium text-zinc-400 ml-auto">
-                        <CheckCircle2 size={13} className="text-emerald-500" />
-                        Sincronizado en Nube
+                      <div className="flex items-center gap-3 ml-auto flex-wrap">
+                        {!['resolved', 'resuelto', 'atendido'].includes(String(entry.status).toLowerCase()) && 
+                         !entry.is_synthetic_shift && 
+                         (entry.entry_type === 'incidente' || entry.entry_type === 'emergencia' || entry.urgency === 'critica' || entry.urgency === 'alta' || entry.status === 'pending') && (
+                          <button
+                            type="button"
+                            onClick={() => handleResolveEntry(entry.id, entry.objective_id)}
+                            disabled={resolvingIds[entry.id]}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider text-white bg-zinc-900 hover:bg-black transition-all shadow-sm active:scale-95 cursor-pointer disabled:opacity-50"
+                          >
+                            <CheckCircle2 size={13} className="text-emerald-400" />
+                            <span>{resolvingIds[entry.id] ? 'Solucionando...' : 'Atender y Solucionar'}</span>
+                          </button>
+                        )}
+                        <div className="flex items-center gap-1.5 text-xs font-medium text-zinc-400">
+                          <CheckCircle2 size={13} className="text-emerald-500" />
+                          Sincronizado en Nube
+                        </div>
                       </div>
                     </div>
 

@@ -263,10 +263,26 @@ export default function AdminDashboard() {
 
   const resourcesRef = React.useRef(data.resources);
   const dataRef = React.useRef(data);
+  const realtimeChannelRef = React.useRef<any>(null);
   useEffect(() => {
     resourcesRef.current = data.resources;
     dataRef.current = data;
   }, [data.resources, data]);
+
+  const removeIncidentFromMap = useCallback((id: string, targetObjId?: string) => {
+    setData((prev: any) => ({
+      ...prev,
+      recentIncidents: (prev.recentIncidents || []).filter((inc: any) => 
+        inc.id !== id && (!targetObjId || inc.objective_id !== targetObjId || !['panic', 'emergencia', 'alerta'].includes(inc.entry_type))
+      )
+    }));
+
+    setActiveEmergency(prev => (prev?.id === id || (targetObjId && prev?.objective_id === targetObjId) ? null : prev));
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+  }, []);
 
   // --- HANDLERS ---
   const fetchData = useCallback(async () => {
@@ -522,20 +538,24 @@ export default function AdminDashboard() {
       const targetObjId = targetInc?.objective_id;
 
       // 1. Actualización optimista inmediata en interfaz y cierre de sirena/modal (0ms)
-      setActiveEmergency(prev => (prev?.id === id || (targetObjId && prev?.objective_id === targetObjId) ? null : prev));
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.currentTime = 0;
-      }
+      removeIncidentFromMap(id, targetObjId);
 
-      setData((prev: any) => ({
-        ...prev,
-        recentIncidents: (prev.recentIncidents || []).filter((inc: any) => inc.id !== id && (!targetObjId || inc.objective_id !== targetObjId))
-      }));
+      // 2. Broadcast instantáneo a todos los demás paneles de gerencia conectados
+      try {
+        if (realtimeChannelRef.current) {
+          realtimeChannelRef.current.send({
+            type: 'broadcast',
+            event: 'incident-resolved',
+            payload: { id, objectiveId: targetObjId }
+          });
+        }
+      } catch (bcErr) {
+        console.warn('[MAP_REALTIME] Broadcast notice:', bcErr);
+      }
 
       const now = new Date().toISOString();
 
-      // 2. Actualización DIRECTA en Supabase en todas las tablas vinculadas
+      // 3. Actualización DIRECTA en Supabase en todas las tablas vinculadas
       const promises: Promise<any>[] = [
         supabase.from('incidents').update({ status: 'resolved', resolved_at: now }).eq('id', id),
         supabase.from('alarms').update({ status: 'resolved', acknowledged_at: now, resolved_at: now }).eq('id', id),
@@ -554,7 +574,7 @@ export default function AdminDashboard() {
 
       await Promise.allSettled(promises);
 
-      // 3. Fallback no bloqueante a la API (Service Role bypass)
+      // 4. Fallback no bloqueante a la API (Service Role bypass)
       fetch(`/api/tracking/incidents/${encodeURIComponent(id)}/resolve`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -671,11 +691,9 @@ export default function AdminDashboard() {
         } else if (payload.eventType === 'UPDATE') {
           const updated = payload.new as any;
           if (tenantId && updated.tenant_id && updated.tenant_id !== tenantId) return;
-          if (updated.status === 'resolved' || updated.status === 'resuelto') {
-            setData((prev: any) => ({
-              ...prev,
-              recentIncidents: (prev.recentIncidents || []).filter((inc: any) => inc.id !== updated.id)
-            }));
+          const isResolved = ['resolved', 'resuelto', 'atendido', 'acknowledged', 'justificado', 'sancionado', 'cerrado'].includes(String(updated.status).toLowerCase());
+          if (isResolved) {
+            removeIncidentFromMap(updated.id, updated.objective_id);
           }
         }
       })
@@ -753,11 +771,9 @@ export default function AdminDashboard() {
         } else if (payload.eventType === 'UPDATE') {
           const updated = payload.new as any;
           if (tenantId && updated.tenant_id && updated.tenant_id !== tenantId) return;
-          if (updated.status === 'resolved' || updated.status === 'resuelto') {
-            setData((prev: any) => ({
-              ...prev,
-              recentIncidents: (prev.recentIncidents || []).filter((inc: any) => inc.id !== updated.id)
-            }));
+          const isResolved = ['resolved', 'resuelto', 'atendido', 'acknowledged', 'justificado', 'sancionado', 'cerrado'].includes(String(updated.status).toLowerCase());
+          if (isResolved) {
+            removeIncidentFromMap(updated.id, updated.objective_id);
           }
         }
       })
@@ -892,11 +908,9 @@ export default function AdminDashboard() {
           }
         } else if (payload.eventType === 'UPDATE') {
           const updated = payload.new as any;
-          if (updated.status === 'resolved' || updated.status === 'resuelto') {
-            setData((prev: any) => ({
-              ...prev,
-              recentIncidents: (prev.recentIncidents || []).filter((inc: any) => inc.id !== updated.id)
-            }));
+          const isResolved = ['resolved', 'resuelto', 'atendido', 'acknowledged', 'justificado', 'sancionado', 'cerrado'].includes(String(updated.status).toLowerCase());
+          if (isResolved) {
+            removeIncidentFromMap(updated.id, updated.objective_id);
           }
         }
       })
@@ -962,17 +976,23 @@ export default function AdminDashboard() {
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'alarms' }, (payload) => {
         const updated = payload.new as any;
-        if (updated.status === 'acknowledged' || updated.status === 'resolved') {
-          // Remove resolved alarms from map incidents
-          setData((prev: any) => ({
-            ...prev,
-            recentIncidents: (prev.recentIncidents || []).filter((inc: any) => inc.id !== updated.id)
-          }));
+        const isResolved = ['acknowledged', 'resolved', 'resuelto', 'atendido', 'cerrado'].includes(String(updated.status).toLowerCase());
+        if (isResolved) {
+          removeIncidentFromMap(updated.id, updated.objective_id);
+        }
+      })
+      // ═══ BROADCAST SYNC (Multi-manager instant synchronization 0ms) ═══
+      .on('broadcast', { event: 'incident-resolved' }, ({ payload }: any) => {
+        if (payload?.id) {
+          removeIncidentFromMap(payload.id, payload.objectiveId);
         }
       })
       .subscribe();
 
+    realtimeChannelRef.current = channel;
+
     return () => {
+      realtimeChannelRef.current = null;
       supabase.removeChannel(channel);
     };
   }, [isMobile, fetchData]);

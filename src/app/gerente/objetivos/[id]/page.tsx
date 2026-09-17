@@ -216,14 +216,21 @@ export default function ObjectiveDetail() {
 
     fetchData();
 
-    // REAL-TIME: Suscribirse a novedades y cambios en personal
+    // REAL-TIME: Suscribirse a novedades (INSERT y UPDATE) y cambios en personal
     const bookChannel = supabase
       .channel(`objective-${id}-book`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'guard_book_entries', filter: `objective_id=eq.${id}` },
         (payload) => {
-          setGuardBook(prev => [payload.new, ...prev]);
+          setGuardBook(prev => [payload.new, ...prev.filter((e: any) => e.id !== payload.new.id)]);
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'guard_book_entries', filter: `objective_id=eq.${id}` },
+        (payload) => {
+          setGuardBook(prev => prev.map((e: any) => e.id === payload.new.id ? { ...e, ...payload.new } : e));
         }
       )
       .subscribe();
@@ -232,9 +239,19 @@ export default function ObjectiveDetail() {
       .channel(`objective-${id}-resources`)
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'resources', filter: `current_objective_id=eq.${id}` },
+        { event: '*', schema: 'public', table: 'resources' },
         (payload) => {
-          setResources(prev => prev.map(r => r.id === payload.new.id ? payload.new : r));
+          if (payload.eventType === 'UPDATE') {
+            const updated = payload.new as any;
+            if (updated.current_objective_id === id && updated.status !== 'baja') {
+              setResources(prev => {
+                const exists = prev.some(r => r.id === updated.id);
+                return exists ? prev.map(r => r.id === updated.id ? updated : r) : [updated, ...prev];
+              });
+            } else {
+              setResources(prev => prev.filter(r => r.id !== updated.id));
+            }
+          }
         }
       )
       .subscribe();

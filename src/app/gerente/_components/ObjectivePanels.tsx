@@ -140,24 +140,54 @@ export function ObjectiveDetailPanel({
                             <div className="flex items-center gap-2">
                               <p className="text-sm font-bold text-zinc-900 tracking-tight">{guard.name}</p>
                               {activeShift && (
-                                <div className="w-2 h-2 rounded-full bg-teal-500" title="En servicio activo" />
+                                <div className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" title="En servicio activo" />
                               )}
                             </div>
                             <p className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider mt-0.5">
-                              {activeShift ? 'Puesto Cubierto' : 'Asignado al Puesto'}
+                              {activeShift ? '🟢 En Servicio Activo' : '👤 Asignado Fijo al Puesto'}
                             </p>
                           </div>
                           {onAssignOperator && (
-                            <button 
-                              className="text-xs font-semibold text-zinc-400 hover:text-red-500 transition-colors" 
-                              onClick={() => onAssignOperator(selectedObjective.id, '')}
-                            >
-                              Liberar
-                            </button>
+                            <div className="flex items-center gap-2">
+                              <button 
+                                className="text-[11px] font-semibold text-zinc-400 hover:text-red-500 transition-colors px-2 py-1 rounded-lg hover:bg-red-50" 
+                                onClick={() => onAssignOperator(selectedObjective.id, '')}
+                                title="Desvincular a este operador del puesto"
+                              >
+                                Liberar
+                              </button>
+                            </div>
                           )}
                         </div>
                       );
                     })}
+
+                    {/* Opción de Rotar / Asignar personal adicional a este objetivo */}
+                    {onAssignOperator && (() => {
+                      const candidatePool = (allResources && allResources.length > 0 ? allResources : activeGuards)
+                        .filter((r: any) => r && r.status !== 'baja' && r.status !== 'inactivo' && !allGuards.some((ag: any) => ag.id === r.id));
+                      if (candidatePool.length === 0) return null;
+                      return (
+                        <div className="pt-2 border-t border-zinc-100">
+                          <select 
+                            className="w-full h-9 text-[11px] font-medium border border-zinc-200 rounded-xl px-3 bg-white text-zinc-700 focus:ring-1 focus:ring-[#0F4C5C]/50 appearance-none shadow-xs cursor-pointer"
+                            onChange={(e) => {
+                              if (e.target.value) onAssignOperator(selectedObjective.id, e.target.value);
+                            }}
+                            defaultValue=""
+                          >
+                            <option value="" disabled className="bg-white">
+                              ➕ Rotar o asignar otro operador al puesto...
+                            </option>
+                            {candidatePool.map((g: any) => (
+                              <option key={g.id} value={g.id} className="bg-white font-medium text-zinc-900">
+                                🔄 Asignar a {g.name} {g.current_objective_id ? '(Rotar desde otro puesto)' : '(Disponible)'}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      );
+                    })()}
                   </div>
                 );
               }

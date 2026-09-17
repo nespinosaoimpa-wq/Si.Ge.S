@@ -324,20 +324,22 @@ export async function POST(request: Request) {
         .eq('id', objective_id);
     }
 
-    // 7. Auto-insert check-in log in guard book (con tenant_id explícito)
+    // 7. Auto-insert check-in log in guard book (Digital audit trail en tiempo real)
     if (finalResourceId && objective_id && objective_id !== 'null') {
       const opName = resourceRecord?.name || 'Operador';
       await supabase.from('guard_book_entries').insert({
         objective_id: objective_id,
         operator_id: finalResourceId,
+        resource_id: finalResourceId,
         operator_name: opName,
-        entry_type: 'checkin',
-        content: `🟢 INICIO DE TURNO: ${opName} inició servicio en ${objectiveName || 'Puesto de servicio'}${isWithinGeofence ? '' : ' ⚠️ (Fichaje fuera de geocerca)'}`,
+        entry_type: 'fichaje',
+        content: `🚀 INICIO DE TURNO (Check-in): ${opName} inició servicio en ${objectiveName || 'Puesto de servicio'}${isWithinGeofence ? '' : ' ⚠️ (Fuera de geocerca)'}`,
         latitude,
         longitude,
         urgency: isWithinGeofence ? 'normal' : 'alta',
+        created_at: new Date().toISOString(),
         ...(operatorTenantId ? { tenant_id: operatorTenantId } : {}),
-      });
+      } as any);
     }
 
     return NextResponse.json({
