@@ -75,6 +75,7 @@ export default function ObjectiveDetail() {
   // Assignment state
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [allStaff, setAllStaff] = useState<any[]>([]);
+  const [allObjectives, setAllObjectives] = useState<any[]>([]);
   const [assignSearch, setAssignSearch] = useState('');
   const [isAssigning, setIsAssigning] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -197,11 +198,15 @@ export default function ObjectiveDetail() {
         const prog = (Array.isArray(data.shifts) ? data.shifts : []).filter((s: any) => s.status === 'programado' || s.status === 'activo');
         setProgrammedShifts(prog);
 
-        // Fetch assigned guards via existing API
-        try {
-          const allRes = await api.staff.list();
-          setResources((allRes || []).filter((r: any) => r.current_objective_id === id && r.status !== 'baja'));
-        } catch (e) { console.warn('Staff fetch failed:', e); }
+        // Set live assigned resources directly from objective details payload
+        if (Array.isArray(data.resources)) {
+          setResources(data.resources);
+        } else {
+          try {
+            const allRes = await api.staff.list();
+            setResources((allRes || []).filter((r: any) => r.current_objective_id === id && r.status !== 'baja'));
+          } catch (e) { console.warn('Staff fetch failed:', e); }
+        }
 
         // Fetch shift requirements
         await fetchRequirements();
@@ -276,10 +281,14 @@ export default function ObjectiveDetail() {
 
   const fetchAllStaff = async () => {
     try {
-      const data = await api.staff.list();
-      setAllStaff((data || []).filter((r: any) => r.status !== 'baja'));
+      const [staffData, objRes] = await Promise.all([
+        api.staff.list(),
+        supabase.from('objectives').select('id, name')
+      ]);
+      setAllStaff((staffData || []).filter((r: any) => r.status !== 'baja'));
+      if (objRes.data) setAllObjectives(objRes.data);
     } catch (err) {
-      console.error("Error fetching staff:", err);
+      console.error("Error fetching staff or objectives:", err);
     }
   };
 
@@ -337,6 +346,13 @@ export default function ObjectiveDetail() {
   };
 
   const handleAssign = async (staffId: string) => {
+    const targetStaff = allStaff.find(s => s.id === staffId);
+    if (targetStaff?.current_objective_id && targetStaff.current_objective_id !== id) {
+      const assignedObjName = allObjectives.find(o => o.id === targetStaff.current_objective_id)?.name || targetStaff.objectives?.name || targetStaff.assigned_objective?.name || 'otro objetivo';
+      alert(`No es posible asignar a ${targetStaff.name}: ya se encuentra asignado a "${assignedObjName}".\n\nPara evitar vacíos operativos accidentales, primero debe desvincular al operador de dicho puesto antes de vincularlo aquí.`);
+      return;
+    }
+
     setIsAssigning(true);
     try {
       if (assignStartTime && assignEndTime) {
@@ -381,8 +397,14 @@ export default function ObjectiveDetail() {
         }
       }
 
-      const allRes = await api.staff.list();
-      setResources((allRes || []).filter((r: any) => r.current_objective_id === id && r.status !== 'baja'));
+      // Optimistic update of local resources and staff list
+      setResources(prev => {
+        const exists = prev.some(r => r.id === staffId);
+        if (exists) return prev;
+        const found = allStaff.find(s => s.id === staffId) || { id: staffId };
+        return [...prev, { ...found, current_objective_id: id }];
+      });
+      setAllStaff(prev => prev.map(s => s.id === staffId ? { ...s, current_objective_id: id } : s));
       
       // Refresh programmed shifts
       const { data: progShifts } = await supabase
@@ -404,10 +426,13 @@ export default function ObjectiveDetail() {
   };
 
   const handleUnassign = async (staffId: string) => {
-    if (!confirm("¿Deseas desvincular a este guardia de este objetivo?")) return;
+    const targetStaff = resources.find(r => r.id === staffId);
+    const staffName = targetStaff?.name || 'este guardia';
+    if (!confirm(`¿Deseas desvincular a ${staffName} de este objetivo?`)) return;
     try {
       await api.staff.update(staffId, { current_objective_id: null });
       setResources(prev => prev.filter(r => r.id !== staffId));
+      setAllStaff(prev => prev.map(s => s.id === staffId ? { ...s, current_objective_id: null, objectives: null, assigned_objective: null } : s));
     } catch (err: any) {
       alert("Error al desvincular: " + err.message);
     }
@@ -1646,34 +1671,77 @@ export default function ObjectiveDetail() {
               return (
                 <>
                   {filteredStaff.map(staff => {
-                    const isAlreadyAssigned = staff.current_objective_id === id;
+                    const isAlreadyHere = staff.current_objective_id === id;
+                    const isAssignedOther = Boolean(staff.current_objective_id && staff.current_objective_id !== id);
+                    const otherObjName = isAssignedOther 
+                      ? (allObjectives.find(o => o.id === staff.current_objective_id)?.name || staff.objectives?.name || staff.assigned_objective?.name || 'Otro puesto')
+                      : null;
+                    const isBlocked = isAlreadyHere || isAssignedOther;
+
                     return (
                       <div 
                         key={staff.id} 
-                        className="flex items-center justify-between p-3.5 bg-zinc-900/60 hover:bg-zinc-800/80 rounded-2xl border border-zinc-800/70 hover:border-zinc-700/80 transition-all group"
+                        className={cn(
+                          "flex items-center justify-between p-3.5 rounded-2xl border transition-all group",
+                          isAlreadyHere 
+                            ? "bg-zinc-900/40 border-zinc-800/40 opacity-70"
+                            : isAssignedOther
+                            ? "bg-amber-950/20 border-amber-900/30"
+                            : "bg-zinc-900/60 hover:bg-zinc-800/80 border-zinc-800/70 hover:border-zinc-700/80"
+                        )}
                       >
-                        <div className="flex items-center gap-3.5">
-                          <div className="w-10 h-10 bg-zinc-800/90 rounded-xl flex items-center justify-center text-cyan-400 border border-zinc-700/50 group-hover:bg-cyan-500/10 transition-colors">
+                        <div className="flex items-center gap-3.5 min-w-0 flex-1 mr-3">
+                          <div className={cn(
+                            "w-10 h-10 rounded-xl flex items-center justify-center border shrink-0",
+                            isAlreadyHere
+                              ? "bg-emerald-950/40 border-emerald-800/40 text-emerald-400"
+                              : isAssignedOther
+                              ? "bg-amber-950/40 border-amber-800/40 text-amber-400"
+                              : "bg-zinc-800/90 text-cyan-400 border-zinc-700/50 group-hover:bg-cyan-500/10"
+                          )}>
                             <User size={18} />
                           </div>
-                          <div>
-                            <p className="text-xs font-bold text-zinc-100 uppercase tracking-tight">{staff.name}</p>
-                            <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest">{staff.role || 'Vigilador'}</p>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-bold text-zinc-100 uppercase tracking-tight truncate">{staff.name}</p>
+                            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                              <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest">{staff.role || 'Vigilador'}</span>
+                              <span className="text-zinc-600 text-[10px]">•</span>
+                              {isAlreadyHere ? (
+                                <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">
+                                  ✓ Vinculado a este puesto
+                                </span>
+                              ) : isAssignedOther ? (
+                                <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1">
+                                  🔒 Ocupado en: {otherObjName}
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-wider">
+                                  ● Disponible
+                                </span>
+                              )}
+                            </div>
+                            {isAssignedOther && (
+                              <p className="text-[9px] text-amber-400/70 font-medium mt-1">
+                                Debe desvincularlo primero de "{otherObjName}" para poder asignarlo aquí.
+                              </p>
+                            )}
                           </div>
                         </div>
                         
                         <Button 
                           size="sm" 
-                          disabled={isAssigning || isAlreadyAssigned}
+                          disabled={isAssigning || isBlocked}
                           className={cn(
-                            "h-9 px-4 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all",
-                            isAlreadyAssigned
+                            "h-9 px-4 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all shrink-0",
+                            isAlreadyHere
                               ? "bg-zinc-800/80 text-zinc-500 border border-zinc-700/50 cursor-not-allowed"
+                              : isAssignedOther
+                              ? "bg-amber-950/40 text-amber-500/80 border border-amber-900/40 cursor-not-allowed"
                               : "bg-cyan-500 hover:bg-cyan-400 text-zinc-950 shadow-lg shadow-cyan-500/20 active:scale-95"
                           )}
                           onClick={() => handleAssign(staff.id)}
                         >
-                          {isAlreadyAssigned ? 'Ya vinculado' : 'Vincular'}
+                          {isAlreadyHere ? 'Vinculado' : isAssignedOther ? 'Ocupado' : 'Vincular'}
                         </Button>
                       </div>
                     );

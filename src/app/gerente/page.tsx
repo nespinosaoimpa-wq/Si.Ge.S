@@ -494,12 +494,24 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleAssignOperator = async (objectiveId: string, operatorId: string) => {
+  const handleAssignOperator = async (objectiveId: string, operatorId: string, action: 'assign' | 'unassign' = 'assign') => {
     try {
+      const isUnassign = action === 'unassign' || !operatorId;
       const targetOperator = operatorId || (data.resources.find((r: any) => r.current_objective_id === objectiveId)?.id);
       if (!targetOperator) return;
 
-      const newObjId = operatorId ? objectiveId : null;
+      if (!isUnassign) {
+        // Enforce: cannot assign an operator who is already assigned elsewhere without unlinking first
+        const existingResource = (data.resources || []).find((r: any) => r.id === targetOperator);
+        if (existingResource?.current_objective_id && existingResource.current_objective_id !== objectiveId) {
+          const currentObj = (data.objectives || []).find((o: any) => o.id === existingResource.current_objective_id);
+          const objName = currentObj?.name || 'otro puesto';
+          alert(`No se puede asignar a ${existingResource.name}: ya se encuentra asignado a "${objName}".\n\nPara evitar vacíos operativos accidentales, primero debe desvincular al operador de dicho puesto antes de asignarlo aquí.`);
+          return;
+        }
+      }
+
+      const newObjId = isUnassign ? null : objectiveId;
 
       // ⚡ 0ms Optimistic UI Update for instant operator assignment/release
       setData((prev: any) => ({
@@ -509,7 +521,7 @@ export default function AdminDashboard() {
         ),
         objectives: (prev.objectives || []).map((o: any) => {
           if (o.id === objectiveId) {
-            const updatedPersonnel = newObjId
+            const updatedPersonnel = !isUnassign
               ? [...(o.assigned_personnel || []).filter((p: any) => p.id !== targetOperator), { id: targetOperator }]
               : (o.assigned_personnel || []).filter((p: any) => p.id !== targetOperator);
             return { ...o, assigned_personnel: updatedPersonnel, is_manned: updatedPersonnel.length > 0 };
@@ -521,7 +533,7 @@ export default function AdminDashboard() {
       if (selectedObjective?.id === objectiveId) {
         setSelectedObjective((prev: any) => {
           if (!prev) return prev;
-          const updatedPersonnel = newObjId
+          const updatedPersonnel = !isUnassign
             ? [...(prev.assigned_personnel || []).filter((p: any) => p.id !== targetOperator), { id: targetOperator }]
             : (prev.assigned_personnel || []).filter((p: any) => p.id !== targetOperator);
           return { ...prev, assigned_personnel: updatedPersonnel, is_manned: updatedPersonnel.length > 0 };
@@ -1268,6 +1280,7 @@ export default function AdminDashboard() {
           activeGuards={activeGuards}
           allResources={data.resources || []}
           activeShifts={data.activeShifts || []}
+          allObjectives={data.objectives || []}
           onAssignOperator={handleAssignOperator}
           setSelectedObjective={setSelectedObjective}
           handleDeleteObjective={handleDeleteObjective}
