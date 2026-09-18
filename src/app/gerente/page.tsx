@@ -99,8 +99,32 @@ export default function AdminDashboard() {
   const [activeEmergency, setActiveEmergency] = useState<any>(null);
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
 
-  const handleEmergencyTrigger = useCallback((entry: any) => {
-    setActiveEmergency(entry);
+  const handleEmergencyTrigger = useCallback(async (entry: any) => {
+    let resolvedName = entry.resource_name || entry.operator_name;
+    const opId = entry.operator_id || entry.resource_id || entry.triggered_by;
+
+    if ((!resolvedName || resolvedName === 'Desconocido' || resolvedName === 'Personal' || resolvedName === 'Operador') && opId) {
+      const match = (dataRef.current?.resources || []).find((r: any) => r.id === opId || r.assigned_to === opId);
+      if (match?.name) {
+        resolvedName = match.name;
+      } else {
+        try {
+          const { data: res } = await supabase
+            .from('resources')
+            .select('name')
+            .or(`id.eq.${opId},assigned_to.eq.${opId}`)
+            .maybeSingle();
+          if (res?.name) resolvedName = res.name;
+        } catch (e) {}
+      }
+    }
+
+    const finalEmergency = {
+      ...entry,
+      resource_name: resolvedName || entry.resource_name || entry.operator_name || 'Operador de Guardia'
+    };
+
+    setActiveEmergency(finalEmergency);
     
     // Reproducir audio en bucle
     if (!audioRef.current) {
@@ -112,7 +136,7 @@ export default function AdminDashboard() {
     // Notificación Push Nativa
     if ("Notification" in window && Notification.permission === "granted") {
       new Notification("🚨 ALERTA DE SEGURIDAD", {
-        body: entry.content || "Se ha activado un protocolo de intervención.",
+        body: finalEmergency.content || "Se ha activado un protocolo de intervención.",
         icon: "/icons/icon-192x192.png",
         vibrate: [200, 100, 200, 100, 500, 100, 500]
       } as any);
@@ -1397,7 +1421,7 @@ export default function AdminDashboard() {
               <div className="bg-white/5 rounded-xl p-4 mb-8 text-left space-y-2">
                 <div className="flex justify-between">
                   <span className="text-gray-400 text-xs font-medium">Operador</span>
-                  <span className="text-white font-semibold">{activeEmergency.resource_name || 'Desconocido'}</span>
+                  <span className="text-white font-semibold">{activeEmergency.resource_name || activeEmergency.operator_name || 'Operador de Guardia'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400 text-xs font-medium">Hora</span>
