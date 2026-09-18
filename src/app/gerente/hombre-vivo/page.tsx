@@ -67,6 +67,10 @@ export default function HombreVivoPage() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'alarms' }, () => {
         fetchHombreVivoData();
       })
+      .on('broadcast', { event: 'hombre_vivo_answered' }, () => {
+        console.log('[HombreVivoGerente] ⚡ Respuesta de operador recibida por broadcast!');
+        fetchHombreVivoData();
+      })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
@@ -177,16 +181,17 @@ export default function HombreVivoPage() {
         .from('alarms')
         .update({
           status: 'resolved',
+          resolved_at: now,
           acknowledged_at: now,
           message: `${selectedCheck.notes || 'Hombre vivo'} [RESUELTO POR GERENCIA: ${resolutionNotes || 'Verificado'}]`
         })
         .eq('id', selectedCheck.id);
 
-      // 2. Update guard book entry if present
+      // 2. Update guard book entry if present (using resolved_at, avoiding invalid status column)
       await supabase
         .from('guard_book_entries')
         .update({
-          status: 'resolved',
+          resolved_at: now,
           content: `${selectedCheck.notes || 'Hombre vivo'} [DESCARGO SUPERVISOR: ${resolutionNotes || 'Verificado'}]`
         })
         .eq('id', selectedCheck.id);

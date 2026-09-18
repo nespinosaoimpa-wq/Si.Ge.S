@@ -23,13 +23,14 @@ export async function GET(
     const supabase = createServiceClient();
 
     // Parallel fetch using service role to bypass RLS
-    const [objectiveRes, shiftsRes, patrolRoundsRes, checkpointsRes, inventoryRes, guardBookRes] = await Promise.all([
+    const [objectiveRes, shiftsRes, patrolRoundsRes, checkpointsRes, inventoryRes, guardBookRes, resourcesRes] = await Promise.all([
       supabase.from('objectives').select('*').eq('id', id).single(),
       supabase.from('guard_shifts').select('*').eq('objective_id', id).order('checkin_time', { ascending: false }).limit(50),
       supabase.from('patrol_rounds').select('*').eq('objective_id', id).order('start_time', { ascending: false }).limit(20),
       supabase.from('checkpoints').select('*').eq('objective_id', id).order('order_index', { ascending: true }),
       supabase.from('resource_inventory').select('*').eq('objective_id', id),
-      supabase.from('guard_book_entries').select('*').eq('objective_id', id).order('created_at', { ascending: false }).limit(30)
+      supabase.from('guard_book_entries').select('*').eq('objective_id', id).order('created_at', { ascending: false }).limit(30),
+      supabase.from('resources').select('id, name, role, status, avatar_url, phone, email, current_objective_id').eq('current_objective_id', id).neq('status', 'baja').order('name')
     ]);
 
     if (objectiveRes.error || !objectiveRes.data) {
@@ -75,7 +76,8 @@ export async function GET(
       patrolRounds,
       checkpoints,
       inventory: inventoryRes.data || [],
-      guardBook
+      guardBook,
+      resources: resourcesRes.data || []
     });
   } catch (error: any) {
     console.error("Error fetching objective details:", error);

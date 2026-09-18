@@ -106,37 +106,82 @@ export default function NovedadesPage() {
       if (attachedImage) image_url = await uploadFile(attachedImage);
       if (attachedAudio) audio_url = await uploadFile(attachedAudio);
 
+      // 📍 Resolver coordenadas precisas con fallback al puesto asignado
+      let lat = shiftData?.location?.lat || shiftData?.objectiveLocation?.lat || 0;
+      let lng = shiftData?.location?.lng || shiftData?.objectiveLocation?.lng || 0;
+
+      if ((!lat || !lng || Number(lat) === 0) && objectiveId) {
+        try {
+          const { data: objData } = await supabase
+            .from('objectives')
+            .select('latitude, longitude')
+            .eq('id', objectiveId)
+            .maybeSingle();
+          if (objData?.latitude && objData?.longitude) {
+            lat = Number(objData.latitude);
+            lng = Number(objData.longitude);
+          }
+        } catch (e) {}
+      }
+
+      const opName = (shiftData as any)?.operator_name || (shiftData as any)?.name || 'Operador';
+      const nowIso = new Date().toISOString();
+
       if (selectedData.id === 'falla_equipo' && selectedItemId) {
-        // Special case: Inventory Damage
-        const { error: damErr } = await supabase.from('incidents').insert({
-          tenant_id: tenantId,
-          objective_id: objectiveId || null,
-          operator_id: resourceId,
-          entry_type: 'novedad',
-          urgency: 'alta',
-          content: `📦 FALLA DE EQUIPAMIENTO: ${comment || 'Falla de equipo reportada.'}`,
-          latitude: shiftData?.location?.lat || shiftData?.objectiveLocation?.lat || 0,
-          longitude: shiftData?.location?.lng || shiftData?.objectiveLocation?.lng || 0,
-          status: 'abierto',
-          created_at: new Date().toISOString()
-        } as any);
+        // Special case: Inventory Damage / Equipment issue
+        const contentText = `📦 FALLA DE EQUIPAMIENTO: ${comment || 'Falla de equipo reportada.'}`;
 
-        if (damErr) throw damErr;
-      } else {
-        // Normal case: Guard Book Entry
-        const entryType = selectedData.id === 'puesto' ? 'libro_guardia' 
-          : selectedData.id === 'emergencia' ? 'emergencia' 
-          : 'incidente';
-
-        const lat = shiftData?.location?.lat || shiftData?.objectiveLocation?.lat || 0;
-        const lng = shiftData?.location?.lng || shiftData?.objectiveLocation?.lng || 0;
-        const contentText = `${selectedData.label.toUpperCase()}: ${comment || 'Sin detalles adicionales'}`;
-        const nowIso = new Date().toISOString();
-
+        // 1. Bitácora de guardia y Libro de novedades
         const { error: gbErr } = await supabase.from('guard_book_entries').insert({
           tenant_id: tenantId,
           objective_id: objectiveId || null,
           operator_id: resourceId,
+          resource_id: resourceId,
+          operator_name: opName,
+          entry_type: 'inventario',
+          content: contentText,
+          latitude: lat,
+          longitude: lng,
+          urgency: 'alta',
+          image_url,
+          audio_url,
+          status: 'pending',
+          created_at: nowIso
+        } as any);
+        if (gbErr) console.warn('[NOVEDADES] guard_book insert warning:', gbErr);
+
+        // 2. Incidentes para mapa táctico
+        const { error: damErr } = await supabase.from('incidents').insert({
+          tenant_id: tenantId,
+          objective_id: objectiveId || null,
+          operator_id: resourceId,
+          operator_name: opName,
+          entry_type: 'novedad',
+          urgency: 'alta',
+          content: contentText,
+          latitude: lat,
+          longitude: lng,
+          image_url,
+          audio_url,
+          status: 'abierto',
+          created_at: nowIso
+        } as any);
+        if (damErr) throw damErr;
+      } else {
+        // Normal case: Incidente / Alerta / Novedad de puesto
+        const entryType = selectedData.id === 'puesto' ? 'libro_guardia' 
+          : selectedData.id === 'emergencia' ? 'emergencia' 
+          : 'incidente';
+
+        const contentText = `${selectedData.label.toUpperCase()}: ${comment || 'Sin detalles adicionales'}`;
+
+        // 1. Bitácora del objetivo y Libro de Novedades del Gerente
+        const { error: gbErr } = await supabase.from('guard_book_entries').insert({
+          tenant_id: tenantId,
+          objective_id: objectiveId || null,
+          operator_id: resourceId,
+          resource_id: resourceId,
+          operator_name: opName,
           entry_type: entryType,
           content: contentText,
           latitude: lat,
@@ -144,26 +189,51 @@ export default function NovedadesPage() {
           urgency: selectedData.urgency,
           image_url,
           audio_url,
+          status: 'pending',
           created_at: nowIso
         } as any);
 
         if (gbErr) throw gbErr;
 
-        // Also insert into incidents table for instant multi-channel map pin rendering
+        // 2. Tabla incidents para representación inmediata en mapa de Gerencia
         try {
           await supabase.from('incidents').insert({
             tenant_id: tenantId,
             objective_id: objectiveId || null,
             operator_id: resourceId,
+            operator_name: opName,
             entry_type: entryType,
             urgency: selectedData.urgency,
             content: contentText,
             latitude: lat,
             longitude: lng,
-            status: 'pendiente',
+            image_url,
+            audio_url,
+            status: 'abierto',
             created_at: nowIso
           } as any);
-        } catch (e) {}
+        } catch (incErr) {
+          console.warn('[NOVEDADES] incidents mirror warning:', incErr);
+        }
+
+        // 3. Si es emergencia o crítica, disparar alarma para panel rojo
+        if (selectedData.urgency === 'critica' || selectedData.id === 'emergencia') {
+          try {
+            await supabase.from('alarms').insert({
+              tenant_id: tenantId,
+              objective_id: objectiveId || null,
+              operator_id: resourceId,
+              triggered_by: resourceId,
+              operator_name: opName,
+              alarm_type: 'panico',
+              message: contentText,
+              latitude: lat,
+              longitude: lng,
+              status: 'active',
+              created_at: nowIso
+            } as any);
+          } catch (alarmErr) {}
+        }
       }
       
       setSuccess(true);

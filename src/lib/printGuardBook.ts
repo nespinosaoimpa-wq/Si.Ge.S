@@ -38,7 +38,15 @@ export function printGuardBookSheet(entries: any[], options: PrintGuardBookOptio
         <td style="padding: 8px; font-weight: bold; text-transform: uppercase;">${operator}</td>
         <td style="padding: 8px; text-align: center;"><span style="background: #f4f4f5; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 800;">${typeLabel}</span></td>
         <td style="padding: 8px; text-align: center; color: ${urgencyColor}; font-weight: 800; font-size: 9px;">${urgency}</td>
-        <td style="padding: 8px; font-weight: 500; font-style: italic;">"${content}"</td>
+        <td style="padding: 8px; font-weight: 500; font-style: italic;">
+          "${content}"
+          ${entry.image_url ? `
+            <div style="margin-top: 6px;">
+              <img src="${entry.image_url}" style="max-height: 80px; max-width: 140px; border-radius: 4px; border: 1px solid #d4d4d8; object-fit: cover; display: block;" />
+              <div style="font-size: 8px; font-weight: 800; color: #0F4C5C; text-transform: uppercase; margin-top: 2px;">📷 EVIDENCIA DIGITAL ADJUNTA</div>
+            </div>
+          ` : ''}
+        </td>
       </tr>
     `;
   }).join('');

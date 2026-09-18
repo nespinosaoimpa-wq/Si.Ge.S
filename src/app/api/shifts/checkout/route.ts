@@ -147,13 +147,15 @@ export async function POST(request: Request) {
         const tenantId = currentShift?.tenant_id || null;
         const opName = currentShift?.operator_name || 'Operador';
         const abandonInfo = abandonedMinutes > 0 ? ` (Deducción por abandono: ${abandonedMinutes} min)` : '';
+        const durText = `${Math.floor(netDurationMinutes / 60)}h ${netDurationMinutes % 60}m`;
         
         await supabase.from('guard_book_entries').insert({
           objective_id: currentShift.objective_id || null,
           operator_id: finalOpId || currentShift.operator_id,
+          resource_id: finalOpId || currentShift.operator_id,
           operator_name: opName,
-          entry_type: 'checkout',
-          content: `🔴 CIERRE DE TURNO: Servicio finalizado por ${opName}. Duración bruta: ${grossHours} hs | Neto computable: ${totalNetHours} hs${abandonInfo}.`,
+          entry_type: 'fichaje',
+          content: `🛑 CIERRE DE TURNO (Check-out) — Duración: ${durText} | Bruto: ${grossHours}h | Neto: ${totalNetHours}h${abandonInfo}`,
           latitude: latitude || currentShift?.checkin_latitude || 0,
           longitude: longitude || currentShift?.checkin_longitude || 0,
           urgency: 'normal',
@@ -166,7 +168,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // 5. Update resource back to disponible
+    // 5. Update resource back to disponible (PRESERVING fixed objective assignment)
     if (finalOpId) {
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(finalOpId);
       const orConditions = [`id.eq.${finalOpId}`];
@@ -174,12 +176,12 @@ export async function POST(request: Request) {
         orConditions.push(`assigned_to.eq.${finalOpId}`);
       }
       
+      // We explicitly PRESERVE current_objective_id so the operator remains stationed at their assigned post!
       await supabase
         .from('resources')
         .update({ 
           status: 'disponible',
           current_shift_id: null,
-          current_objective_id: null,
           latitude: null,
           longitude: null
         })
@@ -212,21 +214,6 @@ export async function POST(request: Request) {
       } catch (e) {
         console.error('[CHECKOUT] PostGIS consolidation notice:', e);
       }
-    }
-
-    // 7. Insert auto checkout log in guard book
-    if (currentShift?.objective_id && finalOpId) {
-      try {
-        await supabase.from('guard_book_entries').insert({
-          objective_id: currentShift.objective_id,
-          operator_id: finalOpId,
-          entry_type: 'fichaje',
-          content: `CIERRE DE TURNO — Duración neta: ${Math.floor(netDurationMinutes / 60)}h ${netDurationMinutes % 60}m${abandonedMinutes > 0 ? ` (Abandono descontado: ${abandonedMinutes}m)` : ''}${overtimeMinutes > 0 ? ` (Horas extra: ${Math.floor(overtimeMinutes / 60)}h ${overtimeMinutes % 60}m)` : ''}`,
-          latitude: latitude || 0,
-          longitude: longitude || 0,
-          urgency: 'normal',
-        });
-      } catch (e) {}
     }
 
     return NextResponse.json({ 

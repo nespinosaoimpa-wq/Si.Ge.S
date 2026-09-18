@@ -223,7 +223,8 @@ export function ObjectiveSidebar({
                 <div className="p-3 space-y-2">
                   {filteredObjectives.map((obj: any) => {
                     const activeGuardOnShift = (activeGuards || []).find((g: any) => g.current_objective_id === obj.id && g.isOnShift);
-                    const isManned = Boolean(obj.is_manned && (obj.assigned_personnel?.length > 0 || activeGuardOnShift));
+                    const hasAssigned = Boolean(obj.assigned_personnel && obj.assigned_personnel.length > 0);
+                    const isManned = Boolean(obj.is_manned || hasAssigned || activeGuardOnShift);
                     const avatarUrl = isManned ? (
                       obj.assigned_personnel?.[0]?.profiles?.avatar_url || 
                       obj.assigned_personnel?.[0]?.avatar_url ||
@@ -284,7 +285,7 @@ export function ObjectiveSidebar({
                                 "text-[10px] font-medium leading-none shrink-0",
                                 isManned ? "text-[#0F4C5C]" : "text-zinc-500"
                               )}>
-                                {isManned ? '• Cubierto' : (obj.status || 'Activo')}
+                                {isManned ? (activeGuardOnShift ? '• Cubierto' : '• Asignado') : (obj.status || 'Activo')}
                               </span>
                               <span className="text-zinc-300 text-[10px] shrink-0">|</span>
                               <span className="text-[10px] text-zinc-400 font-mono truncate max-w-[120px]">

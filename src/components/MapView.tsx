@@ -5,7 +5,7 @@ import Map, { Marker, Popup, Source, Layer, NavigationControl, FullscreenControl
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { cn } from '@/lib/utils';
 import { reverseGeocode } from '@/lib/geocoding';
-import { Shield, MapPin, AlertTriangle, User, Target, Layers, Car, UserX, DoorOpen, Package, Lightbulb, Zap, Navigation, Clock, Building2, CheckCircle2, Plus } from 'lucide-react';
+import { Shield, MapPin, AlertTriangle, User, Target, Layers, Car, UserX, DoorOpen, Package, Lightbulb, Zap, Navigation, Clock, Building2, CheckCircle2, Plus, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fetchNearbyEmergencyServices, getPOIStyle, NearbyPOI } from '@/lib/nearby-services';
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
@@ -25,6 +25,7 @@ interface Objective {
   status: string;
   geofence_radius?: number;
   is_manned?: boolean;
+  is_on_shift?: boolean;
   occupant_name?: string;
   assigned_personnel?: any[]; // For deep join results
   image_url?: string | null;
@@ -225,53 +226,60 @@ const GuardMarkerContent = React.memo(({
 
   return (
     <div className="relative w-10 h-10 flex items-center justify-center group pointer-events-none select-none">
-      {/* Name Tag - Perfectly Centered */}
+      {/* Name Tag */}
       <div className={cn(
-        "absolute -top-10 left-1/2 -translate-x-1/2 px-2.5 py-1 bg-black/90 text-white text-[10px] font-black uppercase tracking-widest rounded-lg border border-white/20 shadow-2xl transition-opacity duration-300 pointer-events-none whitespace-nowrap z-30",
+        "absolute -top-10 left-1/2 -translate-x-1/2 px-2.5 py-1 bg-black/90 text-white text-[10px] font-black uppercase tracking-widest rounded-lg border border-white/20 shadow-2xl transition-opacity duration-300 pointer-events-none whitespace-nowrap z-30 flex items-center gap-1.5",
         isSelected ? "opacity-100 scale-100 -translate-y-2" : "opacity-0 scale-90 translate-y-0 group-hover:opacity-100 group-hover:scale-100 group-hover:-translate-y-1",
         isAbandoned && "border-red-500 text-red-500 font-bold",
         !isOnShift && "border-zinc-500/50 text-zinc-400"
       )}>
-        {name} {isAbandoned ? " (ABANDONADO)" : !isOnShift ? " (FUERA DE TURNO)" : ""}
-        {speed && speed > 0.5 && <span className="ml-2 text-primary">| {speedKmh} km/h</span>}
+        <span className={cn(
+          "w-1.5 h-1.5 rounded-full",
+          isAbandoned ? "bg-red-500 animate-ping" : isOnShift ? "bg-cyan-400 animate-pulse" : "bg-zinc-500"
+        )} />
+        {name} {isAbandoned ? " (ABANDONO)" : !isOnShift ? " (FUERA DE TURNO)" : " (MÓVIL)"}
+        {speed && speed > 0.5 && <span className="ml-1 text-cyan-400">| {speedKmh} km/h</span>}
       </div>
 
-      {/* Main Marker — Instant Geographic Position Anchoring */}
+      {/* Main Marker — Mobile/Patrol Personnel (Fixed 40px bounding box) */}
       <div 
         className={cn(
-          "w-10 h-10 rounded-full flex items-center justify-center shadow-2xl cursor-pointer border transition-[color,background-color,border-color,box-shadow,opacity] duration-300 overflow-hidden relative z-10 pointer-events-auto",
+          "w-10 h-10 rounded-full flex items-center justify-center shadow-2xl cursor-pointer border-2 transition-[color,background-color,border-color,box-shadow,opacity] duration-300 overflow-hidden relative z-10 pointer-events-auto",
           isSelected 
-            ? "bg-[#0F4C5C] border-black scale-125 z-50" 
+            ? "bg-zinc-950 border-cyan-400 scale-125 z-50 ring-2 ring-cyan-400/40" 
             : isAbandoned
-              ? "bg-red-600 border-red-500 hover:scale-110"
-              : (status === 'active' || status === 'online' || status === 'activo')
-                ? isOnShift 
-                  ? "bg-zinc-900 border-[#0F4C5C] hover:scale-110"
-                  : "bg-zinc-900 border-zinc-500/50 hover:scale-110 grayscale-[0.8]"
-                : "bg-zinc-900 border-zinc-200/20 hover:scale-110"
+              ? "bg-red-600 border-red-500 hover:scale-110 shadow-[0_0_20px_rgba(239,68,68,0.7)]"
+              : isOnShift 
+                ? "bg-zinc-950 border-cyan-400 hover:scale-110 shadow-[0_0_15px_rgba(34,211,238,0.35)]"
+                : "bg-zinc-900 border-zinc-500/50 hover:scale-110 grayscale-[0.8]"
         )}
       >
         {isAbandoned && (
-          <div className="absolute inset-0 rounded-full animate-ping border border-red-500 opacity-75"></div>
+          <div className="absolute inset-0 rounded-full animate-ping border border-red-500 opacity-75 pointer-events-none" />
         )}
         {avatarUrl ? (
           <img src={avatarUrl} className="w-full h-full object-cover" alt={name} />
         ) : (
-          <div className={cn("w-full h-full flex items-center justify-center", isSelected ? "bg-[#0F4C5C]" : isAbandoned ? "bg-red-600" : "bg-zinc-800")}>
-            <User size={16} className={isSelected ? "text-black" : "text-white"} />
+          <div className={cn("w-full h-full flex items-center justify-center", isSelected ? "bg-cyan-500 text-black" : isAbandoned ? "bg-red-600 text-white" : "bg-zinc-900 text-cyan-400")}>
+            <User size={18} />
           </div>
         )}
         
-        {/* Pulse Effect for Active Status - Only if ON SHIFT */}
-        {(status === 'active' || status === 'online' || status === 'activo') && isOnShift && !isAbandoned && (
-          <div className="absolute inset-0 rounded-full bg-[#0F4C5C] animate-ping opacity-10 pointer-events-none" />
+        {/* Mobile Operator Badge (Top-Right Accent) */}
+        <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-cyan-500 border border-zinc-950 flex items-center justify-center shadow-md">
+          <Shield size={9} className="text-zinc-950" />
+        </div>
+
+        {/* Pulse Effect for Active Status */}
+        {isOnShift && !isAbandoned && (
+          <div className="absolute inset-0 rounded-full bg-cyan-400 animate-ping opacity-15 pointer-events-none" />
         )}
       </div>
 
-      {/* Direction Pointer - Only show if actively moving (speed > 1.5 km/h) */}
+      {/* Direction Pointer */}
       {hasHeading && speed !== undefined && speed !== null && (speed * 3.6) > 1.5 && (
         <div 
-          className="absolute w-3 h-3 bg-[#D4AF37] rotate-45 border-r border-b border-black -bottom-2 left-1/2 -translate-x-1/2 z-10 shadow-md pointer-events-none"
+          className="absolute w-3 h-3 bg-cyan-400 rotate-45 border-r border-b border-black -bottom-2 left-1/2 -translate-x-1/2 z-10 shadow-md pointer-events-none"
           style={{ transform: `translateX(-50%) rotate(${heading}deg) translateY(18px) rotate(45deg)` }}
         />
       )}
@@ -285,24 +293,29 @@ const ObjectiveMarkerContent = React.memo(({
   isSelected,
   isRelocating,
   activeGuardAvatar,
-  activeGuardName
+  activeGuardName,
+  guardStatus
 }: {
   obj: Objective;
   isSelected: boolean;
   isRelocating: boolean;
   activeGuardAvatar?: string | null;
   activeGuardName?: string | null;
+  guardStatus?: string | null;
 }) => {
-  // 🚨 STRICT ON-SHIFT OCCUPANCY: Manned ONLY if an active guard avatar/personnel is present on shift
+  const hasAssignedPersonnel = Boolean(obj.assigned_personnel && obj.assigned_personnel.length > 0);
   const hasActivePersonnel = Boolean(obj.assigned_personnel && obj.assigned_personnel.some((p: any) => Boolean(p.isOnShift) || p.status === 'en_turno'));
-  const isManned = Boolean(activeGuardAvatar) || (hasActivePersonnel && Boolean(obj.is_manned));
-  const isCritical = obj.status === 'critica' || obj.status === 'alerta' || obj.status === 'emergency';
+  const isManned = Boolean(activeGuardName) || Boolean(activeGuardAvatar) || hasAssignedPersonnel || Boolean(obj.is_manned);
+  const isGuardAbandoned = guardStatus === 'abandoned';
+  const isGuardOffline = guardStatus === 'offline';
+  const isCritical = obj.status === 'critica' || obj.status === 'alerta' || obj.status === 'emergency' || isGuardAbandoned;
+  const isOnShift = hasActivePersonnel || (guardStatus === 'en_turno') || (obj.is_on_shift);
 
   return (
     <div className="relative w-10 h-10 flex flex-col items-center justify-center group cursor-pointer pointer-events-none select-none">
       {/* Relocation visual hint */}
       {isRelocating && isSelected && (
-        <div className="absolute -top-16 left-1/2 -translate-x-1/2 bg-zinc-950 text-white text-[8px] font-black uppercase px-2.5 py-1.5 rounded-lg whitespace-nowrap animate-bounce border-2 border-[#0F4C5C] shadow-2xl z-[60]">
+        <div className="absolute -top-16 left-1/2 -translate-x-1/2 bg-zinc-950 text-white text-[8px] font-black uppercase px-2.5 py-1.5 rounded-lg whitespace-nowrap animate-bounce border-2 border-primary shadow-2xl z-[60]">
           MODO REUBICACIÓN: ARRASTRAR MARCADOR
         </div>
       )}
@@ -314,31 +327,43 @@ const ObjectiveMarkerContent = React.memo(({
       )}>
         <span className={cn(
           "w-2 h-2 rounded-full",
-          isCritical ? "bg-red-400 animate-ping" : isManned ? "bg-emerald-400" : "bg-amber-400"
+          isCritical ? "bg-red-500 animate-ping" : isManned ? "bg-emerald-400" : "bg-amber-400"
         )} />
         {obj.name}
-        {activeGuardName && <span className="text-emerald-400 font-bold">({activeGuardName.split(' ')[0]})</span>}
+        {isGuardAbandoned ? (
+          <span className="text-red-400 font-bold">● ALERTA: ABANDONO ({activeGuardName || 'OPERADOR'})</span>
+        ) : isOnShift ? (
+          <span className="text-emerald-400 font-bold">● EN SERVICIO: {activeGuardName || 'OPERADOR'}</span>
+        ) : isManned ? (
+          <span className="text-emerald-400 font-bold">● ASIGNADO: {activeGuardName || 'OPERADOR'}</span>
+        ) : (
+          <span className="text-amber-400 font-medium">● SIN OPERADOR ASIGNADO</span>
+        )}
         <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-zinc-950 rotate-45 border-r border-b border-white/20" />
       </div>
 
-      {/* Main Circular Tactical Objective Badge */}
+      {/* Main Circular Objective Badge — ALWAYS BUILDING2, Fixed 40px bounding box */}
       <div className={cn(
         "w-10 h-10 rounded-full bg-zinc-950 flex items-center justify-center shadow-[0_6px_20px_rgba(0,0,0,0.6)] cursor-pointer border-2 transition-all duration-300 relative pointer-events-auto",
         isCritical
-          ? "border-red-500 text-white scale-125 z-50 animate-bounce shadow-[0_0_20px_rgba(239,68,68,0.6)]"
+          ? "border-red-500 text-red-400 shadow-[0_0_20px_rgba(239,68,68,0.7)] hover:scale-110"
           : isManned
-          ? "border-[#0F4C5C] text-emerald-400 shadow-[0_2px_12px_rgba(15,76,92,0.4)] group-hover:scale-110"
+          ? "border-emerald-500 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.35)] hover:scale-110"
           : isSelected
-          ? "border-[#0F4C5C] scale-125 z-50 shadow-2xl ring-2 ring-[#0F4C5C]/30"
-          : "border-amber-400/60 text-amber-400 shadow-[0_2px_12px_rgba(251,191,36,0.2)] group-hover:scale-110"
+          ? "border-amber-400 scale-125 z-50 shadow-2xl ring-2 ring-amber-400/40"
+          : "border-amber-400/80 text-amber-400 shadow-[0_2px_12px_rgba(251,191,36,0.25)] hover:scale-110"
       )}>
-        {isCritical ? (
-          <Zap className="w-5 h-5 text-amber-300 animate-pulse" />
-        ) : (obj.image_url || obj.photo_url) && !isManned ? (
-          <img src={String(obj.image_url || obj.photo_url)} className="w-full h-full rounded-full object-cover p-0.5" alt={obj.name} />
-        ) : (
-          <Building2 className={cn("w-5 h-5", isManned ? "text-emerald-400" : "text-[#0F4C5C]")} />
+        {/* Pulsing ring for alerts */}
+        {isCritical && (
+          <div className="absolute inset-0 rounded-full animate-ping border border-red-500 opacity-60 pointer-events-none" />
         )}
+        {/* Subtle pulse for active manned objective */}
+        {isManned && !isCritical && (
+          <div className="absolute inset-0 rounded-full border border-emerald-500/40 animate-pulse pointer-events-none" />
+        )}
+
+        {/* Building icon is ALWAYS the core icon */}
+        <Building2 className={cn("w-5 h-5 transition-transform", isCritical ? "text-red-400" : isManned ? "text-emerald-400" : "text-amber-400")} />
 
         {/* Status Dot (Top-Right Accent) */}
         <span className={cn(
@@ -347,10 +372,20 @@ const ObjectiveMarkerContent = React.memo(({
         )} />
       </div>
 
-      {/* Operator Photo Attached Below Objective Pin (Matching User Mockup) */}
-      {isManned && activeGuardAvatar && (
-        <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-7 h-7 rounded-full border-2 border-emerald-500 bg-zinc-900 overflow-hidden shadow-xl z-20 transition-transform group-hover:scale-125">
-          <img src={activeGuardAvatar} className="w-full h-full object-cover" alt={activeGuardName || 'Operador'} />
+      {/* Operator Photo Attached Below / Beside Objective Pin (Sub-badge) */}
+      {isManned && (
+        <div 
+          className={cn(
+            "absolute -bottom-2 -right-2 w-6 h-6 rounded-full border-2 bg-zinc-900 overflow-hidden shadow-xl z-20 transition-transform group-hover:scale-125 flex items-center justify-center",
+            isGuardAbandoned ? "border-red-500 bg-red-950/80 ring-2 ring-red-500/50" : "border-emerald-500 bg-zinc-950 ring-1 ring-emerald-400/30"
+          )}
+          title={`Operador: ${activeGuardName || 'En Servicio'}`}
+        >
+          {activeGuardAvatar ? (
+            <img src={activeGuardAvatar} className="w-full h-full object-cover" alt={activeGuardName || 'Operador'} />
+          ) : (
+            <User size={12} className={isGuardAbandoned ? "text-red-400" : "text-emerald-400"} />
+          )}
         </div>
       )}
     </div>
@@ -445,6 +480,7 @@ export default function MapView({
   const [isMobile, setIsMobile] = useState(false);
   const [is3D, setIs3D] = useState(false); 
   const [showStyles, setShowStyles] = useState(false);
+  const [showLegend, setShowLegend] = useState(false);
   const [viewState, setViewState] = useState(() => {
     const lat = center && center[0] && !isNaN(Number(center[0])) ? Number(center[0]) : -31.6230;
     const lng = center && center[1] && !isNaN(Number(center[1])) ? Number(center[1]) : -60.6950;
@@ -1048,15 +1084,15 @@ export default function MapView({
           const hasIncident = activeIncidents.some(inc => (inc as any).objective_id === obj.id);
           const enrichedObj = hasIncident ? { ...obj, status: 'critica' } : obj;
 
-          // 🚨 STRICT SHIFT VERIFICATION: Resolve active guard ON SHIFT at this objective
-          const activeGuardAtObj = (guards || []).find(g => {
-            const isAtThisObj = g.current_objective_id === obj.id;
-            const isActive = Boolean(g.isOnShift);
-            return isAtThisObj && isActive;
-          }) || null; // 🚨 STRICT NULL: No ghost photo when no operator is actively on shift!
+          // 🚨 Resolve assigned guard at this objective (checking active shifts first, then assigned personnel)
+          const assignedGuard = (guards || []).find(g => {
+            const guardObjId = g.current_objective_id || (g as any).shiftObjectiveId || (g as any).shift_objective_id || (g as any).objective_id;
+            return guardObjId === obj.id;
+          }) || (obj.assigned_personnel || []).find((p: any) => Boolean(p.isOnShift)) || (obj.assigned_personnel || [])[0] || null;
 
-          const activeGuardAvatar = activeGuardAtObj ? getAvatarUrl(activeGuardAtObj) : null;
-          const activeGuardName = activeGuardAtObj ? activeGuardAtObj.name : null;
+          const activeGuardAvatar = assignedGuard ? getAvatarUrl(assignedGuard) : null;
+          const activeGuardName = assignedGuard ? (assignedGuard.name || (assignedGuard as any).occupant_name) : (obj.occupant_name || null);
+          const guardStatus = assignedGuard ? assignedGuard.status : null;
 
           return (
             <Marker
@@ -1082,6 +1118,7 @@ export default function MapView({
                 isRelocating={isRelocating}
                 activeGuardAvatar={activeGuardAvatar}
                 activeGuardName={activeGuardName}
+                guardStatus={guardStatus}
               />
             </Marker>
           );
@@ -1095,7 +1132,8 @@ export default function MapView({
           if (!isOnShift) return false;
 
           // 🚨 DEDUPING: If guard is stationed at an objective (avatar already rendered attached to objective pin), skip standalone marker
-          const isStationedAtObj = (objectives || []).some(o => o.id === g.current_objective_id);
+          const targetObjId = g.current_objective_id || (g as any).shiftObjectiveId || (g as any).shift_objective_id || (g as any).objective_id;
+          const isStationedAtObj = Boolean(targetObjId && (objectives || []).some(o => o.id === targetObjId));
           if (isStationedAtObj) return false;
 
           return true;
@@ -1289,17 +1327,28 @@ export default function MapView({
               <h3 className="font-black text-xs uppercase tracking-tight mb-1">{activeObjective.name}</h3>
               {activeObjective.assigned_personnel && activeObjective.assigned_personnel.length > 0 ? (
                 <div className="flex flex-col gap-2 mt-3 mb-3 border-t border-zinc-100 pt-3">
-                  <p className="text-[8px] font-black text-zinc-400 uppercase tracking-widest">Fuerza Asignada</p>
+                  <p className="text-[8px] font-black text-zinc-400 uppercase tracking-widest">Fuerza Asignada al Puesto</p>
                   {activeObjective.assigned_personnel.map((p: any) => (
-                    <div key={p.id} className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-lg bg-zinc-50 flex items-center justify-center overflow-hidden border border-zinc-200">
-                        {getAvatarUrl(p) ? (
-                          <img src={getAvatarUrl(p) || ''} className="w-full h-full object-cover" alt={p.name} />
-                        ) : (
-                          <span className="text-[9px] font-black text-[#0F4C5C]">{p.name?.split(' ').map((n:any) => n[0]).join('')}</span>
-                        )}
+                    <div key={p.id} className="flex items-center justify-between gap-2 bg-zinc-50 p-2 rounded-xl border border-zinc-200/60">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg bg-zinc-100 flex items-center justify-center overflow-hidden border border-zinc-300">
+                          {getAvatarUrl(p) ? (
+                            <img src={getAvatarUrl(p) || ''} className="w-full h-full object-cover" alt={p.name} />
+                          ) : (
+                            <span className="text-[10px] font-black text-[#0F4C5C]">{p.name?.split(' ').map((n:any) => n[0]).join('')}</span>
+                          )}
+                        </div>
+                        <div>
+                          <span className="text-[11px] font-black text-zinc-900 uppercase block">{p.name}</span>
+                          <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">{p.role || 'Operador'}</span>
+                        </div>
                       </div>
-                      <span className="text-[10px] font-black text-zinc-900 uppercase">{p.name}</span>
+                      <span className={cn(
+                        "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider",
+                        p.isOnShift ? "bg-emerald-100 text-emerald-700" : "bg-zinc-200 text-zinc-600"
+                      )}>
+                        {p.isOnShift ? "En Servicio" : "Asignado"}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -1309,7 +1358,7 @@ export default function MapView({
                   <span className="text-[10px] font-black text-zinc-900 uppercase tracking-tighter">{activeObjective.occupant_name}</span>
                 </div>
               ) : (
-                <p className="text-[9px] font-black text-amber-600/80 uppercase mt-2 mb-2 tracking-widest">• Sin personal activo</p>
+                <p className="text-[9px] font-black text-amber-600/80 uppercase mt-2 mb-2 tracking-widest">• Puesto vacante / Sin operador asignado</p>
               )}
               <p className="text-[10px] text-zinc-900 font-bold uppercase tracking-widest leading-relaxed mt-2 border-t border-zinc-100 pt-2">{activeObjective.address}</p>
             </div>
@@ -1425,6 +1474,102 @@ export default function MapView({
       </Map>
 
       <div className={cn("absolute z-10 flex flex-col items-end gap-2.5", isMobile ? "top-20 right-4" : "top-6 right-6")}>
+        {/* Botón Leyenda Operativa en Vivo */}
+        <button 
+          onClick={() => setShowLegend(!showLegend)} 
+          className={cn(
+            "w-12 h-12 backdrop-blur-md rounded-2xl shadow-[0_12px_35px_rgba(0,0,0,0.12)] flex items-center justify-center border transition-all hover:scale-105 active:scale-95",
+            showLegend 
+              ? "bg-zinc-950 text-emerald-400 border-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.3)]" 
+              : "bg-white/95 text-zinc-800 border-zinc-200/80"
+          )}
+          title="Leyenda de Estados en Vivo"
+        >
+          <Info size={20} className={showLegend ? "text-emerald-400" : "text-zinc-700"} />
+        </button>
+
+        <AnimatePresence>
+          {showLegend && (
+            <motion.div 
+              initial={{ opacity: 0, y: -10, scale: 0.95 }} 
+              animate={{ opacity: 1, y: 0, scale: 1 }} 
+              exit={{ opacity: 0, y: -10, scale: 0.95 }} 
+              className="flex flex-col bg-zinc-950/95 backdrop-blur-md p-3.5 rounded-2xl border border-white/15 shadow-[0_20px_50px_rgba(0,0,0,0.4)] min-w-[240px] max-w-[280px]"
+            >
+              <div className="flex items-center justify-between pb-2 mb-2.5 border-b border-white/10">
+                <span className="text-[10px] font-black text-white uppercase tracking-widest flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  Monitoreo en Tiempo Real
+                </span>
+                <button onClick={() => setShowLegend(false)} className="text-zinc-400 hover:text-white text-xs px-1">✕</button>
+              </div>
+              <div className="space-y-2.5 text-[10px]">
+                {/* 1. Objetivo Sin Operador */}
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-full bg-zinc-900 border-2 border-amber-400/80 flex items-center justify-center shrink-0 shadow-sm">
+                    <Building2 size={13} className="text-amber-400" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-white text-[10px]">Objetivo Sin Operador</p>
+                    <p className="text-[9px] text-zinc-400">Puesto descubierto / sin guardia</p>
+                  </div>
+                </div>
+
+                {/* 2. Objetivo Con Operador */}
+                <div className="flex items-center gap-2.5">
+                  <div className="relative w-7 h-7 rounded-full bg-zinc-900 border-2 border-emerald-500 flex items-center justify-center shrink-0 shadow-[0_0_10px_rgba(16,185,129,0.3)]">
+                    <Building2 size={13} className="text-emerald-400" />
+                    <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border border-zinc-950 flex items-center justify-center shadow">
+                      <User size={9} className="text-zinc-950" />
+                    </div>
+                  </div>
+                  <div>
+                    <p className="font-bold text-emerald-400 text-[10px]">Objetivo Cubierto</p>
+                    <p className="text-[9px] text-zinc-400">Operador presente (foto adjunta)</p>
+                  </div>
+                </div>
+
+                {/* 3. Alerta / Abandono */}
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-full bg-zinc-900 border-2 border-red-500 flex items-center justify-center shrink-0 shadow-[0_0_12px_rgba(239,68,68,0.5)]">
+                    <Building2 size={13} className="text-red-400" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-red-400 text-[10px]">Alerta / Abandono</p>
+                    <p className="text-[9px] text-zinc-400">Fuera de geocerca o alerta SOS</p>
+                  </div>
+                </div>
+
+                {/* 4. Operador Móvil */}
+                <div className="flex items-center gap-2.5">
+                  <div className="relative w-7 h-7 rounded-full bg-zinc-900 border-2 border-cyan-400 flex items-center justify-center shrink-0">
+                    <User size={13} className="text-cyan-400" />
+                    <div className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-cyan-500 border border-zinc-950 flex items-center justify-center">
+                      <Shield size={8} className="text-zinc-950" />
+                    </div>
+                  </div>
+                  <div>
+                    <p className="font-bold text-cyan-400 text-[10px]">Operador Móvil / Ronda</p>
+                    <p className="text-[9px] text-zinc-400">Personal en desplazamiento</p>
+                  </div>
+                </div>
+
+                {/* 5. Novedad Registrada */}
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-full bg-amber-500/20 border-2 border-amber-400 flex items-center justify-center shrink-0">
+                    <AlertTriangle size={13} className="text-amber-400" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-amber-400 text-[10px]">Novedad Operativa</p>
+                    <p className="text-[9px] text-zinc-400">Reporte registrado en libro</p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Botón Estilo del Mapa */}
         <button 
           onClick={() => setShowStyles(!showStyles)} 
           className="w-12 h-12 bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_12px_35px_rgba(0,0,0,0.12)] flex items-center justify-center border border-zinc-200/80 hover:scale-105 active:scale-95 transition-all text-zinc-800"

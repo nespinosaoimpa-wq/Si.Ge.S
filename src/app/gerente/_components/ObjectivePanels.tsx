@@ -28,8 +28,10 @@ interface ObjectiveDetailPanelProps {
   isAddingPoint: boolean;
   isMobile: boolean;
   activeGuards?: any[];
+  allResources?: any[];
   activeShifts?: any[];
-  onAssignOperator?: (objectiveId: string, operatorId: string) => Promise<void>;
+  allObjectives?: any[];
+  onAssignOperator?: (objectiveId: string, operatorId: string, action?: 'assign' | 'unassign') => Promise<void>;
   setSelectedObjective: (val: any) => void;
   handleDeleteObjective: (id: string, name: string) => void;
   isRelocating?: boolean;
@@ -42,7 +44,9 @@ export function ObjectiveDetailPanel({
   isAddingPoint,
   isMobile,
   activeGuards = [],
+  allResources = [],
   activeShifts = [],
+  allObjectives = [],
   onAssignOperator,
   setSelectedObjective,
   handleDeleteObjective,
@@ -106,8 +110,12 @@ export function ObjectiveDetailPanel({
           <div className="p-4 bg-zinc-50 rounded-2xl mb-6 border border-zinc-200 shadow-sm">
             {(() => {
               const liveGuards = activeGuards.filter((g: any) => g.current_objective_id === selectedObjective.id);
-              const dbGuards = selectedObjective.assigned_personnel || [];
+              const dbGuards = (allResources && allResources.length > 0 ? allResources : activeGuards).filter(
+                (r: any) => r.current_objective_id === selectedObjective.id
+              );
+              const assignedFromObj = selectedObjective.assigned_personnel || [];
               const guardsMap = new Map();
+              assignedFromObj.forEach((g: any) => guardsMap.set(g.id, g));
               dbGuards.forEach((g: any) => guardsMap.set(g.id, g));
               liveGuards.forEach((g: any) => guardsMap.set(g.id, g));
               const allGuards = Array.from(guardsMap.values());
@@ -134,27 +142,97 @@ export function ObjectiveDetailPanel({
                             <div className="flex items-center gap-2">
                               <p className="text-sm font-bold text-zinc-900 tracking-tight">{guard.name}</p>
                               {activeShift && (
-                                <div className="w-2 h-2 rounded-full bg-teal-500" title="En servicio activo" />
+                                <div className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" title="En servicio activo" />
                               )}
                             </div>
                             <p className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider mt-0.5">
-                              {activeShift ? 'Puesto Cubierto' : 'Asignación Pendiente'}
+                              {activeShift ? '🟢 En Servicio Activo' : '👤 Asignado Fijo al Puesto'}
                             </p>
                           </div>
                           {onAssignOperator && (
-                            <button 
-                              className="text-xs font-semibold text-zinc-400 hover:text-red-500 transition-colors" 
-                              onClick={() => onAssignOperator(selectedObjective.id, '')}
-                            >
-                              Liberar
-                            </button>
+                            <div className="flex items-center gap-2">
+                              <button 
+                                className="text-[11px] font-semibold text-zinc-400 hover:text-red-500 transition-colors px-2 py-1 rounded-lg hover:bg-red-50" 
+                                onClick={() => {
+                                  if (confirm(`¿Desvincular a ${guard.name} de este objetivo?`)) {
+                                    onAssignOperator(selectedObjective.id, guard.id, 'unassign');
+                                  }
+                                }}
+                                title="Desvincular a este operador del puesto"
+                              >
+                                Liberar
+                              </button>
+                            </div>
                           )}
                         </div>
                       );
                     })}
+
+                    {/* Opción de Asignar personal adicional a este objetivo */}
+                    {onAssignOperator && (() => {
+                      const candidatePool = (allResources && allResources.length > 0 ? allResources : activeGuards)
+                        .filter((r: any) => r && r.status !== 'baja' && r.status !== 'inactivo' && !allGuards.some((ag: any) => ag.id === r.id));
+                      if (candidatePool.length === 0) return null;
+
+                      const freeCandidates = candidatePool.filter((g: any) => !g.current_objective_id);
+                      const occupiedCandidates = candidatePool.filter((g: any) => g.current_objective_id && g.current_objective_id !== selectedObjective.id);
+
+                      return (
+                        <div className="pt-2 border-t border-zinc-100">
+                          <select 
+                            className="w-full h-9 text-[11px] font-medium border border-zinc-200 rounded-xl px-3 bg-white text-zinc-700 focus:ring-1 focus:ring-[#0F4C5C]/50 appearance-none shadow-xs cursor-pointer"
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (!val) return;
+                              const target = candidatePool.find((g: any) => g.id === val);
+                              if (target?.current_objective_id && target.current_objective_id !== selectedObjective.id) {
+                                const objName = allObjectives?.find((o: any) => o.id === target.current_objective_id)?.name || 'otro puesto';
+                                alert(`No se puede asignar a ${target.name}: ya se encuentra asignado a "${objName}".\n\nPara evitar vacíos operativos accidentales, primero debe desvincular al operador de dicho puesto antes de asignarlo aquí.`);
+                                e.target.value = '';
+                                return;
+                              }
+                              onAssignOperator(selectedObjective.id, val, 'assign');
+                            }}
+                            defaultValue=""
+                          >
+                            <option value="" disabled className="bg-white">
+                              ➕ Asignar otro operador al puesto...
+                            </option>
+                            {freeCandidates.length > 0 && (
+                              <optgroup label={`Personal Disponible (${freeCandidates.length})`}>
+                                {freeCandidates.map((g: any) => (
+                                  <option key={g.id} value={g.id} className="bg-white font-medium text-zinc-900">
+                                    ✅ Asignar a {g.name} ({g.role || 'Operador'})
+                                  </option>
+                                ))}
+                              </optgroup>
+                            )}
+                            {occupiedCandidates.length > 0 && (
+                              <optgroup label={`Personal Asignado en otros Puestos (Bloqueado)`}>
+                                {occupiedCandidates.map((g: any) => {
+                                  const objName = allObjectives?.find((o: any) => o.id === g.current_objective_id)?.name || 'otro puesto';
+                                  return (
+                                    <option key={g.id} value={g.id} disabled className="bg-zinc-100 text-zinc-400">
+                                      🔒 {g.name} — Ocupado en "{objName}" (Desvincular primero)
+                                    </option>
+                                  );
+                                })}
+                              </optgroup>
+                            )}
+                          </select>
+                        </div>
+                      );
+                    })()}
                   </div>
                 );
               }
+
+              // Candidatos de personal de la empresa disponibles para asignar
+              const candidatePool = (allResources && allResources.length > 0 ? allResources : activeGuards)
+                .filter((r: any) => r && r.status !== 'baja' && r.status !== 'inactivo');
+
+              const freeOperators = candidatePool.filter((g: any) => !g.current_objective_id);
+              const assignedOther = candidatePool.filter((g: any) => g.current_objective_id && g.current_objective_id !== selectedObjective.id);
 
               return (
                 <div className="space-y-4">
@@ -171,27 +249,46 @@ export function ObjectiveDetailPanel({
                     <select 
                       className="w-full h-11 text-xs font-medium border border-zinc-200 rounded-xl px-4 bg-white text-zinc-900 focus:ring-1 focus:ring-[#0F4C5C]/50 appearance-none shadow-sm cursor-pointer"
                       onChange={(e) => {
-                        if (e.target.value) onAssignOperator(selectedObjective.id, e.target.value);
+                        const val = e.target.value;
+                        if (!val) return;
+                        const target = candidatePool.find((g: any) => g.id === val);
+                        if (target?.current_objective_id && target.current_objective_id !== selectedObjective.id) {
+                          const objName = allObjectives?.find((o: any) => o.id === target.current_objective_id)?.name || 'otro puesto';
+                          alert(`No se puede asignar a ${target.name}: ya se encuentra asignado a "${objName}".\n\nPara evitar vacíos operativos accidentales, primero debe desvincular al operador de dicho puesto antes de asignarlo aquí.`);
+                          e.target.value = '';
+                          return;
+                        }
+                        onAssignOperator(selectedObjective.id, val, 'assign');
                       }}
                       defaultValue=""
                     >
                       <option value="" disabled className="bg-white">
-                        {activeGuards.filter(g => !g.current_objective_id).length > 0
-                          ? `Seleccionar Operador Libre (${activeGuards.filter(g => !g.current_objective_id).length} disponibles)...`
-                          : 'No hay operadores libres (Seleccionar para reasignar)...'}
+                        {freeOperators.length > 0
+                          ? `Seleccionar Operador (${freeOperators.length} disponibles)...`
+                          : 'Sin operadores disponibles en la empresa'}
                       </option>
-                      {activeGuards.filter(g => !g.current_objective_id).map(g => (
-                        <option key={g.id} value={g.id} className="bg-white font-medium">
-                          🟢 {g.name} {g.role ? `• ${g.role}` : ''}
-                        </option>
-                      ))}
-                      {activeGuards.filter(g => g.current_objective_id && g.current_objective_id !== selectedObjective.id).length > 0 && (
-                        <optgroup label="Operadores Asignados en otros puestos">
-                          {activeGuards.filter(g => g.current_objective_id && g.current_objective_id !== selectedObjective.id).map(g => (
-                            <option key={g.id} value={g.id} className="bg-white text-zinc-500">
-                              🔄 {g.name} (Reasignar desde otro puesto)
-                            </option>
-                          ))}
+                      {freeOperators.length > 0 && (
+                        <optgroup label={`Personal Disponible (${freeOperators.length})`}>
+                          {freeOperators.map((g: any) => {
+                            const isOnShift = activeGuards.some((ag: any) => ag.id === g.id);
+                            return (
+                              <option key={g.id} value={g.id} className="bg-white font-medium text-zinc-900">
+                                {isOnShift ? '🟢' : '👤'} {g.name} {g.role ? `• ${g.role}` : ''} {isOnShift ? '(En turno activo)' : '(Disponible)'}
+                              </option>
+                            );
+                          })}
+                        </optgroup>
+                      )}
+                      {assignedOther.length > 0 && (
+                        <optgroup label={`Personal Asignado en otros Puestos (Bloqueado)`}>
+                          {assignedOther.map((g: any) => {
+                            const objName = allObjectives?.find((o: any) => o.id === g.current_objective_id)?.name || 'otro puesto';
+                            return (
+                              <option key={g.id} value={g.id} disabled className="bg-zinc-100 text-zinc-400">
+                                🔒 {g.name} {g.role ? `• ${g.role}` : ''} — Ocupado en "{objName}" (Desvincular primero)
+                              </option>
+                            );
+                          })}
                         </optgroup>
                       )}
                     </select>
