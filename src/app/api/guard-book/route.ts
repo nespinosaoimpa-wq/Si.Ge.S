@@ -431,6 +431,18 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    let entryLat = latitude;
+    let entryLng = longitude;
+    if ((!entryLat || !entryLng || Number(entryLat) === 0) && objective_id) {
+      try {
+        const { data: objCoords } = await supabase.from('objectives').select('latitude, longitude').eq('id', objective_id).maybeSingle();
+        if (objCoords?.latitude) {
+          entryLat = objCoords.latitude;
+          entryLng = objCoords.longitude;
+        }
+      } catch (e) {}
+    }
+
     const { data, error } = await supabase
       .from('guard_book_entries')
       .insert({
@@ -439,8 +451,8 @@ export async function POST(request: NextRequest) {
         resource_id: resource_id,
         entry_type,
         content,
-        latitude,
-        longitude,
+        latitude: entryLat,
+        longitude: entryLng,
         urgency,
         status: 'pending',
         image_url,

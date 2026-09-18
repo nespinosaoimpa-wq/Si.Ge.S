@@ -687,7 +687,7 @@ export default function AdminDashboard() {
           // Resolve missing coordinates from objective
           let resolvedLat = entry.latitude;
           let resolvedLng = entry.longitude;
-          const hasCoords = resolvedLat && resolvedLng && !isNaN(Number(resolvedLat)) && Number(resolvedLat) !== 0;
+          let hasCoords = resolvedLat && resolvedLng && !isNaN(Number(resolvedLat)) && Number(resolvedLat) !== 0;
 
           if (!hasCoords) {
             const objId = targetObjId || entry.objective_id;
@@ -696,6 +696,16 @@ export default function AdminDashboard() {
               if (targetObj?.latitude && targetObj?.longitude) {
                 resolvedLat = targetObj.latitude;
                 resolvedLng = targetObj.longitude;
+                hasCoords = true;
+              } else {
+                try {
+                  const { data: objData } = await supabase.from('objectives').select('latitude, longitude').eq('id', objId).maybeSingle();
+                  if (objData?.latitude && objData?.longitude) {
+                    resolvedLat = objData.latitude;
+                    resolvedLng = objData.longitude;
+                    hasCoords = true;
+                  }
+                } catch (e) {}
               }
             }
           }
@@ -769,7 +779,7 @@ export default function AdminDashboard() {
 
           let resolvedLat = entry.latitude;
           let resolvedLng = entry.longitude;
-          const hasCoords = resolvedLat && resolvedLng && !isNaN(Number(resolvedLat)) && Number(resolvedLat) !== 0;
+          let hasCoords = resolvedLat && resolvedLng && !isNaN(Number(resolvedLat)) && Number(resolvedLat) !== 0;
 
           if (!hasCoords) {
             const objId = targetObjId || entry.objective_id;
@@ -778,6 +788,16 @@ export default function AdminDashboard() {
               if (targetObj?.latitude && targetObj?.longitude) {
                 resolvedLat = targetObj.latitude;
                 resolvedLng = targetObj.longitude;
+                hasCoords = true;
+              } else {
+                try {
+                  const { data: objData } = await supabase.from('objectives').select('latitude, longitude').eq('id', objId).maybeSingle();
+                  if (objData?.latitude && objData?.longitude) {
+                    resolvedLat = objData.latitude;
+                    resolvedLng = objData.longitude;
+                    hasCoords = true;
+                  }
+                } catch (e) {}
               }
             }
           }

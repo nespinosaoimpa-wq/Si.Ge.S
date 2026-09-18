@@ -170,18 +170,21 @@ async function getEvidence(id: string) {
         .limit(30)
     ]);
 
-    const evItems = (evRes.data || []).map(e => ({
-      id: e.id,
-      title: e.title || e.category || 'Evidencia Multimedia',
-      content: e.description || e.notes || 'Evidencia subida desde app',
-      image_url: e.file_url || e.url || e.image_url || e.photo_url || null,
-      created_at: e.created_at,
-      objective_name: e.objectives?.name || 'Objetivo General',
-      entry_type: 'evidencia'
-    }));
+    const isValidImageUrl = (url: any) => Boolean(url && typeof url === 'string' && url.trim().length > 5 && (url.startsWith('http') || url.startsWith('data:image')));
+
+    const evItems = (evRes.data || [])
+      .map(e => ({
+        id: e.id,
+        title: e.title || e.category || 'Evidencia Multimedia',
+        content: e.description || e.notes || 'Evidencia subida desde app',
+        image_url: e.file_url || e.url || e.image_url || e.photo_url || null,
+        created_at: e.created_at,
+        objective_name: e.objectives?.name || 'Objetivo General',
+        entry_type: 'evidencia'
+      }))
+      .filter(e => isValidImageUrl(e.image_url));
 
     const gbItems = (gbRes.data || [])
-      .filter(g => Boolean(g.image_url || g.photo_url || g.media_url || g.attachment_url || g.content))
       .map(g => ({
         id: g.id,
         title: g.entry_type === 'novedad' ? 'Novedad Operativa' : (g.entry_type || 'Bitácora'),
@@ -190,7 +193,8 @@ async function getEvidence(id: string) {
         created_at: g.created_at,
         objective_name: g.objectives?.name || 'Objetivo General',
         entry_type: g.entry_type || 'novedad'
-      }));
+      }))
+      .filter(g => isValidImageUrl(g.image_url));
 
     // Combine and sort by created_at desc
     const combined = [...evItems, ...gbItems].sort(

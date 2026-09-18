@@ -77,6 +77,7 @@ async function handleShiftMonitor(request: Request) {
             .from('guard_shifts')
             .update({
               geofence_status: 'outside',
+              last_breach_at: now,
               notes: `⚠️ Alerta de Geocerca: Operador a ${distMeters}m de ${objectiveName} (Radio: ${radiusMeters}m)`
             })
             .eq('id', shift.id);

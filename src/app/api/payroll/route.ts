@@ -83,7 +83,18 @@ export async function GET(request: NextRequest) {
       // Use stored total_hours from checkout (accurate) or calculate if missing (legacy or active)
       let totalHours = shift.total_hours;
       const checkIn = shift.checkin_time ? new Date(shift.checkin_time) : new Date();
-      const checkOut = shift.checkout_time ? new Date(shift.checkout_time) : new Date();
+      let checkOut = shift.checkout_time ? new Date(shift.checkout_time) : new Date();
+
+      // IF shift is active/unclosed AND operator breached geofence (outside/abandoned):
+      // freeze calculation timestamp to last_breach_at or updated_at (exact breach moment)
+      const isOutside = ['outside', 'abandoned', 'out_of_geofence'].includes(String(shift.geofence_status || '').toLowerCase());
+      if (isOutside && !shift.checkout_time) {
+        if (shift.last_breach_at) {
+          checkOut = new Date(shift.last_breach_at);
+        } else if (shift.updated_at) {
+          checkOut = new Date(shift.updated_at);
+        }
+      }
 
       if (totalHours === null || totalHours === undefined || totalHours === 0 || !shift.checkout_time) {
         // Cap unclosed/active shifts at 12 hours max to prevent stale shift inflation
