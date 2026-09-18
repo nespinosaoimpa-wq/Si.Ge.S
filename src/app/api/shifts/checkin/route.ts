@@ -213,11 +213,22 @@ export async function POST(request: Request) {
           .update({ current_shift_id: null, status: 'disponible' })
           .eq('id', finalResourceId);
       } else {
-        // Legitimate active shift within 24h — recover it
+        // Legitimate active shift within 24h — recover it ONLY if within geofence range
+        if (latitude && longitude && objectiveLocation && objectiveLocation.lat !== 0 && !isWithinGeofence) {
+          return NextResponse.json({ 
+            error: 'FUERA DE RANGO',
+            message: `Estás a ${Math.round(distanceToObjective)}m del objetivo "${objectiveName || 'Asignado'}". Debes ingresar al puesto para reanudar servicio.`,
+            isWithinGeofence: false,
+            targetRadius,
+            distance: Math.round(distanceToObjective),
+            accuracy
+          }, { status: 403 });
+        }
+
         return NextResponse.json({
           shift: existingActiveShift,
           resource_id: finalResourceId,
-          isWithinGeofence: existingActiveShift.checkin_within_geofence,
+          isWithinGeofence: true,
           objectiveLocation,
           geofenceRadius: targetRadius,
           warning: 'Turno recuperado (ya tenías un turno activo).'

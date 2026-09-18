@@ -1000,6 +1000,55 @@ export default function AdminDashboard() {
           removeIncidentFromMap(updated.id, updated.objective_id);
         }
       })
+      // ═══ GEOFENCE ALERTS TABLE ═══
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'geofence_alerts' }, async (payload) => {
+        const alert = payload.new as any;
+        if (alert && !alert.resolved) {
+          let resourceName = alert.operator_name || 'Operador';
+          let objectiveName = 'Objetivo';
+          let lat = alert.latitude;
+          let lng = alert.longitude;
+
+          const opId = alert.operator_id;
+          if (opId) {
+            const resObj = dataRef.current.resources?.find((r: any) => r.id === opId || r.assigned_to === opId);
+            if (resObj?.name) resourceName = resObj.name;
+          }
+
+          if (!lat || !lng) {
+            const objId = alert.objective_id;
+            if (objId) {
+              const obj = dataRef.current.objectives?.find((o: any) => o.id === objId);
+              if (obj?.latitude && obj?.longitude) {
+                lat = obj.latitude;
+                lng = obj.longitude;
+                objectiveName = obj.name;
+              }
+            }
+          }
+
+          const enrichedAlert = {
+            ...alert,
+            entry_type: 'alerta',
+            content: `⚠️ ABANDONO DE PUESTO: ${resourceName} se alejó del puesto ${objectiveName}`,
+            resource_name: resourceName,
+            resource_id: alert.operator_id,
+            latitude: lat,
+            longitude: lng,
+            urgency: 'critica',
+            created_at: alert.created_at || new Date().toISOString()
+          };
+
+          if (lat && lng) {
+            setData((prev: any) => ({
+              ...prev,
+              recentIncidents: [enrichedAlert, ...(prev.recentIncidents || []).filter((inc: any) => inc.id !== enrichedAlert.id)].slice(0, 20)
+            }));
+          }
+
+          handleEmergencyTrigger(enrichedAlert);
+        }
+      })
       // ═══ BROADCAST SYNC (Multi-manager instant synchronization 0ms) ═══
       .on('broadcast', { event: 'incident-resolved' }, ({ payload }: any) => {
         if (payload?.id) {

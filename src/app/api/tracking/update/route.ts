@@ -240,6 +240,7 @@ export async function POST(request: Request) {
                   alarm_type: 'geofence_exit',
                   status: 'active',
                   triggered_by: finalResourceId,
+                  operator_id: finalResourceId,
                   operator_name: opName,
                   objective_id: finalObjectiveId,
                   message: alertMsg,
@@ -253,6 +254,7 @@ export async function POST(request: Request) {
                   entry_type: 'abandono_zona',
                   content: alertMsg,
                   operator_id: finalResourceId,
+                  operator_name: opName,
                   objective_id: finalObjectiveId,
                   status: 'open',
                   latitude,
@@ -265,7 +267,12 @@ export async function POST(request: Request) {
                   entry_type: 'abandono_zona',
                   content: alertMsg,
                   operator_id: finalResourceId,
+                  resource_id: finalResourceId,
+                  operator_name: opName,
                   objective_id: finalObjectiveId,
+                  latitude,
+                  longitude,
+                  urgency: 'alta',
                   created_at: now
                 }).catch(e => console.warn('[SERVER_GEOFENCE] guard_book_entries error:', e));
               }

@@ -71,7 +71,7 @@ export default function PanicAlertOverlay({ alert, onDismiss, onResolve }: Panic
             .select('id, name, phone, current_objective_id, objectives!current_objective_id(id, name, address)');
 
           if (isUUID) {
-            query = query.or(`id.eq.${opId},assigned_to.eq.${opId}`);
+            query = query.or(`id.eq.${opId},assigned_to.eq.${opId},user_id.eq.${opId},profile_id.eq.${opId}`);
           } else {
             query = query.eq('id', opId);
           }
@@ -79,7 +79,7 @@ export default function PanicAlertOverlay({ alert, onDismiss, onResolve }: Panic
           const { data: res } = await query.limit(1).maybeSingle();
 
           if (res && isMounted) {
-            if (res.name && (!name || name === 'Prestador Desconocido' || name === 'Operador')) {
+            if (res.name && (!name || name === 'Prestador Desconocido' || name === 'Operador' || name === 'Desconocido')) {
               name = res.name;
             }
             if (res.phone && !phone) phone = res.phone;
@@ -88,6 +88,20 @@ export default function PanicAlertOverlay({ alert, onDismiss, onResolve }: Panic
               const obj: any = res.objectives;
               if (!objectiveName && obj.name) objectiveName = obj.name;
               if (!objectiveAddress && obj.address) objectiveAddress = obj.address;
+            }
+          }
+
+          // Step A2: Query profiles table if name is still missing or generic
+          if (!name || name === 'Desconocido' || name === 'Operador' || name === 'Prestador Desconocido') {
+            const { data: prof } = await supabase
+              .from('profiles')
+              .select('full_name, phone')
+              .eq('id', opId)
+              .maybeSingle();
+
+            if (prof?.full_name && isMounted) {
+              name = prof.full_name;
+              if (prof.phone && !phone) phone = prof.phone;
             }
           }
         }
