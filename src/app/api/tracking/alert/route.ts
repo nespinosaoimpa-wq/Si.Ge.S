@@ -39,10 +39,29 @@ export async function POST(request: Request) {
 
     const distMeters = Math.round(distance || 0);
 
+    let finalLat = Number(latitude || 0);
+    let finalLng = Number(longitude || 0);
+    if (finalLat === 0 || finalLng === 0) {
+      if (objective_id) {
+        const { data: objCoords } = await supabase.from('objectives').select('latitude, longitude').eq('id', objective_id).maybeSingle();
+        if (objCoords?.latitude) {
+          finalLat = Number(objCoords.latitude);
+          finalLng = Number(objCoords.longitude);
+        }
+      }
+      if ((finalLat === 0 || finalLng === 0) && operator_id) {
+        const { data: opCoords } = await supabase.from('resources').select('latitude, longitude').or(`id.eq.${operator_id},assigned_to.eq.${operator_id}`).limit(1).maybeSingle();
+        if (opCoords?.latitude) {
+          finalLat = Number(opCoords.latitude);
+          finalLng = Number(opCoords.longitude);
+        }
+      }
+    }
+
     if (type === 'exit') {
       // ════ REJECT INVALID / NULL ISLAND ANOMALIES (>500km distance indicates unconfigured coords) ════
-      if (distMeters > 500000 || (latitude !== undefined && Math.abs(Number(latitude)) < 0.1 && Math.abs(Number(longitude)) < 0.1)) {
-        console.warn(`[GEOTRACKING_ALERT] Ignored invalid exit alert: distance=${distMeters}m, lat=${latitude}, lng=${longitude}`);
+      if (distMeters > 500000) {
+        console.warn(`[GEOTRACKING_ALERT] Ignored invalid exit alert: distance=${distMeters}m, lat=${finalLat}, lng=${finalLng}`);
         return NextResponse.json({ success: false, reason: 'invalid_distance_or_coordinates' });
       }
 
@@ -52,8 +71,8 @@ export async function POST(request: Request) {
           operator_id: operator_id || null,
           objective_id: objective_id || null,
           alert_type: 'exit',
-          latitude: latitude || 0,
-          longitude: longitude || 0,
+          latitude: finalLat,
+          longitude: finalLng,
           resolved: false,
           created_at: now,
           tenant_id: tenantId
@@ -70,9 +89,9 @@ export async function POST(request: Request) {
           triggered_by: operator_id || null,
           operator_name: operatorName,
           objective_id: objective_id || null,
-          message: `🚨 ABANDONO DE PUESTO: ${operatorName} se alejó ${distMeters}m de ${objectiveName}. CÓMPUTO DE HORAS PAUSADO.`,
-          latitude: latitude || 0,
-          longitude: longitude || 0,
+          message: `ABANDONO DE PUESTO: ${operatorName} se alejó ${distMeters}m de ${objectiveName}. Conteo de horas pausado.`,
+          latitude: finalLat,
+          longitude: finalLng,
           created_at: now,
           tenant_id: tenantId
         });
@@ -85,11 +104,11 @@ export async function POST(request: Request) {
         await supabase.from('incidents').insert({
           operator_id: operator_id || null,
           objective_id: objective_id || null,
-          entry_type: 'alerta',
+          entry_type: 'abandono_zona',
           content: `⚠️ ALERTA GEOCERCA: ${operatorName} se alejó ${distMeters}m de ${objectiveName}. Conteo de horas pausado.`,
-          latitude: latitude || 0,
-          longitude: longitude || 0,
-          status: 'pendiente',
+          latitude: finalLat,
+          longitude: finalLng,
+          status: 'abierto',
           created_at: now,
           tenant_id: tenantId
         });
@@ -102,10 +121,10 @@ export async function POST(request: Request) {
         await supabase.from('guard_book_entries').insert({
           objective_id: objective_id || null,
           operator_id: operator_id || null,
-          entry_type: 'alerta',
+          entry_type: 'abandono_zona',
           content: `⚠️ ALERTA DE ABANDONO: El operador ${operatorName} se alejó ${distMeters}m de ${objectiveName}. Conteo de horas PAUSADO.`,
-          latitude: latitude || 0,
-          longitude: longitude || 0,
+          latitude: finalLat,
+          longitude: finalLng,
           urgency: 'critica',
           created_at: now,
           tenant_id: tenantId

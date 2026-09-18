@@ -194,8 +194,39 @@ export default function TacticalLeaflet({
     }, [center?.[0], center?.[1], zoom]);
 
     const activeIncidents = useMemo(() => 
-      incidents.filter(inc => inc.status !== 'resolved' && inc.status !== 'resuelto' && !(inc.content || '').includes('[RESUELTO]')),
-    [incidents]);
+      incidents
+        .filter(inc => inc.status !== 'resolved' && inc.status !== 'resuelto' && !(inc.content || '').includes('[RESUELTO]'))
+        .map(inc => {
+          let lat = Number(inc.latitude);
+          let lng = Number(inc.longitude);
+          const hasCoords = !isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0;
+
+          if (!hasCoords) {
+            const incAny = inc as any;
+            if (incAny.objective_id) {
+              const obj = objectives.find(o => o.id === incAny.objective_id);
+              if (obj?.latitude && obj?.longitude) {
+                lat = Number(obj.latitude);
+                lng = Number(obj.longitude);
+              }
+            }
+            if ((isNaN(lat) || lat === 0) && (incAny.operator_id || incAny.resource_id)) {
+              const res = (resources as any[]).find(r => r.id === (incAny.operator_id || incAny.resource_id));
+              if (res?.latitude && res?.longitude) {
+                lat = Number(res.latitude);
+                lng = Number(res.longitude);
+              }
+            }
+          }
+
+          return {
+            ...inc,
+            latitude: lat,
+            longitude: lng
+          };
+        })
+        .filter(inc => !isNaN(Number(inc.latitude)) && !isNaN(Number(inc.longitude)) && Number(inc.latitude) !== 0 && Number(inc.longitude) !== 0),
+    [incidents, objectives, resources]);
 
     const routeData = useMemo(() => {
       if (!selectedRoute || selectedRoute.length === 0) return null;
@@ -397,6 +428,10 @@ export default function TacticalLeaflet({
           })}
 
         {activeIncidents.filter(inc => isValidCoords(inc.latitude, inc.longitude)).map((inc) => {
+          const content = inc.content?.toLowerCase() || '';
+          const type = (inc.entry_type || '').toLowerCase();
+          const isAbandonment = type === 'abandono_zona' || content.includes('abandono') || content.includes('alejó') || content.includes('geocerca');
+
           return (
             <Marker
               key={`inc-${inc.id}`}
@@ -409,12 +444,14 @@ export default function TacticalLeaflet({
             >
               <div className={cn(
                 "p-2 rounded-xl shadow-2xl cursor-pointer border-2 border-white transition-all hover:scale-125 z-[100]",
-                (inc.entry_type === 'emergencia' || inc.entry_type === 'panic' || (inc as any).urgency === 'critica' || inc.status === 'critica' || inc.status === 'crítica' || inc.content?.toLowerCase().includes('alerta') || inc.content?.toLowerCase().includes('crítica')) 
-                  ? "bg-red-600 scale-125 animate-bounce shadow-[0_0_25px_rgba(239,68,68,0.8)]" 
-                  : "bg-zinc-900"
+                isAbandonment
+                  ? "bg-red-700 scale-125 animate-bounce shadow-[0_0_30px_rgba(239,68,68,0.95)] ring-4 ring-yellow-400/80"
+                  : ((inc.entry_type === 'emergencia' || inc.entry_type === 'panic' || (inc as any).urgency === 'critica' || inc.status === 'critica' || inc.status === 'crítica' || content.includes('alerta') || content.includes('crítica')) 
+                    ? "bg-red-600 scale-125 animate-bounce shadow-[0_0_25px_rgba(239,68,68,0.8)]" 
+                    : "bg-zinc-900")
               )}>
                 {(() => {
-                  const content = inc.content?.toLowerCase() || '';
+                  if (isAbandonment) return <UserX size={16} className="text-yellow-300 animate-pulse" />;
                   if (content.includes('vehículo')) return <Car size={14} className="text-white" />;
                   if (content.includes('persona')) return <UserX size={14} className="text-white" />;
                   if (content.includes('puerta')) return <DoorOpen size={14} className="text-white" />;

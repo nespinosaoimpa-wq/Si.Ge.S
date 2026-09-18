@@ -403,11 +403,24 @@ export default function PanicAlertOverlay({ alert, onDismiss, onResolve }: Panic
 
                 {/* Detalle del Mensaje */}
                 <div className="pt-3 border-t border-zinc-800">
-                  <p className="text-[10px] font-semibold text-red-400 uppercase tracking-wider mb-1">
-                    Detalle de la Alerta
+                  <p className="text-[10px] font-semibold text-red-400 uppercase tracking-wider mb-1 flex items-center justify-between">
+                    <span>Tipo & Detalle de la Alerta</span>
+                    {((alert.entry_type || alert.alarm_type || '').toLowerCase().includes('abandono') || (alert.content || alert.message || '').toLowerCase().includes('alejó') || (alert.content || alert.message || '').toLowerCase().includes('geocerca')) && (
+                      <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider animate-pulse">
+                        🚨 Abandono de Puesto
+                      </span>
+                    )}
                   </p>
                   <p className="text-sm text-zinc-100 font-medium leading-relaxed bg-red-500/10 border border-red-500/20 p-3 rounded-xl">
-                    "{alert.content || '🚨 BOTÓN DE PÁNICO S.O.S ACTIVADO EN FICHAJE'}"
+                    {(() => {
+                      const raw = alert.content || alert.message || '🚨 BOTÓN DE PÁNICO S.O.S ACTIVADO EN FICHAJE';
+                      return raw
+                        .replace(/^(🚨\s*ALERTA:\s*)+/gi, '')
+                        .replace(/^(⚠️\s*ALERTA GEOCERCA:\s*)+/gi, '')
+                        .replace(/^(🚨\s*ABANDONO DE PUESTO:\s*)+/gi, '')
+                        .replace(/^(⚠️\s*ALERTA DE ABANDONO:\s*)+/gi, '')
+                        .trim();
+                    })()}
                   </p>
                 </div>
               </div>

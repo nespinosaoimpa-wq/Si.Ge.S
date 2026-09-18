@@ -25,12 +25,14 @@ const SEVERITY: Record<string, {
 };
 
 const TYPE_CONFIG: Record<string, { icon: React.ReactNode; barColor: string; label: string }> = {
-  fichaje:      { icon: <CheckCircle2 size={15} />, barColor: 'bg-emerald-500', label: 'Fichaje' },
-  incidente:    { icon: <AlertTriangle size={15} />, barColor: 'bg-red-500',    label: 'Incidente' },
-  emergencia:   { icon: <Zap size={15} />,           barColor: 'bg-red-600',    label: 'Emergencia' },
-  libro_guardia:{ icon: <FileText size={15} />,      barColor: 'bg-blue-500',   label: 'Novedad' },
-  ronda:        { icon: <ShieldCheck size={15} />,   barColor: 'bg-amber-500',  label: 'Ronda' },
-  inventario:   { icon: <Building2 size={15} />,     barColor: 'bg-purple-500', label: 'Inventario' },
+  fichaje:          { icon: <CheckCircle2 size={15} />, barColor: 'bg-emerald-500', label: 'Fichaje' },
+  incidente:        { icon: <AlertTriangle size={15} />, barColor: 'bg-red-500',    label: 'Incidente' },
+  emergencia:       { icon: <Zap size={15} />,           barColor: 'bg-red-600',    label: 'Emergencia' },
+  libro_guardia:    { icon: <FileText size={15} />,      barColor: 'bg-blue-500',   label: 'Novedad' },
+  ronda:            { icon: <ShieldCheck size={15} />,   barColor: 'bg-amber-500',  label: 'Ronda' },
+  inventario:       { icon: <Building2 size={15} />,     barColor: 'bg-purple-500', label: 'Inventario' },
+  abandono_zona:    { icon: <AlertTriangle size={15} />, barColor: 'bg-red-600',    label: 'Abandono de Puesto' },
+  resolucion_alerta:{ icon: <CheckCircle2 size={15} />, barColor: 'bg-emerald-600', label: 'Resolución Alerta' },
 };
 
 // ─── Avatar Helper ────────────────────────────────────────────────────────────

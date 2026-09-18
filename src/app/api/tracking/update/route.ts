@@ -158,6 +158,125 @@ export async function POST(request: Request) {
     let updateQuery = supabase.from('resources').update(updatePayload).eq('id', finalResourceId);
     tasks.push(updateQuery);
 
+    // 3. SERVER-SIDE GEOFENCE BREACH EVALUATION
+    if (finalObjectiveId && latitude && longitude) {
+      tasks.push((async () => {
+        try {
+          const { data: obj } = await supabase
+            .from('objectives')
+            .select('id, name, latitude, longitude, geofence_radius')
+            .eq('id', finalObjectiveId)
+            .maybeSingle();
+
+          if (obj?.latitude && obj?.longitude) {
+            const R = 6371e3;
+            const φ1 = (latitude * Math.PI) / 180;
+            const φ2 = (Number(obj.latitude) * Math.PI) / 180;
+            const Δφ = ((Number(obj.latitude) - latitude) * Math.PI) / 180;
+            const Δλ = ((Number(obj.longitude) - longitude) * Math.PI) / 180;
+
+            const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+                      Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+            const distMeters = Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+
+            const radiusMeters = obj.geofence_radius || 100;
+            const gpsMargin = Math.max(Number(accuracy || 0), 25);
+            const effectiveRadius = radiusMeters + gpsMargin;
+
+            // Reject invalid GPS teleports >500km
+            if (distMeters > effectiveRadius && distMeters <= 500000) {
+              // Check if active shift is already marked outside to avoid duplicate alert floods
+              const { data: shift } = await supabase
+                .from('guard_shifts')
+                .select('id, geofence_status, operator_id')
+                .eq('operator_id', finalResourceId)
+                .in('status', ['activo', 'active'])
+                .limit(1)
+                .maybeSingle();
+
+              if (shift && shift.geofence_status !== 'outside') {
+                console.log(`[SERVER_GEOFENCE_DETECTED] Operator ${finalResourceId} is ${distMeters}m from objective ${obj.name}`);
+                
+                // Fetch operator name
+                const { data: opRes } = await supabase
+                  .from('resources')
+                  .select('name')
+                  .eq('id', finalResourceId)
+                  .maybeSingle();
+                
+                const opName = opRes?.name || res?.name || 'Operador';
+                const now = new Date().toISOString();
+                const alertMsg = `ABANDONO DE PUESTO: ${opName} se alejó ${distMeters}m de ${obj.name}. Conteo de horas pausado.`;
+
+                // 1. Update shift status to outside
+                await supabase
+                  .from('guard_shifts')
+                  .update({ geofence_status: 'outside', last_breach_at: now })
+                  .eq('id', shift.id);
+
+                // 2. Insert into geofence_alerts
+                await supabase.from('geofence_alerts').insert({
+                  operator_id: finalResourceId,
+                  objective_id: finalObjectiveId,
+                  alert_type: 'exit',
+                  latitude,
+                  longitude,
+                  resolved: false,
+                  created_at: now
+                }).catch(e => console.warn('[SERVER_GEOFENCE] geofence_alerts error:', e));
+
+                // 3. Insert into geofencing_incidents
+                await supabase.from('geofencing_incidents').insert({
+                  shift_id: shift.id,
+                  operator_id: finalResourceId,
+                  objective_id: finalObjectiveId,
+                  exit_at: now,
+                  max_distance_meters: distMeters,
+                  status: 'pendiente'
+                }).catch(e => console.warn('[SERVER_GEOFENCE] geofencing_incidents error:', e));
+
+                // 4. Insert into alarms
+                await supabase.from('alarms').insert({
+                  alarm_type: 'geofence_exit',
+                  status: 'active',
+                  triggered_by: finalResourceId,
+                  operator_name: opName,
+                  objective_id: finalObjectiveId,
+                  message: alertMsg,
+                  latitude,
+                  longitude,
+                  created_at: now
+                }).catch(e => console.warn('[SERVER_GEOFENCE] alarms error:', e));
+
+                // 5. Insert into incidents
+                await supabase.from('incidents').insert({
+                  entry_type: 'abandono_zona',
+                  content: alertMsg,
+                  operator_id: finalResourceId,
+                  objective_id: finalObjectiveId,
+                  status: 'open',
+                  latitude,
+                  longitude,
+                  created_at: now
+                }).catch(e => console.warn('[SERVER_GEOFENCE] incidents error:', e));
+
+                // 6. Insert into guard_book_entries
+                await supabase.from('guard_book_entries').insert({
+                  entry_type: 'abandono_zona',
+                  content: alertMsg,
+                  operator_id: finalResourceId,
+                  objective_id: finalObjectiveId,
+                  created_at: now
+                }).catch(e => console.warn('[SERVER_GEOFENCE] guard_book_entries error:', e));
+              }
+            }
+          }
+        } catch (err) {
+          console.warn('[SERVER_GEOFENCE_EVAL_ERROR]', err);
+        }
+      })());
+    }
+
     // Execute in parallel mapping to catch potential errors without crashing the main flow
     await Promise.allSettled(tasks);
 
@@ -167,3 +286,4 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }
+

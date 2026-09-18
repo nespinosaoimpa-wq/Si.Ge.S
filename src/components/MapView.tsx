@@ -801,21 +801,57 @@ export default function MapView({
     return createCirclePolygon([draftCoords.lat, draftCoords.lng], draft_geofence_radius);
   }, [draftCoords, draft_geofence_radius]);
 
-  const heatmapData = useMemo(() => ({
-    type: 'FeatureCollection',
-    features: activeIncidents
-      .filter(inc => inc.latitude && inc.longitude)
-      .map(inc => ({
+  const heatmapData = useMemo(() => {
+    const points: Array<{ lng: number; lat: number; intensity: number }> = [];
+
+    // 1. Add all incidents (active & past alerts)
+    (resolvedIncidents || []).forEach(inc => {
+      if (inc.latitude && inc.longitude && !isNaN(Number(inc.latitude))) {
+        const isCritical = inc.entry_type === 'panic' || inc.entry_type === 'abandono_zona' || inc.entry_type === 'emergencia' || (inc.content || '').toLowerCase().includes('abandono') || (inc.content || '').toLowerCase().includes('pánico');
+        points.push({
+          lng: Number(inc.longitude),
+          lat: Number(inc.latitude),
+          intensity: isCritical ? 5 : 2
+        });
+      }
+    });
+
+    // 2. Add active guards positions
+    (guards || []).forEach(g => {
+      if (g.latitude && g.longitude && !isNaN(Number(g.latitude))) {
+        points.push({
+          lng: Number(g.longitude),
+          lat: Number(g.latitude),
+          intensity: g.status === 'abandoned' ? 5 : 2
+        });
+      }
+    });
+
+    // 3. Add objectives positions
+    (objectives || []).forEach(o => {
+      if (o.latitude && o.longitude && !isNaN(Number(o.latitude))) {
+        points.push({
+          lng: Number(o.longitude),
+          lat: Number(o.latitude),
+          intensity: 1
+        });
+      }
+    });
+
+    return {
+      type: 'FeatureCollection',
+      features: points.map(p => ({
         type: 'Feature',
         geometry: {
           type: 'Point',
-          coordinates: [inc.longitude, inc.latitude]
+          coordinates: [p.lng, p.lat]
         },
         properties: {
-          intensity: 1 
+          intensity: p.intensity
         }
       }))
-  }), [activeIncidents]);
+    };
+  }, [resolvedIncidents, guards, objectives]);
           
   const guardAccuracyData = useMemo(() => ({
     type: 'FeatureCollection',
@@ -952,17 +988,21 @@ export default function MapView({
             <Layer
               id="heatmap-layer"
               type="heatmap"
-              maxzoom={15}
+              maxzoom={24}
               paint={{
-                'heatmap-weight': { property: 'intensity', type: 'exponential', stops: [[1, 0], [62, 1]] } as any,
-                'heatmap-intensity': { stops: [[11, 1], [15, 3]] } as any,
+                'heatmap-weight': ['interpolate', ['linear'], ['get', 'intensity'], 1, 0.4, 5, 1] as any,
+                'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 9, 1, 18, 3] as any,
                 'heatmap-color': [
                   'interpolate', ['linear'], ['heatmap-density'],
-                  0, 'rgba(33,102,172,0)', 0.2, 'rgb(103,169,207)', 0.4, 'rgb(209,229,240)',
-                  0.6, 'rgb(253,219,199)', 0.8, 'rgb(239,138,98)', 1, 'rgb(178,24,43)'
+                  0, 'rgba(0,0,0,0)',
+                  0.15, 'rgba(59, 130, 246, 0.6)',
+                  0.4, 'rgba(34, 197, 94, 0.8)',
+                  0.7, 'rgba(234, 179, 8, 0.9)',
+                  0.9, 'rgba(239, 68, 68, 0.95)',
+                  1, 'rgba(220, 38, 38, 1)'
                 ] as any,
-                'heatmap-radius': { stops: [[11, 15], [15, 20]] } as any,
-                'heatmap-opacity': 0.6
+                'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 9, 20, 18, 55] as any,
+                'heatmap-opacity': 0.75
               }}
             />
           </Source>
