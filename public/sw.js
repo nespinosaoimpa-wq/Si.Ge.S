@@ -6,7 +6,7 @@ const ASSETS_TO_CACHE = [
   '/',
   '/operador',
   '/gerente',
-  '/logo_704.jpeg',
+  '/logo_sigpad.png',
   '/icons/icon-192x192.png',
   '/icons/icon-512x512.png',
   '/icons/apple-touch-icon.png',

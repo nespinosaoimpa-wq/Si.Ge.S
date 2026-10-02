@@ -44,3 +44,13 @@ next-env.d.ts
 /scratch/
 *.zip
 *.rar
+
+# Campañas publicitarias y material de marketing (no subir a GitHub)
+/public/campana/
+/public/capturas/
+/publiccapturas/
+/scripts/generate_pro_posts.py
+*.pdf
+*.pptx
+*Pitch_Deck*
+

@@ -4,6 +4,7 @@ const DEFAULT_SUPABASE_URL = 'https://xgzkudwuukctaldwcekr.supabase.co';
 const DEFAULT_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhnemt1ZHd1dWtjdGFsZHdjZWtyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2NjIzMzcsImV4cCI6MjA5OTIzODMzN30.ELmTZRPoXjOXi5p8D_g1yQs925oak7oz1BYasLhJ7yc';
 
 const nextConfig: NextConfig = {
+  compress: true, // Enables Gzip / Brotli compression on all Vercel serverless API responses
   typescript: {
     ignoreBuildErrors: true,
   },

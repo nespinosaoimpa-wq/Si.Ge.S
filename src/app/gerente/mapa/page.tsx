@@ -228,7 +228,7 @@ export default function MapaOperativoPage() {
       // 🚀 2. FALLBACK A CONSULTAS DIRECTAS DE SUPABASE
       const [objRes, guardRes, incRes] = await Promise.all([
         supabase.from('objectives').select('*').order('created_at', { ascending: false }),
-        supabase.from('resources').select('*, profiles:profile_id(avatar_url, full_name)').neq('status', 'baja'),
+        supabase.from('resources').select('id, name, role, status, latitude, longitude, accuracy, speed, heading, battery_level, last_gps_update, phone, email, avatar_url, current_objective_id, profile_id, tenant_id, profiles:profile_id(avatar_url, full_name)').neq('status', 'baja'),
         supabase.from('guard_book_entries').select('*').neq('entry_type', 'fichaje').order('created_at', { ascending: false }).limit(30)
       ]);
 
@@ -461,11 +461,11 @@ export default function MapaOperativoPage() {
         console.log(`[MAP_REALTIME] Subscription status: ${status}`, err || '');
       });
 
-    // ⚡ Smart Frugal Auto-Sync Poll (15s Interval, Active Tab Only) for ultra-fluid synchronization
+    // ⚡ Smart Frugal Auto-Sync Poll (30s Interval, Active Tab Only) for ultra-fluid synchronization with low egress
     const pollInterval = setInterval(() => {
       if (typeof document !== 'undefined' && document.hidden) return;
       fetchData();
-    }, 15000);
+    }, 30000);
 
     return () => {
       clearInterval(pollInterval);

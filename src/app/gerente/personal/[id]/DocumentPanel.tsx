@@ -40,44 +40,52 @@ export function DocumentPanel({ operatorId, initialDocuments }: DocumentPanelPro
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Check size (max 5MB for base64 storage)
-    if (file.size > 5 * 1024 * 1024) {
-      alert("El archivo es muy pesado. Máximo 5MB.");
+    if (file.size > 15 * 1024 * 1024) {
+      alert("El archivo es muy pesado. Máximo 15MB.");
       return;
     }
 
     setIsUploading(true);
-    const reader = new FileReader();
+    try {
+      let docUrl = '';
+      try {
+        const { uploadMediaDirect } = await import('@/lib/storage-direct');
+        const res = await uploadMediaDirect(file, `legajos/${operatorId}/${Date.now()}_${file.name}`);
+        docUrl = res.url;
+      } catch (uploadErr) {
+        console.warn('[DOCUMENT_UPLOAD] Direct storage fallback to base64:', uploadErr);
+        // Fallback to base64 only if bucket fails
+        docUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      }
 
-    reader.onloadend = async () => {
-      const base64 = reader.result as string;
       const newDoc: Document = {
         id: crypto.randomUUID(),
         name: file.name,
-        type: 'otro', // Default type
-        url: base64,
+        type: 'otro',
+        url: docUrl,
         date: new Date().toISOString()
       };
 
       const safeCurrentDocs = Array.isArray(documents) ? documents : [];
       const updatedDocs = [...safeCurrentDocs, newDoc];
 
-      try {
-        const { error } = await supabase
-          .from('resources')
-          .update({ documents: updatedDocs })
-          .eq('id', operatorId);
+      const { error } = await supabase
+        .from('resources')
+        .update({ documents: updatedDocs })
+        .eq('id', operatorId);
 
-        if (error) throw error;
-        setDocuments(updatedDocs);
-      } catch (err: any) {
-        alert("Error al subir documento: " + err.message);
-      } finally {
-        setIsUploading(false);
-      }
-    };
-
-    reader.readAsDataURL(file);
+      if (error) throw error;
+      setDocuments(updatedDocs);
+    } catch (err: any) {
+      alert("Error al subir documento: " + err.message);
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleDelete = async (docId: string) => {

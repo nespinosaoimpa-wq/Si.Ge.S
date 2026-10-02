@@ -15,14 +15,14 @@ export async function GET(req: NextRequest) {
     if (!isSuper && !tenantId) return NextResponse.json({ error: 'Tu sesión no tiene empresa asignada.' }, { status: 403 });
 
     // 🚀 CACHE CHECK: Evitar hit a DB si fue consultado en los últimos 10 segundos
-    // Con Vercel Free (10s max), el caché de 10s divide por 10 el consumo de invocaciones
+    // Con Vercel, el caché de 10s y CDN Edge reduce drásticamente el Fast Origin Transfer
     const cacheKey = `dashboard-map-${isSuper ? 'super' : tenantId}`;
-    const cachedData = serverCache.get(cacheKey, 5000); // 5 seconds TTL
+    const cachedData = serverCache.get(cacheKey, 10000); // 10 seconds TTL
     if (cachedData) {
       return NextResponse.json(cachedData, {
         headers: {
           'X-Cache': 'HIT',
-          'Cache-Control': 'public, s-maxage=5, stale-while-revalidate=15'
+          'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=30'
         }
       });
     }
@@ -102,7 +102,7 @@ export async function GET(req: NextRequest) {
     const tenantObjectiveIds = rawObjectives.map((o: any) => o.id).filter(Boolean);
 
     let resourcesQuery = supabase.from('resources')
-      .select('*, profiles:profile_id(avatar_url, full_name)')
+      .select('id, name, role, status, latitude, longitude, accuracy, speed, heading, battery_level, last_gps_update, phone, email, avatar_url, current_objective_id, profile_id, tenant_id, profiles:profile_id(avatar_url, full_name)')
       .neq('status', 'baja');
 
     const last24h = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
@@ -385,7 +385,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(responseData, {
       headers: {
         'X-Cache': 'MISS',
-        'Cache-Control': 'public, s-maxage=5, stale-while-revalidate=15'
+        'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=30'
       }
     });
   } catch (error: any) {

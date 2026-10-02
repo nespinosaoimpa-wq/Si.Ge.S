@@ -651,15 +651,39 @@ export default function RootLandingPage() {
                 <motion.div
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="py-12 flex flex-col items-center justify-center text-center gap-4"
+                  className="py-10 flex flex-col items-center justify-center text-center gap-4"
                 >
                   <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
                     <CheckCircle2 size={36} />
                   </div>
-                  <h3 className="text-xl font-black uppercase text-white tracking-wider">¡Mensaje Enviado con Éxito!</h3>
+                  <h3 className="text-xl font-black uppercase text-white tracking-wider">¡Solicitud Registrada con Éxito!</h3>
                   <p className="text-zinc-400 text-xs font-medium max-w-md">
-                    Gracias por comunicarte. Nuestro equipo operativo evaluará tu mensaje y se pondrá en contacto a la brevedad.
+                    Gracias por comunicarte. Tu mensaje ya quedó registrado de forma segura en nuestro sistema y nuestro equipo se pondrá en contacto a la brevedad.
                   </p>
+
+                  <div className="mt-4 pt-4 border-t border-zinc-800 w-full flex flex-col sm:flex-row items-center justify-center gap-3">
+                    <a
+                      href={`https://wa.me/5493425162372?text=${encodeURIComponent(
+                        `Hola SIGPAD, mi nombre es ${formData.nombre}. Acabo de dejar una solicitud de ${contactTab === 'demo' ? 'Demostración' : 'Consulta'} en la web y me gustaría hablar con un asesor comercial.`
+                      )}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-lg shadow-emerald-950/40 hover:scale-105"
+                    >
+                      <MessageCircle size={16} />
+                      Atención Rápida por WhatsApp
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormSent(false);
+                        setFormData({ nombre: '', email: '', telefono: '', empresa: '', mensaje: '' });
+                      }}
+                      className="px-4 py-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white text-xs font-semibold transition-colors"
+                    >
+                      Enviar otra consulta
+                    </button>
+                  </div>
                 </motion.div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-4">
