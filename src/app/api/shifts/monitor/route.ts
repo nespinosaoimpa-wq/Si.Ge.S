@@ -152,6 +152,20 @@ async function handleShiftMonitor(request: Request) {
             tenant_id: shift.tenant_id
           });
 
+          // Dispatch Web Push Notification to operator's mobile device (works even if PWA is closed)
+          try {
+            const { sendPushToUser } = await import('@/lib/web-push-config');
+            await sendPushToUser(shift.operator_id, {
+              title: '⚠️ ALERTA DE GEOCERCA',
+              body: `Te alejaste ${distMeters}m de ${objectiveName}. Conteo de horas PAUSADO. Reingresa a la zona de cobertura.`,
+              url: '/operador',
+              vibrate: [1000, 200, 1000, 200, 1000],
+              requireInteraction: true
+            });
+          } catch (pErr) {
+            console.warn('[SHIFT_MONITOR] Web push trigger notice:', pErr);
+          }
+
           alertsTriggered.push({
             shift_id: shift.id,
             operator_name: operatorName,
