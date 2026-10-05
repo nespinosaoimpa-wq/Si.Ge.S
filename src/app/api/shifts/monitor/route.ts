@@ -14,6 +14,23 @@ async function handleShiftMonitor(request: Request) {
     const supabase = createServiceClient();
     const now = new Date().toISOString();
 
+    // 0. Auto-sweep stale shifts (>16h) to keep shift records clean
+    try {
+      await supabase.rpc('auto_close_stale_shifts');
+    } catch (e) {
+      // Fallback: direct update if RPC is not yet applied
+      const staleTime = new Date(Date.now() - 16 * 3600 * 1000).toISOString();
+      await supabase
+        .from('guard_shifts')
+        .update({
+          status: 'completado',
+          duration_minutes: 480,
+          total_hours: 8
+        })
+        .in('status', ['activo', 'active'])
+        .lt('checkin_time', staleTime);
+    }
+
     // 1. Fetch all active guard shifts
     const { data: activeShifts, error: shiftError } = await supabase
       .from('guard_shifts')
