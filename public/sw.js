@@ -1,6 +1,6 @@
-// SIGPAD Service Worker — V10 (Ultra Vercel 0-Byte Transfer Protection + Offline Cache-First)
-const CACHE_NAME = 'sigpad-v10-static';
-const RUNTIME_CACHE = 'sigpad-v10-runtime';
+// SIGPAD Service Worker — V11 (Ultra Vercel 0-Byte Transfer Protection + Offline Cache-First)
+const CACHE_NAME = 'sigpad-v11-static';
+const RUNTIME_CACHE = 'sigpad-v11-runtime';
 
 const ASSETS_TO_CACHE = [
   '/',

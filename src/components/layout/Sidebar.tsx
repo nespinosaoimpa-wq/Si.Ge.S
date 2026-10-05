@@ -154,52 +154,60 @@ export function Sidebar() {
                 animate={{ y: 0 }}
                 exit={{ y: '100%' }}
                 transition={{ type: 'spring', damping: 25, stiffness: 280 }}
-                className="lg:hidden fixed bottom-0 left-0 right-0 max-h-[88vh] z-[120] bg-zinc-950 border-t-2 border-white/20 rounded-t-[2.5rem] overflow-hidden flex flex-col shadow-[0_-20px_60px_rgba(0,0,0,0.95)]"
+                className="lg:hidden fixed bottom-0 left-0 right-0 max-h-[88vh] z-[120] bg-[#0A182E]/92 backdrop-blur-2xl border-t border-cyan-400/30 rounded-t-[2.5rem] overflow-hidden flex flex-col shadow-[0_-20px_60px_rgba(0,0,0,0.85),0_0_50px_rgba(0,122,255,0.25)]"
               >
+                {/* Pull handle bar */}
+                <div className="w-12 h-1.5 bg-white/20 rounded-full mx-auto mt-3 -mb-1 shrink-0" />
+
                 {/* Sheet Handle Header */}
-                <div className="p-6 pb-5 border-b border-white/10 flex items-center justify-between bg-zinc-900/90">
+                <div className="p-6 pb-4 border-b border-white/10 flex items-center justify-between bg-white/[0.03]">
                   <div className="flex items-center gap-3.5">
-                    <div className="w-12 h-12 rounded-2xl bg-amber-400/20 border-2 border-amber-400/40 flex items-center justify-center text-amber-400 shrink-0">
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-cyan-500/25 to-blue-600/30 border border-cyan-400/40 flex items-center justify-center text-cyan-300 shrink-0 shadow-[0_0_15px_rgba(0,122,255,0.35)]">
                       <Building2 size={24} />
                     </div>
                     <div>
                       <p className="text-base font-black text-white leading-tight uppercase tracking-tight">
                         {(user as any)?.company_name || user?.user_metadata?.company_name || 'Empresa de Seguridad'}
                       </p>
-                      <p className="text-xs text-amber-400 font-bold mt-0.5 uppercase tracking-wide">Menú de Herramientas Operativas</p>
+                      <p className="text-xs text-cyan-300 font-semibold mt-0.5 tracking-wide">Menú de Herramientas Operativas</p>
                     </div>
                   </div>
                   <button 
                     onClick={() => setIsMoreOpen(false)}
-                    className="w-12 h-12 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center text-white active:scale-95"
+                    className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 flex items-center justify-center text-white/90 active:scale-95 transition-all shadow-sm"
                   >
-                    <X size={24} />
+                    <X size={20} />
                   </button>
                 </div>
 
                 {/* Sheet Body — Grid Options */}
-                <div className="p-6 overflow-y-auto space-y-4 max-h-[68vh]">
-                  <p className="text-sm font-black text-amber-400 uppercase tracking-widest px-1 mb-2">Módulos Adicionales</p>
+                <div className="p-5 overflow-y-auto space-y-4 max-h-[68vh]">
+                  <p className="text-[11px] font-black text-cyan-400/90 uppercase tracking-widest px-1 mb-1">Módulos Adicionales</p>
 
-                  <div className="grid grid-cols-1 gap-3.5">
+                  <div className="grid grid-cols-1 gap-3">
                     {secondaryMobileItems.map((sec) => {
                       const isActive = pathname === sec.href || pathname?.startsWith(sec.href);
                       return (
                         <Link key={sec.name} href={sec.href} onClick={() => setIsMoreOpen(false)}>
                           <div className={cn(
-                            "flex items-center gap-4.5 p-4.5 rounded-2xl border-2 transition-all active:scale-[0.98]",
+                            "flex items-center gap-4 p-3.5 rounded-2xl border transition-all active:scale-[0.98]",
                             isActive 
-                              ? "bg-amber-400/20 border-amber-400/60 text-amber-400 shadow-xl shadow-amber-400/15" 
-                              : "bg-white/5 border-white/10 text-white hover:bg-white/10"
+                              ? "bg-white/20 border-cyan-400 text-white shadow-[0_8px_25px_rgba(0,122,255,0.35),inset_0_1px_1px_rgba(255,255,255,0.6)]" 
+                              : "bg-white/[0.06] hover:bg-white/[0.12] border-white/15 text-white/90 shadow-[0_4px_16px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.12)] backdrop-blur-md"
                           )}>
-                            <div className="w-14 h-14 rounded-2xl bg-zinc-900 border border-white/15 flex items-center justify-center shrink-0">
-                              <sec.icon size={26} className="text-amber-400" />
+                            <div className={cn(
+                              "w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition-colors shadow-sm",
+                              isActive
+                                ? "bg-gradient-to-br from-cyan-400 to-blue-600 text-white shadow-[0_0_15px_rgba(0,229,255,0.5)]"
+                                : "bg-gradient-to-br from-blue-500/20 to-cyan-500/15 border border-cyan-400/30 text-cyan-300"
+                            )}>
+                              <sec.icon size={22} />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-base font-black text-white truncate uppercase tracking-tight">{sec.name}</p>
-                              <p className="text-xs text-zinc-300 truncate mt-1 font-semibold">{sec.desc}</p>
+                              <p className="text-sm font-bold text-white tracking-tight truncate">{sec.name}</p>
+                              <p className="text-xs text-zinc-300/80 truncate mt-0.5 font-medium">{sec.desc}</p>
                             </div>
-                            <ChevronRight size={22} className="text-zinc-400 shrink-0" />
+                            <ChevronRight size={18} className="text-cyan-300/60 shrink-0" />
                           </div>
                         </Link>
                       );
@@ -207,22 +215,22 @@ export function Sidebar() {
                   </div>
 
                   {/* Actions Section */}
-                  <p className="text-sm font-black text-zinc-400 uppercase tracking-widest px-1 pt-4 mb-2">Acciones Rápidas</p>
+                  <p className="text-[11px] font-black text-zinc-400 uppercase tracking-widest px-1 pt-3 mb-1">Acciones Rápidas</p>
 
-                  <div className="grid grid-cols-2 gap-3.5">
+                  <div className="grid grid-cols-2 gap-3 pb-2">
                     <button
                       onClick={handleShare}
-                      className="flex items-center justify-center gap-3 h-16 bg-white/10 border border-white/15 rounded-2xl text-sm font-black uppercase text-white active:scale-95 shadow-lg"
+                      className="flex items-center justify-center gap-2.5 h-13 bg-white/[0.08] hover:bg-white/[0.14] border border-white/20 rounded-2xl text-xs font-bold uppercase tracking-wider text-white active:scale-95 shadow-[0_4px_16px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.2)] transition-all"
                     >
-                      <Share2 size={22} className="text-amber-400" />
+                      <Share2 size={18} className="text-cyan-300" />
                       <span>Compartir App</span>
                     </button>
 
                     <button
                       onClick={() => { signOut(); window.location.href = '/login'; }}
-                      className="flex items-center justify-center gap-3 h-16 bg-red-500/20 border border-red-500/40 rounded-2xl text-sm font-black uppercase text-red-400 active:scale-95 shadow-lg"
+                      className="flex items-center justify-center gap-2.5 h-13 bg-red-500/15 hover:bg-red-500/25 border border-red-500/35 rounded-2xl text-xs font-bold uppercase tracking-wider text-red-300 active:scale-95 shadow-[0_4px_16px_rgba(239,68,68,0.2),inset_0_1px_0_rgba(255,255,255,0.15)] transition-all"
                     >
-                      <LogOut size={22} />
+                      <LogOut size={18} />
                       <span>Cerrar Sesión</span>
                     </button>
                   </div>
