@@ -87,23 +87,33 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setSession(supabaseSession);
         setUser(supabaseSession.user);
         
-        const { data: profile } = await supabase
-          .from('users')
-          .select('role, tenant_id')
-          .eq('id', supabaseSession.user.id)
-          .maybeSingle();
+        let profileRole = (supabaseSession.user.user_metadata?.role as string) || localUser?.role || null;
+        let profileTenantId = (supabaseSession.user.user_metadata?.tenant_id as string) || localUser?.tenant_id || null;
+
+        if (!profileRole || !profileTenantId) {
+          try {
+            const { data: profile } = await supabase
+              .from('users')
+              .select('role, tenant_id')
+              .eq('id', supabaseSession.user.id)
+              .maybeSingle();
+            
+            if (profile?.role) profileRole = profile.role;
+            if (profile?.tenant_id) profileTenantId = profile.tenant_id;
+          } catch (e) {}
+        }
         
-        const finalRole = profile?.role || (supabaseSession.user.user_metadata?.role as string) || null;
-        setRole(finalRole);
+        setRole(profileRole);
 
         const userData = {
           id: supabaseSession.user.id,
           email: supabaseSession.user.email,
-          role: finalRole,
-          tenant_id: profile?.tenant_id || supabaseSession.user.user_metadata?.tenant_id || null,
+          role: profileRole,
+          tenant_id: profileTenantId,
           user_metadata: {
             ...supabaseSession.user.user_metadata,
-            role: finalRole
+            role: profileRole,
+            tenant_id: profileTenantId
           }
         };
         localStorage.setItem('SIGPAD_user', JSON.stringify(userData));
@@ -127,23 +137,36 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        const { data: profile } = await supabase
-          .from('users')
-          .select('role, tenant_id')
-          .eq('id', session.user.id)
-          .single();
-        
-        const finalRole = profile?.role || (session.user.user_metadata?.role as string) || null;
+        const cachedLocal = typeof window !== 'undefined' ? localStorage.getItem('SIGPAD_user') : null;
+        const parsedLocal = cachedLocal ? JSON.parse(cachedLocal) : null;
+
+        let finalRole = (session.user.user_metadata?.role as string) || parsedLocal?.role || null;
+        let finalTenantId = (session.user.user_metadata?.tenant_id as string) || parsedLocal?.tenant_id || null;
+
+        if (!finalRole || !finalTenantId) {
+          try {
+            const { data: profile } = await supabase
+              .from('users')
+              .select('role, tenant_id')
+              .eq('id', session.user.id)
+              .maybeSingle();
+
+            if (profile?.role) finalRole = profile.role;
+            if (profile?.tenant_id) finalTenantId = profile.tenant_id;
+          } catch (e) {}
+        }
+
         setRole(finalRole);
 
         const userData = {
           id: session.user.id,
           email: session.user.email,
           role: finalRole,
-          tenant_id: profile?.tenant_id || session.user.user_metadata?.tenant_id || null,
+          tenant_id: finalTenantId,
           user_metadata: {
             ...session.user.user_metadata,
-            role: finalRole
+            role: finalRole,
+            tenant_id: finalTenantId
           }
         };
         localStorage.setItem('SIGPAD_user', JSON.stringify(userData));

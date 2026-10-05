@@ -4,6 +4,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { serverCache } from '@/lib/cache';
 import { resolveTenantFromRequest, MASTER_TENANT_ID } from '@/lib/resolve-tenant';
 
+let lastCoverageAuditTime = 0;
+
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
@@ -82,9 +84,13 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      // Auto-Audit Coverage: Marca operadores sin señal (>5 min) en estado 'sin_cobertura' y genera alerta en central
-      const { auditStaleOperatorCoverage } = await import('@/lib/coverage-worker');
-      await auditStaleOperatorCoverage(supabase, isSuper ? undefined : (tenantId || undefined));
+      // Auto-Audit Coverage: Throttle to max once every 60 seconds to optimize Vercel serverless execution
+      const nowMs = Date.now();
+      if (nowMs - lastCoverageAuditTime > 60000) {
+        lastCoverageAuditTime = nowMs;
+        const { auditStaleOperatorCoverage } = await import('@/lib/coverage-worker');
+        await auditStaleOperatorCoverage(supabase, isSuper ? undefined : (tenantId || undefined));
+      }
     } catch (e) {
       console.error('[AUTO_ALERT_SCHEDULER_ERROR]', e);
     }
