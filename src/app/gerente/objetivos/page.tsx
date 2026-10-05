@@ -259,12 +259,12 @@ export default function ObjetivosPage() {
         </div>
         <div className="flex gap-3 w-full sm:w-auto">
            <Link href="/gerente" className="flex-1 sm:flex-none">
-             <button className="h-10 px-4 flex items-center justify-center gap-2 bg-white border border-zinc-200 rounded-xl text-xs font-medium text-zinc-800 hover:bg-zinc-50 transition-all shadow-sm">
-               <MapIcon size={15} /> Ver mapa
+             <button className="h-10 px-4.5 flex items-center justify-center gap-2 bg-white hover:bg-zinc-50 border border-zinc-200/90 rounded-xl text-xs font-semibold text-zinc-800 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-md active:scale-95 transition-all">
+               <MapIcon size={15} className="text-[#0F4C5C]" /> Ver mapa
              </button>
            </Link>
            <button 
-             className="h-10 px-4 flex items-center justify-center gap-2 bg-zinc-900 text-white rounded-xl text-xs font-medium hover:bg-black transition-all shadow-sm" 
+             className="h-10 px-5 flex items-center justify-center gap-2 bg-gradient-to-r from-[#0F4C5C] to-[#146074] hover:brightness-110 text-white rounded-xl text-xs font-bold shadow-[0_4px_14px_rgba(15,76,92,0.35),inset_0_1px_0_rgba(255,255,255,0.25)] active:scale-95 transition-all" 
              onClick={() => setIsModalOpen(true)}
            >
              <Plus size={15} /> Nuevo objetivo
@@ -305,14 +305,16 @@ export default function ObjetivosPage() {
             className="w-full bg-white border border-gray-200 rounded-2xl py-3 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
           />
         </div>
-        <div className="flex bg-gray-100 p-1 rounded-xl">
+        <div className="flex bg-zinc-100/80 p-1 rounded-xl border border-zinc-200/50">
           {['Todos', 'Activos', 'Inactivos'].map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
               className={cn(
-                "px-4 py-1.5 rounded-lg text-xs font-medium transition-all",
-                filter === f ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-800"
+                "px-4 py-1.5 rounded-lg text-xs font-bold transition-all active:scale-95",
+                filter === f 
+                  ? "bg-white text-zinc-950 shadow-sm border border-zinc-200/60" 
+                  : "text-zinc-500 hover:text-zinc-800"
               )}
             >
               {f}

@@ -53,4 +53,7 @@ next-env.d.ts
 *.pdf
 *.pptx
 *Pitch_Deck*
+*Flyer*
+/scripts/generate_domingo_flyer.py
+
 

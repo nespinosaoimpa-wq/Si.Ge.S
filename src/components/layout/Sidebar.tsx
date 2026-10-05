@@ -105,24 +105,21 @@ export function Sidebar() {
 
     return (
       <>
-        {/* Fixed Mobile Bottom Bar (5 equal columns) — High Contrast & Maximum Legibility */}
-        <nav className="lg:hidden fixed bottom-0 left-0 right-0 h-[92px] z-[100] grid grid-cols-5 items-center bg-zinc-950/98 backdrop-blur-2xl border-t border-white/15 px-1 safe-bottom shadow-[0_-15px_50px_rgba(0,0,0,0.8)]">
+        {/* Floating Glassmorphism Mobile Dock (Uiverse Menu) */}
+        <nav className="lg:hidden uiverse-menu">
           {primaryMobileItems.map((item) => {
-            const isActive = pathname === item.href || (item.href !== '/gerente' && pathname?.startsWith(item.href));
+            const isActive = item.href === '/gerente'
+              ? (pathname === '/gerente' || pathname === '/gerente/mapa')
+              : pathname?.startsWith(item.href);
 
             return (
-              <Link key={item.name} href={item.href} className="flex flex-col items-center justify-center h-full active:scale-95 transition-transform py-1.5">
-                <div className={cn(
-                  'w-14 h-11 rounded-2xl flex items-center justify-center transition-all',
-                  isActive 
-                    ? 'bg-amber-400/25 border-2 border-amber-400 text-amber-400 shadow-[0_0_25px_rgba(251,191,36,0.5)] scale-110' 
-                    : 'text-zinc-400 hover:text-white'
-                )}>
-                  <item.icon size={26} />
-                </div>
-                <span className={cn('text-[13px] font-black uppercase mt-1.5 tracking-tight truncate max-w-full leading-none', isActive ? 'text-amber-400 font-extrabold' : 'text-zinc-300')}>
-                  {item.name}
-                </span>
+              <Link 
+                key={item.name} 
+                href={item.href} 
+                className={cn(isActive && 'active')}
+              >
+                <item.icon />
+                <span>{item.name}</span>
               </Link>
             );
           })}
@@ -130,20 +127,12 @@ export function Sidebar() {
           {/* 5th Column: "Más" Button for Manager */}
           {!isGuardia && (
             <button 
+              type="button"
               onClick={() => setIsMoreOpen(!isMoreOpen)} 
-              className="flex flex-col items-center justify-center h-full active:scale-95 transition-transform py-1.5"
+              className={cn(isMoreOpen && 'active')}
             >
-              <div className={cn(
-                'w-14 h-11 rounded-2xl flex items-center justify-center transition-all',
-                isMoreOpen 
-                  ? 'bg-amber-400 text-black shadow-[0_0_30px_rgba(251,191,36,0.6)] scale-110' 
-                  : 'text-zinc-400 hover:text-white'
-              )}>
-                <Grid size={26} />
-              </div>
-              <span className={cn('text-[13px] font-black uppercase mt-1.5 tracking-tight truncate leading-none', isMoreOpen ? 'text-amber-400 font-extrabold' : 'text-zinc-300')}>
-                Más
-              </span>
+              <Grid />
+              <span>Más</span>
             </button>
           )}
         </nav>

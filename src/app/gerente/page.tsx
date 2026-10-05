@@ -1406,9 +1406,10 @@ export default function AdminDashboard() {
       {isMobile && !isAddingPoint && (
         <button
           onClick={() => setIsAddingPoint(true)}
-          className="fixed bottom-28 right-6 w-14 h-14 bg-primary text-black rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.2)] flex items-center justify-center z-[60] border-4 border-white active:scale-95 transition-transform"
+          className="fixed bottom-24 right-5 w-13 h-13 rounded-full bg-gradient-to-br from-[#0F4C5C] to-[#0A333E] text-white shadow-[0_10px_25px_rgba(0,0,0,0.5),0_0_20px_rgba(0,229,255,0.25),inset_0_1px_1px_rgba(255,255,255,0.4)] flex items-center justify-center z-[60] border border-cyan-400/40 active:scale-90 transition-all"
+          title="Agregar Objetivo"
         >
-          <Plus size={28} />
+          <Plus size={26} className="text-cyan-300 drop-shadow-[0_0_6px_rgba(0,229,255,0.6)]" />
         </button>
       )}
       {/* --- EMERGENCY FULLSCREEN MODAL --- */}
