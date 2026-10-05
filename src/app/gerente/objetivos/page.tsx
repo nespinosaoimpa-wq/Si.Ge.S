@@ -379,21 +379,21 @@ export default function ObjetivosPage() {
                 <div className="flex items-center gap-2">
                   <button 
                     onClick={() => handleEditObjectiveClick(obj)}
-                    className="p-3 hover:bg-zinc-100 rounded-xl transition-all text-zinc-400 hover:text-zinc-900 border border-transparent hover:border-zinc-200"
+                    className="p-2.5 bg-zinc-50 hover:bg-zinc-100 rounded-xl transition-all text-zinc-600 hover:text-zinc-950 border border-zinc-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.04)] active:scale-95"
                     title="Editar Perfil de Objetivo"
                   >
-                    <Edit3 size={18} />
+                    <Edit3 size={17} />
                   </button>
                   <button 
                     onClick={() => handleDeleteObjective(obj.id, obj.name)}
-                    className="p-3 hover:bg-red-50 rounded-xl transition-all group/del"
+                    className="p-2.5 bg-zinc-50 hover:bg-red-50 rounded-xl transition-all border border-zinc-200/80 hover:border-red-200 text-zinc-500 hover:text-red-600 shadow-[0_1px_3px_rgba(0,0,0,0.04)] active:scale-95 group/del"
                     title="Eliminar Objetivo"
                   >
-                    <Trash2 size={18} className="text-zinc-300 group-hover/del:text-red-500 transition-colors" />
+                    <Trash2 size={17} />
                   </button>
                   <Link href={`/gerente/objetivos/${obj.id}`}>
-                    <button className="p-3 hover:bg-zinc-50 rounded-xl shadow-none hover:shadow-sm border border-transparent hover:border-zinc-200 transition-all" title="Ver Detalle">
-                      <ChevronRight size={18} className="text-zinc-300 group-hover:text-[#0F4C5C]" />
+                    <button className="p-2.5 bg-zinc-50 hover:bg-[#0F4C5C]/10 rounded-xl border border-zinc-200/80 hover:border-[#0F4C5C]/30 text-zinc-600 hover:text-[#0F4C5C] shadow-[0_1px_3px_rgba(0,0,0,0.04)] active:scale-95 transition-all" title="Ver Detalle">
+                      <ChevronRight size={17} />
                     </button>
                   </Link>
                 </div>

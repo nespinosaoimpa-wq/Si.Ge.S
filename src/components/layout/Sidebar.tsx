@@ -84,29 +84,27 @@ export function Sidebar() {
   if (!mounted) return null;
   if (pathname === '/login' || pathname === '/' || pathname === '/register' || pathname?.startsWith('/operador')) return null;
 
-  // ============ MOBILE: Premium Ergonomic Bottom Navigation Bar ============
-  if (isMobile) {
-    // Top 4 core items for quick access
-    const primaryMobileItems = isGuardia 
-      ? guardiaItems 
-      : [
-          { name: 'Mapa', href: '/gerente', icon: MapPin },
-          { name: 'Personal', href: '/gerente/personal', icon: Users },
-          { name: 'Objetivos', href: '/gerente/objetivos', icon: ClipboardList },
-          { name: 'Libro', href: '/gerente/libro', icon: BookOpen },
-        ];
+  // Top 4 core items for quick mobile access
+  const primaryMobileItems = isGuardia 
+    ? guardiaItems 
+    : [
+        { name: 'Mapa', href: '/gerente', icon: MapPin },
+        { name: 'Personal', href: '/gerente/personal', icon: Users },
+        { name: 'Objetivos', href: '/gerente/objetivos', icon: ClipboardList },
+        { name: 'Libro', href: '/gerente/libro', icon: BookOpen },
+      ];
 
-    const secondaryMobileItems = [
-      { name: 'Recursos Logísticos (Stock)', href: '/gerente/inventario', icon: Package, desc: 'Equipamiento y armas' },
-      { name: 'Planillas & Liquidación', href: '/gerente/planillas', icon: Calculator, desc: 'Cálculos de hs extras y sueldos' },
-      { name: 'Control Hombre Vivo', href: '/gerente/hombre-vivo', icon: Activity, desc: 'Verificación de presencia' },
-      { name: 'Gestión de Accesos', href: '/gerente/accesos', icon: Settings, desc: 'Roles y permisos de usuarios' },
-    ];
+  const secondaryMobileItems = [
+    { name: 'Recursos Logísticos (Stock)', href: '/gerente/inventario', icon: Package, desc: 'Equipamiento y armas' },
+    { name: 'Planillas & Liquidación', href: '/gerente/planillas', icon: Calculator, desc: 'Cálculos de hs extras y sueldos' },
+    { name: 'Control Hombre Vivo', href: '/gerente/hombre-vivo', icon: Activity, desc: 'Verificación de presencia' },
+    { name: 'Gestión de Accesos', href: '/gerente/accesos', icon: Settings, desc: 'Roles y permisos de usuarios' },
+  ];
 
-    return (
-      <>
-        {/* Floating Glassmorphism Mobile Dock (Uiverse Menu) */}
-        <nav className="lg:hidden uiverse-menu">
+  return (
+    <>
+      {/* Floating Glassmorphism Mobile Dock (Uiverse Menu) */}
+      <nav className="lg:hidden menu uiverse-menu">
           {primaryMobileItems.map((item) => {
             const isActive = item.href === '/gerente'
               ? (pathname === '/gerente' || pathname === '/gerente/mapa')
@@ -118,7 +116,7 @@ export function Sidebar() {
                 href={item.href} 
                 className={cn(isActive && 'active')}
               >
-                <item.icon />
+                <item.icon size={22} />
                 <span>{item.name}</span>
               </Link>
             );
@@ -127,11 +125,11 @@ export function Sidebar() {
           {/* 5th Column: "Más" Button for Manager */}
           {!isGuardia && (
             <button 
-              type="button"
+              type="button" 
               onClick={() => setIsMoreOpen(!isMoreOpen)} 
               className={cn(isMoreOpen && 'active')}
             >
-              <Grid />
+              <Grid size={22} />
               <span>Más</span>
             </button>
           )}
@@ -233,13 +231,9 @@ export function Sidebar() {
             </>
           )}
         </AnimatePresence>
-      </>
-    );
-  }
 
-  // ============ DESKTOP: Left Sidebar — dark with SIGPAD brand styling ============
-  return (
-    <div className="fixed left-0 top-0 bottom-0 w-[220px] z-[90] flex flex-col bg-zinc-950 border-r border-white/5">
+        {/* ============ DESKTOP: Left Sidebar — dark with SIGPAD brand styling ============ */}
+        <aside className="hidden lg:flex fixed left-0 top-0 bottom-0 w-[220px] z-[90] flex-col bg-zinc-950 border-r border-white/5">
 
       {/* Brand */}
       <div className="p-5 pb-4">
@@ -344,6 +338,7 @@ export function Sidebar() {
           <span>Cerrar Sesión</span>
         </button>
       </div>
-    </div>
+    </aside>
+  </>
   );
 }

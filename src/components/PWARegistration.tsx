@@ -51,10 +51,10 @@ export default function PWARegistration() {
     // 3. Register Service Worker
     try {
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/sw.js').then(
-          (reg) => console.log('[PWA] SW registrado:', reg.scope),
-          (err) => console.log('[PWA] Error registro SW:', err)
-        ).catch(console.warn);
+        navigator.serviceWorker.register('/sw.js').then((reg) => {
+          reg.update().catch(() => {});
+          console.log('[PWA] SW registrado v10:', reg.scope);
+        }).catch(console.warn);
       }
     } catch (e) {
       console.warn('[PWA] Exception SW:', e);

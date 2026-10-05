@@ -213,49 +213,53 @@
 
 /* ===== Uiverse Glassmorphism Floating Dock Menu ===== */
 :root {
-  --glass-border: rgba(255, 255, 255, 0.2);
+  --glass-border: rgba(255, 255, 255, 0.35);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+.menu,
 .uiverse-menu {
-  position: fixed;
-  left: 50%;
-  bottom: 14px;
-  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
-  transform: translateX(-50%);
-  width: calc(100% - 24px);
-  max-width: 480px;
-  backdrop-filter: blur(16px) saturate(180%) contrast(150%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%) contrast(150%);
-  background: rgba(10, 24, 46, 0.82);
-  border: 1px solid var(--glass-border);
+  position: fixed !important;
+  left: 50% !important;
+  bottom: 14px !important;
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px)) !important;
+  transform: translateX(-50%) !important;
+  width: calc(100% - 24px) !important;
+  max-width: 500px !important;
+  backdrop-filter: blur(16px) saturate(180%) contrast(160%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(180%) contrast(160%) !important;
+  background: rgba(0, 122, 255, 0.44) !important;
+  border: 1px solid var(--glass-border) !important;
   box-shadow: 
-    0 16px 36px rgba(0, 0, 0, 0.65),
-    0 0 24px rgba(0, 122, 255, 0.18),
-    inset 0 1px 1px rgba(255, 255, 255, 0.35);
-  padding: 6px 8px;
-  border-radius: 99rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 6px;
-  z-index: 100;
-  pointer-events: auto;
+    0 16px 36px rgba(0, 0, 0, 0.45),
+    0 4px 20px rgba(0, 122, 255, 0.3),
+    inset 0 1px 1px rgba(255, 255, 255, 0.5) !important;
+  padding: 8px !important;
+  border-radius: 99rem !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  gap: 6px !important;
+  z-index: 100 !important;
+  pointer-events: auto !important;
 }
 
+.menu::after,
 .uiverse-menu::after {
   content: "";
   position: absolute;
   inset: 0;
   border-radius: inherit;
   box-shadow:
-    inset 2px 2px 5px -2px rgba(255, 255, 255, 0.45),
-    inset -2px -2px 5px 2px rgba(0, 122, 255, 0.2),
-    inset 0 -2px 0 rgba(255, 255, 255, 0.15);
+    inset 2px 2px 5px -2px rgba(255, 255, 255, 0.5),
+    inset -2px -2px 5px 2px rgba(255, 255, 255, 0.3),
+    inset 0 -2px 0 rgba(255, 255, 255, 0.2);
   pointer-events: none;
   z-index: -1;
 }
 
+.menu a,
+.menu button,
 .uiverse-menu a,
 .uiverse-menu button {
   display: flex;
@@ -264,7 +268,7 @@
   justify-content: center;
   flex: 1 1 0;
   min-width: 0;
-  color: rgba(255, 255, 255, 0.78);
+  color: rgba(255, 255, 255, 0.92);
   text-decoration: none;
   padding: 8px 4px 6px;
   border-radius: 999rem;
@@ -279,61 +283,73 @@
   cursor: pointer;
 }
 
+.menu a:hover,
+.menu button:hover,
 .uiverse-menu a:hover,
 .uiverse-menu button:hover {
-  background-color: rgba(255, 255, 255, 0.2);
+  background-color: rgba(255, 255, 255, 0.3);
   box-shadow:
     inset 2px 2px 5px -2px rgba(255, 255, 255, 0.4),
-    inset -2px -1px 5px 0 rgba(255, 255, 255, 0.3),
-    inset 0 -2px 0 rgba(255, 255, 255, 0.15);
-  color: #38bdf8;
+    inset -2px -1px 5px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -2px 0 rgba(255, 255, 255, 0.2);
   transform: translateY(-1px);
+  color: #ffffff;
 }
 
+.menu a:active,
+.menu button:active,
 .uiverse-menu a:active,
 .uiverse-menu button:active {
-  transform: scale(0.94);
+  transform: scale(0.96);
 }
 
+.menu a svg,
+.menu button svg,
 .uiverse-menu a svg,
 .uiverse-menu button svg {
   width: 1.35rem;
   height: 1.35rem;
   font-size: 1.35rem;
-  transition: transform 0.2s ease, filter 0.2s ease, color 0.2s ease;
+  color: inherit;
+  transition: transform 0.2s ease, filter 0.2s ease;
 }
 
+.menu a span,
+.menu button span,
 .uiverse-menu a span,
 .uiverse-menu button span {
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   font-weight: 700;
   line-height: 1;
   margin-top: 4px;
   letter-spacing: 0.02em;
-  text-transform: uppercase;
   white-space: nowrap;
 }
 
+.menu a.active,
+.menu button.active,
 .uiverse-menu a.active,
 .uiverse-menu button.active {
-  background: rgba(255, 255, 255, 0.25);
-  color: #00e5ff;
+  background: rgba(255, 255, 255, 0.75);
+  color: #0056b3;
   box-shadow:
-    inset 1px 1px 3px -1px rgba(255, 255, 255, 0.6),
-    0 4px 14px rgba(0, 0, 0, 0.35),
-    0 0 16px rgba(0, 229, 255, 0.3);
+    inset 1px 1px 3px -1px rgba(255, 255, 255, 0.9),
+    0 4px 14px rgba(0, 0, 0, 0.15);
 }
 
+.menu a.active svg,
+.menu button.active svg,
 .uiverse-menu a.active svg,
 .uiverse-menu button.active svg {
-  color: #00e5ff;
-  filter: drop-shadow(0 0 6px rgba(0, 229, 255, 0.6));
+  color: #0056b3;
   transform: scale(1.08);
 }
 
+.menu a.active span,
+.menu button.active span,
 .uiverse-menu a.active span,
 .uiverse-menu button.active span {
-  color: #00e5ff;
+  color: #0056b3;
   font-weight: 800;
 }
 
