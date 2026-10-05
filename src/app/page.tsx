@@ -677,7 +677,7 @@ export default function RootLandingPage() {
                       type="button"
                       onClick={() => {
                         setFormSent(false);
-                        setFormData({ nombre: '', email: '', telefono: '', empresa: '', mensaje: '' });
+                        setFormData({ nombre: '', email: '', telefono: '', empresa: '', localidad: '', mensaje: '' });
                       }}
                       className="px-4 py-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white text-xs font-semibold transition-colors"
                     >
