@@ -219,29 +219,37 @@
 
 .menu,
 .uiverse-menu {
-  position: fixed !important;
-  left: 50% !important;
-  bottom: 14px !important;
-  bottom: calc(14px + env(safe-area-inset-bottom, 0px)) !important;
-  transform: translateX(-50%) !important;
-  width: calc(100% - 24px) !important;
-  max-width: 500px !important;
-  backdrop-filter: blur(16px) saturate(180%) contrast(160%) !important;
-  -webkit-backdrop-filter: blur(16px) saturate(180%) contrast(160%) !important;
-  background: rgba(0, 122, 255, 0.44) !important;
-  border: 1px solid var(--glass-border) !important;
+  position: fixed;
+  left: 50%;
+  bottom: 14px;
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  width: calc(100% - 24px);
+  max-width: 500px;
+  backdrop-filter: blur(16px) saturate(180%) contrast(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%) contrast(160%);
+  background: rgba(0, 122, 255, 0.44);
+  border: 1px solid var(--glass-border);
   box-shadow: 
     0 16px 36px rgba(0, 0, 0, 0.45),
     0 4px 20px rgba(0, 122, 255, 0.3),
-    inset 0 1px 1px rgba(255, 255, 255, 0.5) !important;
-  padding: 8px !important;
-  border-radius: 99rem !important;
-  display: flex !important;
-  justify-content: center !important;
-  align-items: center !important;
-  gap: 6px !important;
-  z-index: 100 !important;
-  pointer-events: auto !important;
+    inset 0 1px 1px rgba(255, 255, 255, 0.5);
+  padding: 8px;
+  border-radius: 99rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  z-index: 100;
+  pointer-events: auto;
+}
+
+/* Ocultar estrictamente en computadoras / pantallas de escritorio */
+@media (min-width: 1024px) {
+  .menu,
+  .uiverse-menu {
+    display: none !important;
+  }
 }
 
 .menu::after,
