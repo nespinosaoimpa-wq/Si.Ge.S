@@ -153,7 +153,6 @@ export async function POST(request: Request) {
           objective_id: currentShift.objective_id || null,
           operator_id: finalOpId || currentShift.operator_id,
           resource_id: finalOpId || currentShift.operator_id,
-          operator_name: opName,
           entry_type: 'fichaje',
           content: `🛑 CIERRE DE TURNO (Check-out) — Duración: ${durText} | Bruto: ${grossHours}h | Neto: ${totalNetHours}h${abandonInfo}`,
           latitude: latitude || currentShift?.checkin_latitude || 0,

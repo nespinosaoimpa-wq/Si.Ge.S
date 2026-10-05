@@ -342,7 +342,6 @@ export async function POST(request: Request) {
         objective_id: objective_id,
         operator_id: finalResourceId,
         resource_id: finalResourceId,
-        operator_name: opName,
         entry_type: 'fichaje',
         content: `🚀 INICIO DE TURNO (Check-in): ${opName} inició servicio en ${objectiveName || 'Puesto de servicio'}${isWithinGeofence ? '' : ' ⚠️ (Fuera de geocerca)'}`,
         latitude,

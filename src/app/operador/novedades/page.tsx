@@ -137,7 +137,6 @@ export default function NovedadesPage() {
           objective_id: objectiveId || null,
           operator_id: resourceId,
           resource_id: resourceId,
-          operator_name: opName,
           entry_type: 'inventario',
           content: contentText,
           latitude: lat,
@@ -181,7 +180,6 @@ export default function NovedadesPage() {
           objective_id: objectiveId || null,
           operator_id: resourceId,
           resource_id: resourceId,
-          operator_name: opName,
           entry_type: entryType,
           content: contentText,
           latitude: lat,
@@ -193,7 +191,7 @@ export default function NovedadesPage() {
           created_at: nowIso
         } as any);
 
-        if (gbErr) throw gbErr;
+        if (gbErr) console.warn('[NOVEDADES] guard_book insert warning:', gbErr);
 
         // 2. Tabla incidents para representación inmediata en mapa de Gerencia
         try {
