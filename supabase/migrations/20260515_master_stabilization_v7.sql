@@ -1,5 +1,5 @@
 -- ============================================================
--- SPS 704 OS — MASTER STABILIZATION MIGRATION (v7.0)
+-- SIGPAD OS — MASTER STABILIZATION MIGRATION (v7.0)
 -- Propósito: Unificar nombres de columnas, asegurar FKs y 
 -- limpiar la publicación de Realtime para máxima estabilidad.
 -- ============================================================

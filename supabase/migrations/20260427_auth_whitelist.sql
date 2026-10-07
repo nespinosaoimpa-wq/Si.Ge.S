@@ -58,4 +58,4 @@ $$ LANGUAGE plpgsql;
 --   FOR EACH ROW EXECUTE FUNCTION public.check_user_authorization();
 
 -- 6. Insert initial seed (Optional - The user/manager will do this via UI)
--- INSERT INTO public.authorized_users (email, role, status) VALUES ('admin@704-security.com', 'gerente', 'approved');
+-- INSERT INTO public.authorized_users (email, role, status) VALUES ('admin@sigpad.com', 'gerente', 'approved');

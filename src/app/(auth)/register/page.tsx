@@ -59,7 +59,7 @@ export default function RegisterPage() {
 
       throw new Error(data?.error || 'Error al registrar la cuenta.');
     } catch (err: any) {
-      console.error('Registration error, applying 704 direct entry:', err);
+      console.error('Registration error, applying SIGPAD direct entry:', err);
       const userData = {
         email: email.toLowerCase().trim(),
         role: role || 'gerente',

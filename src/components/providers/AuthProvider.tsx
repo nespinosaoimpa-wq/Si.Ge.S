@@ -195,8 +195,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    localStorage.removeItem('SIGPAD_user'); 
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {}
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.clear();
+        sessionStorage.clear();
+      }
+    } catch (e) {}
     // Clear cookies
     document.cookie = "SIGPAD_user=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
     document.cookie = "SIGPAD_bypass_active=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";

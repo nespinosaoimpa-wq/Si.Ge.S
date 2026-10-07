@@ -112,7 +112,7 @@ export async function POST(request: Request) {
             company_name: 'Matriz SIGPAD OS (Global)',
             tenant_id: MASTER_TENANT_ID
           },
-          session: { access_token: 'master-token-704' }
+          session: { access_token: 'sigpad-master-token' }
         });
       }
     }
@@ -192,7 +192,7 @@ export async function POST(request: Request) {
           tenant_id: tenantInfo.tenantId, 
           company_name: tenantInfo.companyName 
         },
-        session: { access_token: 'master-pin-token-704' }
+        session: { access_token: 'sigpad-pin-token' }
       });
     }
 
@@ -266,7 +266,7 @@ export async function POST(request: Request) {
           tenant_id: tenantInfo.tenantId,
           company_name: tenantInfo.companyName
         },
-        session: { access_token: 'direct-db-token-704' }
+        session: { access_token: 'sigpad-db-token' }
       });
     }
 

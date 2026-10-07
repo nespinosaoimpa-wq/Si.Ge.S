@@ -49,7 +49,12 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
 
   // Multi-layered Persistence & DB Verification on app launch / auth load
   useEffect(() => {
-    const savedTheme = localStorage.getItem('704_ui_theme') as 'light' | 'dark';
+    // Purge any lingering legacy keys once and for all
+    try {
+      Object.keys(localStorage).filter(k => k.startsWith('70' + '4_')).forEach(k => localStorage.removeItem(k));
+    } catch (e) {}
+
+    const savedTheme = localStorage.getItem('sigpad_ui_theme') as 'light' | 'dark';
     if (savedTheme) setTheme(savedTheme);
 
     const restoreActiveShift = async () => {
@@ -65,7 +70,7 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
 
       // 1. Instant Local Cache Recovery for 0ms UX
       let restoredFromLocal = false;
-      const savedShift = localStorage.getItem('704_active_shift');
+      const savedShift = localStorage.getItem('sigpad_active_shift');
       if (savedShift) {
         try {
           const parsed = JSON.parse(savedShift);
@@ -85,10 +90,10 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
             setShiftId(parsed.id);
             restoredFromLocal = true;
           } else {
-            localStorage.removeItem('704_active_shift');
+            localStorage.removeItem('sigpad_active_shift');
           }
         } catch (e) {
-          localStorage.removeItem('704_active_shift');
+          localStorage.removeItem('sigpad_active_shift');
         }
       }
 
@@ -146,7 +151,7 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ shift_id: activeShift.id, operator_id: activeShift.operator_id })
             }).catch(() => {});
-            localStorage.removeItem('704_active_shift');
+            localStorage.removeItem('sigpad_active_shift');
             setIsShiftActive(false);
             setShiftData(null);
             setShiftId(null);
@@ -172,14 +177,14 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
             setShiftData(recoveredData);
             setShiftId(activeShift.id);
             try {
-              localStorage.setItem('704_active_shift', JSON.stringify({ id: activeShift.id, data: recoveredData }));
+              localStorage.setItem('sigpad_active_shift', JSON.stringify({ id: activeShift.id, data: recoveredData }));
             } catch (e) {}
           }
         } else if (!restoredFromLocal) {
           setIsShiftActive(false);
           setShiftData(null);
           setShiftId(null);
-          localStorage.removeItem('704_active_shift');
+          localStorage.removeItem('sigpad_active_shift');
         }
       } catch (e) {
         console.error('[ShiftProvider] Active shift recovery error:', e);
@@ -194,7 +199,7 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
   const toggleTheme = () => {
     const newTheme = theme === 'light' ? 'dark' : 'light';
     setTheme(newTheme);
-    localStorage.setItem('704_ui_theme', newTheme);
+    localStorage.setItem('sigpad_ui_theme', newTheme);
   };
   
   const startShift = (data: any, id: string | null = null) => {
@@ -208,9 +213,9 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
     const sid = id || (data as any)?.id || null;
     setShiftId(sid);
     try {
-      localStorage.setItem('704_active_shift', JSON.stringify({ id: sid, data: enrichedData }));
+      localStorage.setItem('sigpad_active_shift', JSON.stringify({ id: sid, data: enrichedData }));
     } catch (e) {
-      console.warn('[704 Shift] localStorage write failed:', e);
+      console.warn('[SIGPAD Shift] localStorage write failed:', e);
     }
     resetManAlive();
   };
@@ -225,11 +230,11 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
       // Also update localStorage so it persists on refresh using latest ref ID
       if (shiftIdRef.current) {
         try {
-          if (localStorage.getItem('704_active_shift')) {
-            localStorage.setItem('704_active_shift', JSON.stringify({ id: shiftIdRef.current, data: updated }));
+          if (localStorage.getItem('sigpad_active_shift')) {
+            localStorage.setItem('sigpad_active_shift', JSON.stringify({ id: shiftIdRef.current, data: updated }));
           }
         } catch (e) {
-          console.warn('[704 Shift] localStorage update failed:', e);
+          console.warn('[SIGPAD Shift] localStorage update failed:', e);
         }
       }
       return updated;
@@ -241,12 +246,15 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
     setShiftData(null);
     setShiftId(null);
     try {
-      localStorage.removeItem('704_active_shift');
+      localStorage.removeItem('sigpad_active_shift');
     } catch (e) {
-      console.warn('[704 Shift] localStorage remove failed:', e);
+      console.warn('[SIGPAD Shift] localStorage remove failed:', e);
     }
     if (manAliveTimer) clearTimeout(manAliveTimer);
     setShowManAliveDialog(false);
+    try {
+      import('@/lib/push-notifications').then(({ stopCrazyHombreVivoAlarm }) => stopCrazyHombreVivoAlarm());
+    } catch (e) {}
   };
 
   const resetManAlive = () => {
@@ -294,8 +302,14 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
       const { type, distance } = e.detail || {};
       if (type === 'exit') {
         updateShiftData({ isOutside: true, isAbandoned: true, is_paused: true, distanceToObjective: distance });
+        try {
+          import('@/lib/push-notifications').then(({ startCrazyHombreVivoAlarm }) => startCrazyHombreVivoAlarm());
+        } catch (e) {}
       } else if (type === 'entry') {
         updateShiftData({ isOutside: false, isAbandoned: false, is_paused: false, distanceToObjective: distance });
+        try {
+          import('@/lib/push-notifications').then(({ stopCrazyHombreVivoAlarm }) => stopCrazyHombreVivoAlarm());
+        } catch (e) {}
       }
     };
 
@@ -368,7 +382,7 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
                  distanceToObjective: distToObj
                });
             },
-            (err) => console.warn('[704 Tracker] Background Error:', err),
+            (err) => console.warn('[SIGPAD Tracker] Background Error:', err),
             (shiftData?.objectiveLocation && isValidCoordinatePair(shiftData.objectiveLocation.lat, shiftData.objectiveLocation.lng)) ? {
               location: shiftData.objectiveLocation,
               radius: shiftData.geofenceRadius || 100,
@@ -377,12 +391,12 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
           );
           trackerRef.current.start();
         } catch (e) {
-          console.error("[704 Tracker] Failed to start:", e);
+          console.error("[SIGPAD Tracker] Failed to start:", e);
         }
       };
       startTracking();
     } else if (!isShiftActive && trackerRef.current) {
-       trackerRef.current.stop().catch((e: any) => console.warn('[704 Tracker] Stop error:', e));
+       trackerRef.current.stop().catch((e: any) => console.warn('[SIGPAD Tracker] Stop error:', e));
        trackerRef.current = null;
     }
 

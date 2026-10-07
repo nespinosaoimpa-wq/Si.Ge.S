@@ -1,5 +1,5 @@
 -- ============================================================
--- SPS 704 OS — Production Hardening Migration
+-- SIGPAD OS — Production Hardening Migration
 -- Fecha: 2026-05-13
 -- ============================================================
 

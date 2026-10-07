@@ -479,7 +479,7 @@ export default function PersonalPage() {
               <div className="flex items-center justify-between p-8 border-b border-zinc-100 bg-zinc-50/50">
                 <div>
                   <h2 className="text-2xl font-black text-zinc-900 tracking-tighter uppercase">{editingId ? 'Editar Legajo' : 'Alta de Personal'}</h2>
-                  <p className="text-[10px] text-zinc-400 font-black uppercase tracking-[0.2em] mt-1.5 italic">Apertura de Legajo Digital SPS 704</p>
+                  <p className="text-[10px] text-zinc-400 font-black uppercase tracking-[0.2em] mt-1.5 italic">Apertura de Legajo Digital SIGPAD</p>
                 </div>
                 <button onClick={() => setIsModalOpen(false)} className="w-11 h-11 rounded-2xl bg-white hover:bg-zinc-50 flex items-center justify-center transition-colors border border-zinc-100 shadow-sm">
                   <X size={20} className="text-zinc-400" />

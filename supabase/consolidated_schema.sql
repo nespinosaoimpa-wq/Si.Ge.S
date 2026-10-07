@@ -341,7 +341,7 @@ $$ LANGUAGE plpgsql;
 --   FOR EACH ROW EXECUTE FUNCTION public.check_user_authorization();
 
 -- 6. Insert initial seed (Optional - The user/manager will do this via UI)
--- INSERT INTO public.authorized_users (email, role, status) VALUES ('admin@704-security.com', 'gerente', 'approved');
+-- INSERT INTO public.authorized_users (email, role, status) VALUES ('admin@sigpad.com', 'gerente', 'approved');
 
 -- ----------------------------------------------------------
 -- Migration: 20260427_checkpoints.sql
@@ -1586,7 +1586,7 @@ CREATE POLICY "open_all_trace" ON patrol_trace FOR ALL USING (true) WITH CHECK (
 -- ----------------------------------------------------------
 
 -- ============================================================
--- SPS 704 OS — Production Hardening Migration
+-- SIGPAD OS — Production Hardening Migration
 -- Fecha: 2026-05-13
 -- ============================================================
 
@@ -1950,7 +1950,7 @@ $$ LANGUAGE plpgsql STABLE;
 
 -- ============================================================
 -- PATROL TRACE: Performance Optimization for High-Frequency GPS
--- SPS 704 OS — Sprint 2 (Data & Forensics)
+-- SIGPAD OS — Sprint 2 (Data & Forensics)
 -- ============================================================
 
 -- 1. COMPOSITE INDEX: round + time (for ordered trace queries)
@@ -2099,7 +2099,7 @@ NOTIFY pgrst, 'reload schema';
 -- ----------------------------------------------------------
 
 -- ============================================================
--- SPS 704 OS — MASTER STABILIZATION MIGRATION (v7.0)
+-- SIGPAD OS — MASTER STABILIZATION MIGRATION (v7.0)
 -- Propósito: Unificar nombres de columnas, asegurar FKs y 
 -- limpiar la publicación de Realtime para máxima estabilidad.
 -- ============================================================

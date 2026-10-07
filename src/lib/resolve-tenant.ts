@@ -3,7 +3,7 @@
  * Función centralizada de resolución de tenant_id para API Routes de SIGPAD.
  *
  * REGLA DE ORO: Las peticiones en la plataforma SIGPAD pertenecen a SIGPAD TEST ('7f1fd036-6a82-47ab-aa2a-964c081e285b')
- * o a su respectiva empresa SIGPAD, incluso si el usuario utiliza el mismo email en 704.
+ * o a su respectiva empresa cliente SIGPAD.
  */
 
 import { createServiceClient } from '@/lib/supabase-server';
@@ -41,7 +41,7 @@ function getCookieFromRequest(req: any, name: string): string | null {
 
 export async function resolveTenantFromRequest(req: any): Promise<ResolvedTenant | null> {
   try {
-    const rawUserCookie = getCookieFromRequest(req, 'SIGPAD_user') || getCookieFromRequest(req, '704_user') || getCookieFromRequest(req, 'SPS_user');
+    const rawUserCookie = getCookieFromRequest(req, 'SIGPAD_user') || getCookieFromRequest(req, 'SPS_user');
 
     let userId: string | null = null;
     let userEmail: string | null = null;

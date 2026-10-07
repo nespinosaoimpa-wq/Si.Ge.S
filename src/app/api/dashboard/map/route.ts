@@ -31,69 +31,71 @@ export async function GET(req: NextRequest) {
 
     const supabase = createServiceClient();
 
-    // Auto-generate alerts for unassigned shifts in the next 24 hours
-    try {
-      const now = new Date();
-      const next24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-      
-      let unassignedQuery = supabase
-        .from('shift_requirements')
-        .select('id, objective_id, start_time, objectives:objective_id(name)')
-        .eq('status', 'unassigned')
-        .lte('start_time', next24h.toISOString())
-        .gt('start_time', now.toISOString());
-
-      if (!isSuper && tenantId) {
-        unassignedQuery = unassignedQuery.eq('tenant_id', tenantId);
-      }
-
-      const { data: unassignedReqs } = await unassignedQuery;
-
-      if (unassignedReqs && unassignedReqs.length > 0) {
-        const objIds = Array.from(new Set(unassignedReqs.map((r: any) => r.objective_id).filter(Boolean)));
-        let alarmCheck = supabase
-          .from('alarms')
-          .select('objective_id')
-          .in('objective_id', objIds)
-          .eq('alarm_type', 'cobertura_pendiente')
-          .gte('created_at', new Date(now.getTime() - 30 * 60 * 1000).toISOString());
+    // 🚀 Non-blocking background worker: run audit and auto-alert scheduler without delaying map response
+    (async () => {
+      try {
+        const now = new Date();
+        const next24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+        
+        let unassignedQuery = supabase
+          .from('shift_requirements')
+          .select('id, objective_id, start_time, objectives:objective_id(name)')
+          .eq('status', 'unassigned')
+          .lte('start_time', next24h.toISOString())
+          .gt('start_time', now.toISOString());
 
         if (!isSuper && tenantId) {
-          alarmCheck = alarmCheck.eq('tenant_id', tenantId);
+          unassignedQuery = unassignedQuery.eq('tenant_id', tenantId);
         }
 
-        const { data: existingAlarms } = await alarmCheck;
-        const existingObjIds = new Set((existingAlarms || []).map((a: any) => a.objective_id));
+        const { data: unassignedReqs } = await unassignedQuery;
 
-        const alarmsToInsert = unassignedReqs
-          .filter((req: any) => !existingObjIds.has(req.objective_id))
-          .map((req: any) => {
-            const formattedTime = new Date(req.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            return {
-              triggered_by: 'system_scheduler',
-              objective_id: req.objective_id,
-              alarm_type: 'cobertura_pendiente',
-              message: `🚨 ALERTA COBERTURA: Falta asignar personal para el turno de las ${formattedTime} hs en ${req.objectives?.name || 'objetivo'}`,
-              status: 'active',
-              tenant_id: tenantId
-            };
-          });
+        if (unassignedReqs && unassignedReqs.length > 0) {
+          const objIds = Array.from(new Set(unassignedReqs.map((r: any) => r.objective_id).filter(Boolean)));
+          let alarmCheck = supabase
+            .from('alarms')
+            .select('objective_id')
+            .in('objective_id', objIds)
+            .eq('alarm_type', 'cobertura_pendiente')
+            .gte('created_at', new Date(now.getTime() - 30 * 60 * 1000).toISOString());
 
-        if (alarmsToInsert.length > 0) {
-          await supabase.from('alarms').insert(alarmsToInsert);
+          if (!isSuper && tenantId) {
+            alarmCheck = alarmCheck.eq('tenant_id', tenantId);
+          }
+
+          const { data: existingAlarms } = await alarmCheck;
+          const existingObjIds = new Set((existingAlarms || []).map((a: any) => a.objective_id));
+
+          const alarmsToInsert = unassignedReqs
+            .filter((req: any) => !existingObjIds.has(req.objective_id))
+            .map((req: any) => {
+              const formattedTime = new Date(req.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+              return {
+                triggered_by: 'system_scheduler',
+                objective_id: req.objective_id,
+                alarm_type: 'cobertura_pendiente',
+                message: `🚨 ALERTA COBERTURA: Falta asignar personal para el turno de las ${formattedTime} hs en ${req.objectives?.name || 'objetivo'}`,
+                status: 'active',
+                tenant_id: tenantId
+              };
+            });
+
+          if (alarmsToInsert.length > 0) {
+            await supabase.from('alarms').insert(alarmsToInsert);
+          }
         }
-      }
 
-      // Auto-Audit Coverage: Throttle to max once every 60 seconds to optimize Vercel serverless execution
-      const nowMs = Date.now();
-      if (nowMs - lastCoverageAuditTime > 60000) {
-        lastCoverageAuditTime = nowMs;
-        const { auditStaleOperatorCoverage } = await import('@/lib/coverage-worker');
-        await auditStaleOperatorCoverage(supabase, isSuper ? undefined : (tenantId || undefined));
+        // Auto-Audit Coverage: Throttle to max once every 60 seconds and run non-blocking in background
+        const nowMs = Date.now();
+        if (nowMs - lastCoverageAuditTime > 60000) {
+          lastCoverageAuditTime = nowMs;
+          const { auditStaleOperatorCoverage } = await import('@/lib/coverage-worker');
+          await auditStaleOperatorCoverage(supabase, isSuper ? undefined : (tenantId || undefined));
+        }
+      } catch (e) {
+        // Non-fatal background error
       }
-    } catch (e) {
-      console.error('[AUTO_ALERT_SCHEDULER_ERROR]', e);
-    }
+    })();
 
     // Fetch queries: for gerente/owner/superadmin, fetch all active objectives cleanly without PostgREST syntax issues
     // Fetch objectives first so we can use objective IDs to catch any alerts for this tenant

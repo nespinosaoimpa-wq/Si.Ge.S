@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { db, GPSPoint } from './db';
+import { showNativeNotification, startCrazyHombreVivoAlarm, stopCrazyHombreVivoAlarm } from './push-notifications';
 
 export function isValidCoordinatePair(lat: any, lng: any): boolean {
   if (lat === null || lat === undefined || lng === null || lng === undefined) return false;
@@ -613,6 +614,11 @@ export class GPSTracker {
     await this.flushTraceBuffer();
     this.stopFlushTimer();
 
+    // Stop any active alarms
+    try {
+      stopCrazyHombreVivoAlarm();
+    } catch (e) {}
+
     await this.syncPendingPoints();
   }
 
@@ -620,13 +626,31 @@ export class GPSTracker {
     if ("vibrate" in navigator) {
       navigator.vibrate([300, 100, 300, 100, 300]);
     }
+    try {
+      showNativeNotification({
+        title: '⚠️ SIGPAD: Límite de Perímetro',
+        body: `Te estás alejando de tu puesto (${Math.round(data.distance || 0)}m). Por favor regresá al objetivo.`,
+        type: 'normal',
+        sound: true,
+        requireInteraction: false,
+        url: '/operador/fichaje'
+      });
+    } catch (e) {}
   }
 
   private async handleReturn(data: any) {
     try {
+      stopCrazyHombreVivoAlarm();
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('sigpad_geofence_alert', { detail: { type: 'entry', distance: data.distance } }));
       }
+      showNativeNotification({
+        title: '✅ SIGPAD: De regreso en puesto',
+        body: `Has reingresado al perímetro de seguridad asignado.`,
+        type: 'normal',
+        sound: false,
+        url: '/operador/fichaje'
+      });
       await fetch('/api/tracking/alert', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -648,6 +672,17 @@ export class GPSTracker {
       if ("vibrate" in navigator) {
         navigator.vibrate([500, 200, 500, 200, 1000]);
       }
+      try {
+        startCrazyHombreVivoAlarm();
+        showNativeNotification({
+          title: '🚨 ¡ALARMA: FUERA DE PUESTO!',
+          body: `Has abandonado el perímetro de seguridad (${Math.round(data.distance || 0)}m del objetivo). Regresá de inmediato al puesto asignado.`,
+          type: 'emergency',
+          sound: true,
+          requireInteraction: true,
+          url: '/operador/fichaje'
+        });
+      } catch (e) {}
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('sigpad_geofence_alert', { detail: { type: 'exit', distance: data.distance } }));
       }

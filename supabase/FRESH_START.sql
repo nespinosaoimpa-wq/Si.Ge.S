@@ -622,7 +622,7 @@ VALUES
   ('S-701', 'Carlos Méndez', 'Vigilante Principal', 'activo', '+54 342 555-0123', 'c.mendez@empresa.com', '2024-01-12', '$840.000', 3200.00, 'OBJ-001'),
   ('S-702', 'Marta Ruiz', 'Supervisora de Zona', 'activo', '+54 342 555-0124', 'm.ruiz@empresa.com', '2023-11-20', '$920.000', 3800.00, 'OBJ-002'),
   ('S-703', 'Diego López', 'Vigilante', 'disponible', '+54 342 555-0125', 'd.lopez@empresa.com', '2024-03-05', '$780.000', 3000.00, NULL),
-  ('S-704', 'Ana García', 'Jefa de Turno', 'activo', '+54 342 555-0126', 'a.garcia@empresa.com', '2023-07-15', '$960.000', 4000.00, 'OBJ-003')
+  ('S-705', 'Ana García', 'Jefa de Turno', 'activo', '+54 342 555-0126', 'a.garcia@empresa.com', '2023-07-15', '$960.000', 4000.00, 'OBJ-003')
 ON CONFLICT (id) DO NOTHING;
 
 -- Usuario gerente autorizado

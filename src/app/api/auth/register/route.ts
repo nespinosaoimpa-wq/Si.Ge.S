@@ -76,12 +76,34 @@ export async function POST(request: Request) {
           if (tenantByEmail?.id) targetTenantId = tenantByEmail.id;
         } catch (e) {}
 
+        if (!targetTenantId) {
+          const companyName = fullName ? `Empresa ${fullName}` : `Seguridad ${normalizedEmail.split('@')[0]}`;
+          try {
+            const { data: newTenant } = await supabase
+              .from('tenants')
+              .insert({
+                name: companyName,
+                admin_email: normalizedEmail,
+                is_active: true,
+                created_at: new Date().toISOString()
+              })
+              .select('id')
+              .maybeSingle();
+            if (newTenant?.id) targetTenantId = newTenant.id;
+          } catch (tErr) {
+            console.warn('[REGISTER] Tenant creation notice:', tErr);
+          }
+          if (!targetTenantId) {
+            targetTenantId = MASTER_TENANT_ID;
+          }
+        }
+
         // Auto-crear en authorized_users
         await supabase.from('authorized_users').upsert({
           email: normalizedEmail,
           role: 'gerente',
           status: 'approved',
-          ...(targetTenantId ? { tenant_id: targetTenantId } : {})
+          tenant_id: targetTenantId
         }, { onConflict: 'email' });
 
         // Auto-crear en resources
@@ -127,8 +149,8 @@ export async function POST(request: Request) {
     // 4. CREATE USER — Try Admin API, fallback to signUp, fallback to DB direct provisioning
     const finalRole = requestedRole === 'operador' ? 'operador' : (requestedRole === 'gerente' ? 'gerente' : (resourceData?.role?.toLowerCase().includes('gerente') ? 'gerente' : 'operador'));
     const finalName = fullName || resourceData?.name || 'Usuario SIGPAD';
-    // Usar tenant_id del recurso encontrado; null si no tiene empresa asignada todavía
-    const targetTenantId: string | null = resourceData?.tenant_id || null;
+    // Usar tenant_id del recurso encontrado o MASTER_TENANT_ID para garantizar sesión operativa
+    const targetTenantId: string = resourceData?.tenant_id || MASTER_TENANT_ID;
 
     let userId = 'user-' + Date.now();
     let authCreated = false;

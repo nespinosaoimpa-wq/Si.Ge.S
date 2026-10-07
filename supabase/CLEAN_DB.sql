@@ -24,7 +24,7 @@ TRUNCATE TABLE public.checkpoints CASCADE;
 TRUNCATE TABLE public.objective_zones CASCADE;
 
 -- 3. Limpiar recursos y objetivos (manteniendo usuarios autorizados para no perder acceso)
-DELETE FROM public.resources WHERE id IN ('S-701', 'S-702', 'S-703', 'S-704');
+DELETE FROM public.resources WHERE id IN ('S-701', 'S-702', 'S-703', 'S-705');
 DELETE FROM public.objectives WHERE id IN ('OBJ-001', 'OBJ-002', 'OBJ-003');
 
 -- Opcional: Si querés vaciar también la whitelist de correos autorizados

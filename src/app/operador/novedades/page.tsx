@@ -25,6 +25,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import Link from 'next/link';
 import { useShift } from '@/components/providers/ShiftProvider';
+import { useAuth } from '@/components/providers/AuthProvider';
 import { cn } from '@/lib/utils';
 
 const quickButtons = [
@@ -39,6 +40,7 @@ const quickButtons = [
 ];
 
 export default function NovedadesPage() {
+  const { user } = useAuth();
   const { isShiftActive, shiftData, theme } = useShift();
   const [selectedIncident, setSelectedIncident] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -91,14 +93,9 @@ export default function NovedadesPage() {
     
     try {
       const { supabase } = await import('@/lib/supabase');
-      const objectiveId = (shiftData as any)?.objective_id || (shiftData as any)?.current_objective_id;
-      const resourceId = (shiftData as any)?.operator_id || (shiftData as any)?.resource_id || (shiftData as any)?.id;
-      const tenantId = (shiftData as any)?.tenant_id;
-
-      if (!objectiveId && selectedData.id !== 'falla_equipo') {
-        setErrorMsg('No se detectó el vínculo con tu legajo. Por favor, cerrá sesión y volvé a entrar o consultá con el gerente.');
-        return;
-      }
+      const objectiveId = (shiftData as any)?.objective_id || (shiftData as any)?.current_objective_id || null;
+      const resourceId = (shiftData as any)?.operator_id || (shiftData as any)?.resource_id || (shiftData as any)?.id || (user as any)?.id || null;
+      const tenantId = (shiftData as any)?.tenant_id || null;
 
       // 🖼️ Upload multimedia to Supabase Storage directly from browser
       let image_url: string | null = null;
@@ -127,111 +124,36 @@ export default function NovedadesPage() {
       const opName = (shiftData as any)?.operator_name || (shiftData as any)?.name || 'Operador';
       const nowIso = new Date().toISOString();
 
-      if (selectedData.id === 'falla_equipo' && selectedItemId) {
-        // Special case: Inventory Damage / Equipment issue
-        const contentText = `📦 FALLA DE EQUIPAMIENTO: ${comment || 'Falla de equipo reportada.'}`;
+      const entryType = selectedData.id === 'falla_equipo' ? 'inventario'
+        : selectedData.id === 'puesto' ? 'libro_guardia' 
+        : selectedData.id === 'emergencia' ? 'emergencia' 
+        : 'incidente';
 
-        // 1. Bitácora de guardia y Libro de novedades
-        const { error: gbErr } = await supabase.from('guard_book_entries').insert({
-          tenant_id: tenantId,
+      const contentText = selectedData.id === 'falla_equipo'
+        ? `📦 FALLA DE EQUIPAMIENTO: ${comment || 'Falla de equipo reportada.'}`
+        : `${selectedData.label.toUpperCase()}: ${comment || 'Sin detalles adicionales'}`;
+
+      // 🚀 Enviar a través de la API segura con bypass de RLS y broadcasting garantizado
+      const apiRes = await fetch('/api/guard-book', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           objective_id: objectiveId || null,
-          operator_id: resourceId,
-          resource_id: resourceId,
-          entry_type: 'inventario',
-          content: contentText,
-          latitude: lat,
-          longitude: lng,
-          urgency: 'alta',
-          image_url,
-          audio_url,
-          status: 'pending',
-          created_at: nowIso
-        } as any);
-        if (gbErr) console.warn('[NOVEDADES] guard_book insert warning:', gbErr);
-
-        // 2. Incidentes para mapa táctico
-        const { error: damErr } = await supabase.from('incidents').insert({
-          tenant_id: tenantId,
-          objective_id: objectiveId || null,
-          operator_id: resourceId,
-          operator_name: opName,
-          entry_type: 'novedad',
-          urgency: 'alta',
-          content: contentText,
-          latitude: lat,
-          longitude: lng,
-          image_url,
-          audio_url,
-          status: 'abierto',
-          created_at: nowIso
-        } as any);
-        if (damErr) throw damErr;
-      } else {
-        // Normal case: Incidente / Alerta / Novedad de puesto
-        const entryType = selectedData.id === 'puesto' ? 'libro_guardia' 
-          : selectedData.id === 'emergencia' ? 'emergencia' 
-          : 'incidente';
-
-        const contentText = `${selectedData.label.toUpperCase()}: ${comment || 'Sin detalles adicionales'}`;
-
-        // 1. Bitácora del objetivo y Libro de Novedades del Gerente
-        const { error: gbErr } = await supabase.from('guard_book_entries').insert({
-          tenant_id: tenantId,
-          objective_id: objectiveId || null,
-          operator_id: resourceId,
-          resource_id: resourceId,
+          resource_id: resourceId || (user as any)?.id || null,
+          tenant_id: tenantId || null,
           entry_type: entryType,
           content: contentText,
           latitude: lat,
           longitude: lng,
-          urgency: selectedData.urgency,
+          urgency: selectedData.urgency || 'alta',
           image_url,
-          audio_url,
-          status: 'pending',
-          created_at: nowIso
-        } as any);
+          audio_url
+        })
+      });
 
-        if (gbErr) console.warn('[NOVEDADES] guard_book insert warning:', gbErr);
-
-        // 2. Tabla incidents para representación inmediata en mapa de Gerencia
-        try {
-          await supabase.from('incidents').insert({
-            tenant_id: tenantId,
-            objective_id: objectiveId || null,
-            operator_id: resourceId,
-            operator_name: opName,
-            entry_type: entryType,
-            urgency: selectedData.urgency,
-            content: contentText,
-            latitude: lat,
-            longitude: lng,
-            image_url,
-            audio_url,
-            status: 'abierto',
-            created_at: nowIso
-          } as any);
-        } catch (incErr) {
-          console.warn('[NOVEDADES] incidents mirror warning:', incErr);
-        }
-
-        // 3. Si es emergencia o crítica, disparar alarma para panel rojo
-        if (selectedData.urgency === 'critica' || selectedData.id === 'emergencia') {
-          try {
-            await supabase.from('alarms').insert({
-              tenant_id: tenantId,
-              objective_id: objectiveId || null,
-              operator_id: resourceId,
-              triggered_by: resourceId,
-              operator_name: opName,
-              alarm_type: 'panico',
-              message: contentText,
-              latitude: lat,
-              longitude: lng,
-              status: 'active',
-              created_at: nowIso
-            } as any);
-          } catch (alarmErr) {}
-        }
+      if (!apiRes.ok) {
+        const errData = await apiRes.json().catch(() => ({}));
+        throw new Error(errData.error || 'Error al transmitir el reporte.');
       }
       
       setSuccess(true);

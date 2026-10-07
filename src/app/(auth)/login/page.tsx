@@ -52,13 +52,7 @@ export default function LoginPage() {
       } catch (e) {}
 
       if (typeof window !== 'undefined') {
-        localStorage.removeItem('SIGPAD_user');
-        localStorage.removeItem('704_user');
-        localStorage.removeItem('704_active_shift');
-        localStorage.removeItem('704_current_shift');
-        localStorage.removeItem('704_shift_start_time');
-        localStorage.removeItem('704_shift_id');
-        localStorage.removeItem('704_operator_id');
+        localStorage.clear();
         sessionStorage.clear();
       }
 
@@ -86,7 +80,7 @@ export default function LoginPage() {
       let message = err.message || 'Error al intentar ingresar. Revisa tus credenciales.';
       
       if (message.includes('fetch failed')) {
-        // Auto-login fallback for Gerente (704 direct session methodology)
+        // Auto-login fallback for Gerente (SIGPAD direct session methodology)
         const fallbackUser = {
           email: email.toLowerCase().trim(),
           role: role || 'gerente',

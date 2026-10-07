@@ -6,14 +6,15 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const ctx = await resolveTenantFromRequest(req);
     if (!ctx) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     const { tenantId, isSuper } = ctx;
 
-    const objectiveId = params.id;
+    const objectiveId = id;
     if (!objectiveId) {
       return NextResponse.json({ error: 'ID de objetivo requerido' }, { status: 400 });
     }

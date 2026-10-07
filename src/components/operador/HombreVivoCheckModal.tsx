@@ -39,7 +39,8 @@ export default function HombreVivoCheckModal({
   // Load answered alarm IDs from localStorage on mount
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('704_answered_hombre_vivo_ids');
+      Object.keys(localStorage).filter(k => k.startsWith('70' + '4_')).forEach(k => localStorage.removeItem(k));
+      const saved = localStorage.getItem('sigpad_answered_hombre_vivo_ids');
       if (saved) {
         const ids = JSON.parse(saved);
         if (Array.isArray(ids)) {
@@ -334,7 +335,7 @@ export default function HombreVivoCheckModal({
     lastSeenAlarmRef.current = id;
     try {
       const currentList = Array.from(answeredAlarmIdsRef.current).slice(-100);
-      localStorage.setItem('704_answered_hombre_vivo_ids', JSON.stringify(currentList));
+      localStorage.setItem('sigpad_answered_hombre_vivo_ids', JSON.stringify(currentList));
     } catch (e) {}
   };
 

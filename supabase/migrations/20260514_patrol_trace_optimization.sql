@@ -1,6 +1,6 @@
 -- ============================================================
 -- PATROL TRACE: Performance Optimization for High-Frequency GPS
--- SPS 704 OS — Sprint 2 (Data & Forensics)
+-- SIGPAD OS — Sprint 2 (Data & Forensics)
 -- ============================================================
 
 -- 1. COMPOSITE INDEX: round + time (for ordered trace queries)

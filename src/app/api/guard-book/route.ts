@@ -381,61 +381,94 @@ export async function POST(request: NextRequest) {
       audio_url = null,
     } = body;
 
-    if (!objective_id || objective_id === 'objetivo_demo') {
-      return NextResponse.json({ error: 'objective_id inválido o faltante' }, { status: 400 });
-    }
-    if (!rawResourceId || rawResourceId === 'recurso_demo') {
-      return NextResponse.json({ error: 'resource_id inválido o faltante' }, { status: 400 });
-    }
-
     let targetTenantId = isSuper ? (body.tenant_id || tenantId) : tenantId;
+    let resolvedObjectiveId = (objective_id && objective_id !== 'objetivo_demo') ? objective_id : null;
+    let resource_id = (rawResourceId && rawResourceId !== 'recurso_demo') ? rawResourceId : null;
 
-    if (!targetTenantId) {
-      if (objective_id) {
-        const { data: objData } = await supabase
-          .from('objectives')
-          .select('tenant_id')
-          .eq('id', objective_id)
+    // 1. Resolve resource_id if missing or generic
+    if (!resource_id || resource_id === 'gerente_master' || resource_id === 'gerente') {
+      if (userId) {
+        const { data: res } = await supabase
+          .from('resources')
+          .select('id, tenant_id, current_objective_id')
+          .or(`user_id.eq.${userId},assigned_to.eq.${userId}`)
           .maybeSingle();
-        if (objData?.tenant_id) targetTenantId = objData.tenant_id;
-      }
-      if (!targetTenantId && rawResourceId) {
-        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawResourceId);
-        let resQuery = supabase.from('resources').select('tenant_id');
-        if (isUUID) {
-          resQuery = resQuery.or(`id.eq.${rawResourceId},assigned_to.eq.${rawResourceId}`);
+        if (res?.id) {
+          resource_id = res.id;
+          if (!targetTenantId && res.tenant_id) targetTenantId = res.tenant_id;
+          if (!resolvedObjectiveId && res.current_objective_id) resolvedObjectiveId = res.current_objective_id;
         } else {
-          resQuery = resQuery.eq('id', rawResourceId);
+          resource_id = userId;
         }
-        const { data: resData } = await resQuery.maybeSingle();
-        if (resData?.tenant_id) targetTenantId = resData.tenant_id;
+      } else {
+        resource_id = 'operador_general';
       }
-    }
-
-    if (!targetTenantId) {
-      return NextResponse.json({ error: 'tenant_id es requerido' }, { status: 400 });
-    }
-
-    let resource_id = rawResourceId;
-    if (rawResourceId === 'gerente_master' || rawResourceId === 'gerente' || !rawResourceId) {
-      resource_id = userId || 'gerente';
     } else {
-      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawResourceId);
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resource_id);
       if (isUUID) {
         const { data: res } = await supabase
           .from('resources')
-          .select('id')
-          .or(`id.eq.${rawResourceId},assigned_to.eq.${rawResourceId}`)
+          .select('id, tenant_id, current_objective_id')
+          .or(`id.eq.${resource_id},assigned_to.eq.${resource_id}`)
           .maybeSingle();
-        if (res?.id) resource_id = res.id;
+        if (res?.id) {
+          resource_id = res.id;
+          if (!targetTenantId && res.tenant_id) targetTenantId = res.tenant_id;
+          if (!resolvedObjectiveId && res.current_objective_id) resolvedObjectiveId = res.current_objective_id;
+        }
       }
+    }
+
+    // 2. Resolve objective_id if missing from active shift or tenant objectives
+    if (!resolvedObjectiveId) {
+      if (resource_id) {
+        const { data: activeShift } = await supabase
+          .from('guard_shifts')
+          .select('objective_id, tenant_id')
+          .eq('operator_id', resource_id)
+          .is('checkout_time', null)
+          .order('checkin_time', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (activeShift?.objective_id) {
+          resolvedObjectiveId = activeShift.objective_id;
+          if (!targetTenantId && activeShift.tenant_id) targetTenantId = activeShift.tenant_id;
+        }
+      }
+
+      if (!resolvedObjectiveId && targetTenantId) {
+        const { data: firstObj } = await supabase
+          .from('objectives')
+          .select('id')
+          .eq('tenant_id', targetTenantId)
+          .limit(1)
+          .maybeSingle();
+        if (firstObj?.id) resolvedObjectiveId = firstObj.id;
+      }
+
+      if (!resolvedObjectiveId) {
+        const { data: anyObj } = await supabase
+          .from('objectives')
+          .select('id, tenant_id')
+          .limit(1)
+          .maybeSingle();
+        if (anyObj?.id) {
+          resolvedObjectiveId = anyObj.id;
+          if (!targetTenantId && anyObj.tenant_id) targetTenantId = anyObj.tenant_id;
+        }
+      }
+    }
+
+    // 3. Fallback tenant_id if still unassigned
+    if (!targetTenantId) {
+      targetTenantId = '7f1fd036-6a82-47ab-aa2a-964c081e285b';
     }
 
     let entryLat = latitude;
     let entryLng = longitude;
-    if ((!entryLat || !entryLng || Number(entryLat) === 0) && objective_id) {
+    if ((!entryLat || !entryLng || Number(entryLat) === 0) && resolvedObjectiveId) {
       try {
-        const { data: objCoords } = await supabase.from('objectives').select('latitude, longitude').eq('id', objective_id).maybeSingle();
+        const { data: objCoords } = await supabase.from('objectives').select('latitude, longitude').eq('id', resolvedObjectiveId).maybeSingle();
         if (objCoords?.latitude) {
           entryLat = objCoords.latitude;
           entryLng = objCoords.longitude;
@@ -446,15 +479,13 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from('guard_book_entries')
       .insert({
-        objective_id,
+        objective_id: resolvedObjectiveId,
         operator_id: resource_id,
-        resource_id: resource_id,
         entry_type,
         content,
         latitude: entryLat,
         longitude: entryLng,
         urgency,
-        status: 'pending',
         image_url,
         audio_url,
         created_at: new Date().toISOString(),
@@ -479,18 +510,20 @@ export async function POST(request: NextRequest) {
           .or(`id.eq.${resource_id},assigned_to.eq.${resource_id}`)
           .maybeSingle();
         if (resData?.name) operatorName = resData.name;
-        const { data: objData } = await supabase.from('objectives').select('name, latitude, longitude').eq('id', objective_id).maybeSingle();
-        if (objData?.name) objectiveName = objData.name;
-        // Use objective coordinates when operator GPS is missing/zero
-        if ((!objLat || !objLng) && objData?.latitude) {
-          objLat = objData.latitude;
-          objLng = objData.longitude;
+        if (resolvedObjectiveId) {
+          const { data: objData } = await supabase.from('objectives').select('name, latitude, longitude').eq('id', resolvedObjectiveId).maybeSingle();
+          if (objData?.name) objectiveName = objData.name;
+          // Use objective coordinates when operator GPS is missing/zero
+          if ((!objLat || !objLng) && objData?.latitude) {
+            objLat = objData.latitude;
+            objLng = objData.longitude;
+          }
         }
       } catch (e) {}
 
       await supabase.from('alarms').insert({
         triggered_by: resource_id,
-        objective_id,
+        objective_id: resolvedObjectiveId,
         alarm_type: entry_type === 'emergencia' ? 'panico' : (entry_type || 'alerta'),
         message: content,
         latitude: objLat,
@@ -510,11 +543,11 @@ export async function POST(request: NextRequest) {
       try {
         let objLat = latitude;
         let objLng = longitude;
-        if ((!objLat || !objLng || Number(objLat) === 0) && objective_id) {
+        if ((!objLat || !objLng || Number(objLat) === 0) && resolvedObjectiveId) {
           const { data: objCoords } = await supabase
             .from('objectives')
             .select('latitude, longitude')
-            .eq('id', objective_id)
+            .eq('id', resolvedObjectiveId)
             .maybeSingle();
           if (objCoords?.latitude) {
             objLat = objCoords.latitude;
@@ -522,7 +555,7 @@ export async function POST(request: NextRequest) {
           }
         }
         await supabase.from('incidents').insert({
-          objective_id,
+          objective_id: resolvedObjectiveId,
           operator_id: resource_id,
           tenant_id: targetTenantId,
           entry_type: entry_type || 'novedad',
