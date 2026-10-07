@@ -48,12 +48,26 @@ export default function PWARegistration() {
       setActiveTab('android');
     }
 
-    // 3. Register Service Worker
+    // 3. Register Service Worker & Purge any legacy dynamic HTML page caches
     try {
+      if (typeof window !== 'undefined' && 'caches' in window) {
+        caches.keys().then((names) => {
+          names.forEach((name) => {
+            if (name.includes('v11') || name.includes('static') || name.includes('runtime')) {
+              caches.open(name).then((cache) => {
+                cache.delete('/operador');
+                cache.delete('/gerente');
+                cache.delete('/');
+              }).catch(() => {});
+            }
+          });
+        }).catch(() => {});
+      }
+
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/sw.js').then((reg) => {
           reg.update().catch(() => {});
-          console.log('[PWA] SW registrado v10:', reg.scope);
+          console.log('[PWA] SW registrado v12:', reg.scope);
         }).catch(console.warn);
       }
     } catch (e) {

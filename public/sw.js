@@ -1,16 +1,15 @@
-// SIGPAD Service Worker — V11 (Ultra Vercel 0-Byte Transfer Protection + Offline Cache-First)
-const CACHE_NAME = 'sigpad-v11-static';
-const RUNTIME_CACHE = 'sigpad-v11-runtime';
+// SIGPAD Service Worker — V12 (Ultra High-Performance PWA + Pure Native Navigation)
+const CACHE_NAME = 'sigpad-v12-static';
+const RUNTIME_CACHE = 'sigpad-v12-runtime';
 
+// ONLY cache immutable static assets — NEVER cache dynamic authenticated HTML routes (/operador, /gerente)
 const ASSETS_TO_CACHE = [
-  '/',
-  '/operador',
-  '/gerente',
   '/logo_sigpad.png',
   '/icons/icon-192x192.png',
   '/icons/icon-512x512.png',
   '/icons/apple-touch-icon.png',
-  '/icons/maskable-icon.png'
+  '/icons/maskable-icon.png',
+  '/manifest.webmanifest'
 ];
 
 self.addEventListener('install', (event) => {
@@ -31,14 +30,21 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   
+  // ── 1. CRITICAL: NEVER intercept top-level page navigations ──
+  // Letting the browser handle navigation natively prevents Chromium ERR_FAILED on 307 redirects,
+  // prevents session leakage between operator/gerente logins, and guarantees fresh auth tokens.
+  if (event.request.mode === 'navigate') {
+    return;
+  }
+
   const url = new URL(event.request.url);
 
-  // 1. Bypass API routes and Supabase calls (handled directly client-side via Supabase SDK)
+  // ── 2. Bypass API routes, Supabase endpoints, and auth handlers ──
   if (url.pathname.startsWith('/api/') || url.hostname.includes('supabase.co')) {
     return;
   }
 
-  // 2. Cache-First for Mapbox Tiles & Fonts (0 Mapbox/Vercel bandwidth)
+  // ── 3. Cache-First for Mapbox Vector Tiles & Fonts ──
   if (url.hostname.includes('mapbox.com') && (url.pathname.includes('/tiles/') || url.pathname.includes('/fonts/'))) {
     event.respondWith(
       caches.open('mapbox-tiles-v2').then((cache) => {
@@ -54,7 +60,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 3. Cache-First for Next.js Static JS/CSS Chunks (/_next/static/...) -> 0 Vercel Fast Origin Transfer
+  // ── 4. Cache-First for Next.js Static JS/CSS Chunks (/_next/static/...) ──
   if (url.pathname.includes('/_next/static/') || url.pathname.endsWith('.js') || url.pathname.endsWith('.css')) {
     event.respondWith(
       caches.open(CACHE_NAME).then((cache) => {
@@ -70,20 +76,22 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 4. Stale-While-Revalidate for Page Navigation (Loads instant from cache, background refresh)
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
-      const fetchPromise = fetch(event.request).then((networkRes) => {
-        if (networkRes.status === 200) {
-          const clone = networkRes.clone();
-          caches.open(RUNTIME_CACHE).then((cache) => cache.put(event.request, clone));
-        }
-        return networkRes;
-      }).catch(() => cached || new Response('Offline', { status: 503 }));
-
-      return cached || fetchPromise;
-    })
-  );
+  // ── 5. Cache-First for Static Images and Icons ──
+  if (url.pathname.startsWith('/icons/') || url.pathname.endsWith('.png') || url.pathname.endsWith('.svg') || url.pathname.endsWith('.webp')) {
+    event.respondWith(
+      caches.match(event.request).then((cached) => {
+        if (cached) return cached;
+        return fetch(event.request).then((networkRes) => {
+          if (networkRes.status === 200) {
+            const clone = networkRes.clone();
+            caches.open(RUNTIME_CACHE).then((cache) => cache.put(event.request, clone));
+          }
+          return networkRes;
+        }).catch(() => new Response('', { status: 404 }));
+      })
+    );
+    return;
+  }
 });
 
 // ─── WEB PUSH NOTIFICATION HANDLER ───
