@@ -116,68 +116,58 @@ export default function LoginPage() {
         transition={{ duration: 0.6, ease: "easeOut" }}
         className="flex flex-col items-center lg:items-start text-center lg:text-left max-w-md lg:max-w-lg"
       >
-        {/* Floating 3D Crystal Shield Card */}
-        {/* Floating Official SIGPAD Logo Showcase Card */}
-        <div className="relative mb-6 group w-full flex justify-center lg:justify-start">
-          {/* Ambient Laser Halo Glow */}
-          <div className="absolute -inset-2 bg-gradient-to-r from-cyan-500/20 via-blue-600/15 to-indigo-500/20 rounded-[2.5rem] blur-2xl opacity-70 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+        {/* Seamlessly Integrated Brand Centerpiece with Volumetric Lighting */}
+        <div className="relative w-full max-w-[440px] py-6 sm:py-8 flex flex-col items-center lg:items-start justify-center group">
+          {/* Volumetric Radial Ambient Lighting behind the logo */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[340px] sm:w-[440px] h-[220px] bg-gradient-to-r from-cyan-500/25 via-blue-600/20 to-teal-400/15 blur-[65px] rounded-full pointer-events-none opacity-80 group-hover:opacity-100 transition-opacity duration-700" />
           
+          {/* Glowing Laser Horizon Line beneath the floating emblem */}
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[280px] sm:w-[380px] h-[1.5px] bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_15px_#22d3ee,0_0_30px_#06b6d4] opacity-80 pointer-events-none" />
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 w-[200px] h-[10px] bg-cyan-400/20 blur-md rounded-full pointer-events-none" />
+
+          {/* Floating Original Logo with Dynamic Breathing & Cyan Edge Sheen */}
           <motion.div
             animate={{ 
               y: [0, -8, 0],
-              boxShadow: [
-                "0 20px 60px rgba(0,0,0,0.85), 0 0 30px rgba(6,182,212,0.2)",
-                "0 25px 75px rgba(0,0,0,0.95), 0 0 45px rgba(6,182,212,0.35)",
-                "0 20px 60px rgba(0,0,0,0.85), 0 0 30px rgba(6,182,212,0.2)"
+              filter: [
+                "drop-shadow(0 15px 30px rgba(0,0,0,0.9)) drop-shadow(0 0 25px rgba(6,182,212,0.35)) brightness(1.05)",
+                "drop-shadow(0 22px 42px rgba(0,0,0,0.95)) drop-shadow(0 0 45px rgba(6,182,212,0.55)) brightness(1.15)",
+                "drop-shadow(0 15px 30px rgba(0,0,0,0.9)) drop-shadow(0 0 25px rgba(6,182,212,0.35)) brightness(1.05)"
               ]
             }}
             transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}
-            className="w-full max-w-[360px] sm:max-w-[420px] rounded-[2rem] bg-[#070b14]/80 backdrop-blur-3xl border border-white/15 p-6 sm:p-8 relative overflow-hidden shadow-2xl flex flex-col items-center justify-center"
+            className="relative z-10 w-full px-2 sm:px-4 py-4 flex items-center justify-center lg:justify-start"
           >
-            {/* Subtle background radial reflection inside the card */}
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(6,182,212,0.12),transparent_70%)] pointer-events-none" />
-
-            {/* Corner Tactical Accents */}
-            <div className="absolute top-3 left-3 w-3 h-3 border-t-2 border-l-2 border-cyan-400/60 rounded-tl pointer-events-none" />
-            <div className="absolute top-3 right-3 w-3 h-3 border-t-2 border-r-2 border-cyan-400/60 rounded-tr pointer-events-none" />
-            <div className="absolute bottom-3 left-3 w-3 h-3 border-b-2 border-l-2 border-cyan-400/60 rounded-bl pointer-events-none" />
-            <div className="absolute bottom-3 right-3 w-3 h-3 border-b-2 border-r-2 border-cyan-400/60 rounded-br pointer-events-none" />
-
-            {/* The Real Original SIGPAD Logo */}
             <img 
-              src="/logo_sigpad.png" 
+              src="/logo_sigpad_transparent.png" 
               alt="SIGPAD" 
-              className="w-full h-auto max-h-36 object-contain filter drop-shadow-[0_0_20px_rgba(255,255,255,0.12)] brightness-110 contrast-105"
+              className="w-full max-w-[340px] sm:max-w-[400px] h-auto object-contain select-none pointer-events-none"
             />
           </motion.div>
         </div>
 
-        {/* Branding Badge & Title */}
-        <div className="space-y-3">
+        {/* Branding Descriptor & Feature Highlights */}
+        <div className="space-y-4 pt-1">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-400/30 text-cyan-300 text-xs font-bold uppercase tracking-widest shadow-[0_0_15px_rgba(6,182,212,0.2)]">
             <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
-            <span>Plataforma Inteligente de Seguridad</span>
+            <span>Sistema Inteligente de Gestión</span>
           </div>
 
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white uppercase tracking-tight leading-none">
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-cyan-100 to-cyan-400">SIGPAD</span>
-          </h1>
-
-          <p className="text-zinc-400 text-xs sm:text-sm font-normal max-w-md leading-relaxed">
-            Control operativo de puestos, libro de guardia digital con geocercas, trazabilidad de rondines y supervisión gerencial en tiempo real.
+          <p className="text-zinc-300 text-sm sm:text-base font-normal max-w-md leading-relaxed">
+            Plataforma integral de seguridad privada, control de puestos con geocercas, libro de guardia digital y auditoría operativa en tiempo real.
           </p>
 
           {/* Desktop Feature Badges */}
           <div className="hidden lg:flex flex-col gap-2.5 pt-2 text-xs text-zinc-300">
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2.5 p-2 rounded-xl bg-white/[0.03] border border-white/5 backdrop-blur-sm">
               <div className="w-5 h-5 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0 border border-cyan-500/30">✓</div>
               <span>Control perimetral activo con alarmas sonoras y Hombre Vivo</span>
             </div>
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2.5 p-2 rounded-xl bg-white/[0.03] border border-white/5 backdrop-blur-sm">
               <div className="w-5 h-5 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0 border border-cyan-500/30">✓</div>
               <span>Novedades con geolocalización satelital y soporte multimedia</span>
             </div>
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2.5 p-2 rounded-xl bg-white/[0.03] border border-white/5 backdrop-blur-sm">
               <div className="w-5 h-5 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0 border border-cyan-500/30">✓</div>
               <span>Panel táctico en vivo optimizado para alta concurrencia</span>
             </div>
@@ -206,8 +196,8 @@ export default function LoginPage() {
                     <h2 className="text-xl font-black uppercase tracking-tight text-white">Ingreso al Sistema</h2>
                     <p className="text-xs text-zinc-400 mt-0.5">Ingresá tus credenciales de servicio</p>
                   </div>
-                  <div className="h-10 px-2.5 rounded-2xl bg-black/70 border border-white/15 flex items-center justify-center shadow-[0_0_15px_rgba(6,182,212,0.2)]">
-                    <img src="/logo_sigpad_oficial.jpg" alt="SIGPAD" className="h-6 w-auto object-contain brightness-110" />
+                  <div className="h-10 px-3 rounded-2xl bg-white/[0.04] border border-white/10 flex items-center justify-center shadow-[0_0_15px_rgba(6,182,212,0.15)] backdrop-blur-md">
+                    <img src="/logo_sigpad_transparent.png" alt="SIGPAD" className="h-5 w-auto object-contain filter drop-shadow-[0_0_8px_rgba(6,182,212,0.6)] brightness-110" />
                   </div>
                 </div>
 
