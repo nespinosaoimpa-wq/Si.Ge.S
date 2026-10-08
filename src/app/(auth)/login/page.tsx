@@ -133,10 +133,10 @@ export default function LoginPage() {
             transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
             className="w-48 h-48 sm:w-64 sm:h-64 lg:w-80 lg:h-80 rounded-[2.5rem] bg-[#070b14]/70 backdrop-blur-2xl border border-white/15 p-2 sm:p-3 relative overflow-hidden shadow-2xl flex items-center justify-center"
           >
-            {/* 3D Crystal Image Asset */}
+            {/* 3D Official SIGPAD Emblem Asset */}
             <img 
-              src="/sigpad_crystal_emblem.jpg" 
-              alt="SIGPAD Tactical Shield Emblem"
+              src="/sigpad_official_pedestal.jpg" 
+              alt="SIGPAD Logo Oficial"
               className="w-full h-full object-cover rounded-[2rem] filter brightness-105 contrast-105"
             />
 
@@ -156,7 +156,7 @@ export default function LoginPage() {
           </div>
 
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white uppercase tracking-tight leading-none">
-            SIGPAD <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-indigo-300">CLOUD</span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-cyan-100 to-cyan-400">SIGPAD</span>
           </h1>
 
           <p className="text-zinc-400 text-xs sm:text-sm font-normal max-w-md leading-relaxed">
@@ -202,8 +202,8 @@ export default function LoginPage() {
                     <h2 className="text-xl font-black uppercase tracking-tight text-white">Ingreso al Sistema</h2>
                     <p className="text-xs text-zinc-400 mt-0.5">Ingresá tus credenciales de servicio</p>
                   </div>
-                  <div className="w-10 h-10 rounded-2xl bg-cyan-500/15 border border-cyan-400/30 flex items-center justify-center text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.25)]">
-                    <Shield className="w-5 h-5" />
+                  <div className="h-10 px-2.5 rounded-2xl bg-black/70 border border-white/15 flex items-center justify-center shadow-[0_0_15px_rgba(6,182,212,0.2)]">
+                    <img src="/logo_sigpad_oficial.jpg" alt="SIGPAD" className="h-6 w-auto object-contain brightness-110" />
                   </div>
                 </div>
 

@@ -28,7 +28,7 @@ export default function AuthLayout({
         <span className="text-zinc-700">•</span>
         <div>Cifrado Militar AES-256</div>
         <span className="text-zinc-700">•</span>
-        <div>SIGPAD Cloud Enterprise</div>
+        <div>SIGPAD Enterprise</div>
       </div>
     </div>
   );
