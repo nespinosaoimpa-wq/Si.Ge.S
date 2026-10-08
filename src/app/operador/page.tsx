@@ -127,12 +127,32 @@ export default function GuardiaDashboard() {
   };
 
   useEffect(() => {
+    // ⚡ Instant Cache Hydration: Read last known assigned objective from localStorage
+    if (typeof window !== 'undefined') {
+      try {
+        const opKey = user?.id || user?.email || OPERATOR_ID;
+        const cached = localStorage.getItem(`sigpad_cache_op_obj_${opKey}`);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed?.id) {
+            setAssignedObjective(parsed);
+            setLoading(false);
+          }
+        }
+      } catch (e) {}
+    }
+
     const fetchObjective = async () => {
-      setLoading(true);
       try {
         const profile = await resolveOperatorProfileDirect(OPERATOR_ID, user?.email);
         if (profile) {
           setAssignedObjective(profile.assignedObjective);
+          if (typeof window !== 'undefined' && profile.assignedObjective) {
+            try {
+              const opKey = user?.id || user?.email || OPERATOR_ID;
+              localStorage.setItem(`sigpad_cache_op_obj_${opKey}`, JSON.stringify(profile.assignedObjective));
+            } catch (e) {}
+          }
 
           // Fetch scheduled or active shifts for this operator
           const { data: programmed } = await supabase

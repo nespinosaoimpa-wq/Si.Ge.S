@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(cachedData, {
         headers: {
           'X-Cache': 'HIT',
-          'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=30'
+          'Cache-Control': 'private, max-age=5, stale-while-revalidate=15'
         }
       });
     }
@@ -110,7 +110,7 @@ export async function GET(req: NextRequest) {
     const tenantObjectiveIds = rawObjectives.map((o: any) => o.id).filter(Boolean);
 
     let resourcesQuery = supabase.from('resources')
-      .select('id, name, role, status, latitude, longitude, accuracy, speed, heading, battery_level, last_gps_update, phone, email, avatar_url, current_objective_id, profile_id, tenant_id, profiles:profile_id(avatar_url, full_name)')
+      .select('id, name, role, status, latitude, longitude, accuracy, speed, heading, battery_level, last_gps_update, phone, email, avatar_url, current_objective_id, profile_id, tenant_id')
       .neq('status', 'baja');
 
     const last24h = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
@@ -393,7 +393,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(responseData, {
       headers: {
         'X-Cache': 'MISS',
-        'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=30'
+        'Cache-Control': 'private, max-age=5, stale-while-revalidate=15'
       }
     });
   } catch (error: any) {

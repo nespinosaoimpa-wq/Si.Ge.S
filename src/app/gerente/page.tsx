@@ -320,6 +320,12 @@ export default function AdminDashboard() {
     try {
       const res = await api.dashboard.getMapData();
       setData(res);
+      if (typeof window !== 'undefined' && res?.objectives) {
+        try {
+          const tenantKey = (user as any)?.tenant_id || (user as any)?.user_metadata?.tenant_id || 'default';
+          localStorage.setItem(`sigpad_cache_map_${tenantKey}`, JSON.stringify(res));
+        } catch (e) {}
+      }
 
       // Auto-trigger emergency overlay if there is an active, unresolved critical panic/emergency alert
       if (res && Array.isArray(res.recentIncidents)) {
@@ -643,6 +649,21 @@ export default function AdminDashboard() {
   }, []);
 
   useEffect(() => {
+    // ⚡ Instant Cache Hydration: Render cached map state in <50ms without waiting for network round-trip
+    if (typeof window !== 'undefined') {
+      try {
+        const tenantKey = (user as any)?.tenant_id || (user as any)?.user_metadata?.tenant_id || 'default';
+        const cached = localStorage.getItem(`sigpad_cache_map_${tenantKey}`);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed?.objectives && Array.isArray(parsed.objectives) && parsed.objectives.length > 0) {
+            setData(parsed);
+            setLoading(false);
+          }
+        }
+      } catch (e) {}
+    }
+
     fetchData();
     if (isMobile) setIsSidebarOpen(false);
 
