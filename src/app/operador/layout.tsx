@@ -138,43 +138,64 @@ export default function OperadorLayout({
         isShiftActive={isShiftActive}
       />
 
-      {/* Operator Bottom Navigation */}
-      <nav className={cn(
-        "fixed bottom-0 left-0 right-0 z-[100] flex items-center justify-around px-4 border-t transition-all safe-bottom bg-black border-white/5",
-      )} style={{ height: '84px' }}>
+      {/* Operator Floating Dark Glass Tactical Dock (Settigation Light Beam Effect) */}
+      <nav className="fixed left-1/2 -translate-x-1/2 bottom-4 w-[calc(100%-24px)] max-w-md z-[100] bg-[#070b14]/90 backdrop-blur-2xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.85),0_0_25px_rgba(6,182,212,0.15)] rounded-full p-1.5 flex items-center justify-between gap-1 pointer-events-auto safe-bottom">
         {navItems.map((item) => {
           const isActive = pathname === item.href || 
             (item.href !== '/operador' && pathname?.startsWith(item.href));
           const isBuzon = item.href === '/operador/notificaciones';
           return (
-            <Link key={item.name} href={item.href} className="flex flex-col items-center justify-center gap-1.5 p-2 w-full active:scale-90 transition-all relative group">
-              <div className={cn(
-                "w-12 h-12 rounded-2xl flex items-center justify-center transition-all relative overflow-hidden",
-                isActive 
-                  ? "text-primary bg-primary/10 shadow-[0_0_20px_rgba(15, 76, 92,0.15)]" 
-                  : "text-zinc-600 hover:text-zinc-400"
-              )}>
-                <item.icon size={22} strokeWidth={isActive ? 2.5 : 2} className="relative z-10" />
-                
-                {/* Active Glow Indicator */}
-                {isActive && (
-                  <motion.div 
-                    layoutId="nav-active-bg"
-                    className="absolute inset-0 bg-primary/5 rounded-2xl"
-                    initial={false}
+            <Link 
+              key={item.name} 
+              href={item.href} 
+              className="relative flex-1 min-w-0 py-2 px-1 rounded-full flex flex-col items-center justify-center text-center transition-all select-none active:scale-95 group"
+            >
+              {isActive && (
+                <>
+                  {/* Sliding Glow Pill */}
+                  <motion.div
+                    layoutId="operador-dock-light"
+                    className="absolute inset-0 rounded-full bg-gradient-to-b from-cyan-500/25 via-blue-600/15 to-transparent border border-cyan-400/40 shadow-[0_0_20px_rgba(6,182,212,0.35),inset_0_1px_1px_rgba(255,255,255,0.4)]"
+                    transition={{ type: "spring", stiffness: 380, damping: 28 }}
                   />
-                )}
+                  {/* Sliding Top Light Ray */}
+                  <motion.div
+                    layoutId="operador-dock-top-beam"
+                    className="absolute -top-1 left-1/2 -translate-x-1/2 w-7 h-[2.5px] bg-gradient-to-r from-transparent via-cyan-300 to-transparent rounded-full shadow-[0_0_10px_#22d3ee,0_0_18px_#06b6d4]"
+                    transition={{ type: "spring", stiffness: 380, damping: 28 }}
+                  />
+                  {/* Bottom Ambient Spotlight */}
+                  <motion.div
+                    layoutId="operador-dock-floor-glow"
+                    className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-9 h-2.5 bg-cyan-400/40 blur-sm rounded-full pointer-events-none"
+                    transition={{ type: "spring", stiffness: 380, damping: 28 }}
+                  />
+                </>
+              )}
+
+              <div className="relative">
+                <item.icon 
+                  size={20} 
+                  strokeWidth={isActive ? 2.5 : 2} 
+                  className={cn(
+                    "relative z-10 transition-all duration-200",
+                    isActive 
+                      ? "text-cyan-300 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)] scale-110" 
+                      : "text-zinc-400 group-hover:text-zinc-200"
+                  )} 
+                />
 
                 {/* Notification badge */}
                 {isBuzon && unreadCount > 0 && (
-                  <div className="absolute top-2 right-2 w-4 h-4 bg-red-600 rounded-full flex items-center justify-center border-2 border-black z-20">
+                  <div className="absolute -top-1.5 -right-2 w-4 h-4 bg-red-600 rounded-full flex items-center justify-center border-2 border-[#070b14] z-20 shadow-md">
                     <span className="text-[7px] font-black text-white">{unreadCount > 9 ? '9+' : unreadCount}</span>
                   </div>
                 )}
               </div>
+
               <span className={cn(
-                "text-[8px] font-black uppercase tracking-[0.2em] transition-all",
-                isActive ? "text-primary" : "text-zinc-600"
+                "relative z-10 text-[9px] font-bold mt-1 tracking-wider uppercase transition-colors duration-200 truncate max-w-full",
+                isActive ? "text-white font-extrabold" : "text-zinc-400 group-hover:text-zinc-200"
               )}>
                 {item.name}
               </span>

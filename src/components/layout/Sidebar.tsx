@@ -103,37 +103,99 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Floating Glassmorphism Mobile Dock (Uiverse Menu) */}
-      <nav className="lg:hidden menu uiverse-menu">
-          {primaryMobileItems.map((item) => {
-            const isActive = item.href === '/gerente'
-              ? (pathname === '/gerente' || pathname === '/gerente/mapa')
-              : pathname?.startsWith(item.href);
+      {/* Floating Dark Glass Tactical Mobile Dock (Settigation Light Beam Effect) */}
+      <nav className="lg:hidden fixed left-1/2 -translate-x-1/2 bottom-4 w-[calc(100%-24px)] max-w-md z-[100] bg-[#070b14]/90 backdrop-blur-2xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.85),0_0_25px_rgba(6,182,212,0.15)] rounded-full p-1.5 flex items-center justify-between gap-1 pointer-events-auto safe-bottom">
+        {primaryMobileItems.map((item) => {
+          const isActive = item.href === '/gerente'
+            ? (pathname === '/gerente' || pathname === '/gerente/mapa')
+            : pathname?.startsWith(item.href);
 
-            return (
-              <Link 
-                key={item.name} 
-                href={item.href} 
-                className={cn(isActive && 'active')}
-              >
-                <item.icon size={22} />
-                <span>{item.name}</span>
-              </Link>
-            );
-          })}
-
-          {/* 5th Column: "Más" Button for Manager */}
-          {!isGuardia && (
-            <button 
-              type="button" 
-              onClick={() => setIsMoreOpen(!isMoreOpen)} 
-              className={cn(isMoreOpen && 'active')}
+          return (
+            <Link 
+              key={item.name} 
+              href={item.href} 
+              className="relative flex-1 min-w-0 py-2 px-1 rounded-full flex flex-col items-center justify-center text-center transition-all select-none active:scale-95 group"
             >
-              <Grid size={22} />
-              <span>Más</span>
-            </button>
-          )}
-        </nav>
+              {isActive && (
+                <>
+                  {/* Sliding Glow Pill */}
+                  <motion.div
+                    layoutId="gerente-dock-light"
+                    className="absolute inset-0 rounded-full bg-gradient-to-b from-cyan-500/25 via-blue-600/15 to-transparent border border-cyan-400/40 shadow-[0_0_20px_rgba(6,182,212,0.35),inset_0_1px_1px_rgba(255,255,255,0.4)]"
+                    transition={{ type: "spring", stiffness: 380, damping: 28 }}
+                  />
+                  {/* Sliding Top Light Ray */}
+                  <motion.div
+                    layoutId="gerente-dock-top-beam"
+                    className="absolute -top-1 left-1/2 -translate-x-1/2 w-7 h-[2.5px] bg-gradient-to-r from-transparent via-cyan-300 to-transparent rounded-full shadow-[0_0_10px_#22d3ee,0_0_18px_#06b6d4]"
+                    transition={{ type: "spring", stiffness: 380, damping: 28 }}
+                  />
+                  {/* Bottom Ambient Spotlight */}
+                  <motion.div
+                    layoutId="gerente-dock-floor-glow"
+                    className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-9 h-2.5 bg-cyan-400/40 blur-sm rounded-full pointer-events-none"
+                    transition={{ type: "spring", stiffness: 380, damping: 28 }}
+                  />
+                </>
+              )}
+              <item.icon 
+                size={20} 
+                className={cn(
+                  "relative z-10 transition-all duration-200",
+                  isActive 
+                    ? "text-cyan-300 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)] scale-110" 
+                    : "text-zinc-400 group-hover:text-zinc-200"
+                )} 
+              />
+              <span className={cn(
+                "relative z-10 text-[9px] font-bold mt-1 tracking-wider uppercase transition-colors duration-200 truncate max-w-full",
+                isActive ? "text-white font-extrabold" : "text-zinc-400 group-hover:text-zinc-200"
+              )}>
+                {item.name}
+              </span>
+            </Link>
+          );
+        })}
+
+        {/* 5th Column: "Más" Button for Manager */}
+        {!isGuardia && (
+          <button 
+            type="button" 
+            onClick={() => setIsMoreOpen(!isMoreOpen)} 
+            className="relative flex-1 min-w-0 py-2 px-1 rounded-full flex flex-col items-center justify-center text-center transition-all select-none active:scale-95 group cursor-pointer"
+          >
+            {isMoreOpen && (
+              <>
+                <motion.div
+                  layoutId="gerente-dock-light"
+                  className="absolute inset-0 rounded-full bg-gradient-to-b from-cyan-500/25 via-blue-600/15 to-transparent border border-cyan-400/40 shadow-[0_0_20px_rgba(6,182,212,0.35),inset_0_1px_1px_rgba(255,255,255,0.4)]"
+                  transition={{ type: "spring", stiffness: 380, damping: 28 }}
+                />
+                <motion.div
+                  layoutId="gerente-dock-top-beam"
+                  className="absolute -top-1 left-1/2 -translate-x-1/2 w-7 h-[2.5px] bg-gradient-to-r from-transparent via-cyan-300 to-transparent rounded-full shadow-[0_0_10px_#22d3ee,0_0_18px_#06b6d4]"
+                  transition={{ type: "spring", stiffness: 380, damping: 28 }}
+                />
+              </>
+            )}
+            <Grid 
+              size={20} 
+              className={cn(
+                "relative z-10 transition-all duration-200",
+                isMoreOpen 
+                  ? "text-cyan-300 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)] scale-110" 
+                  : "text-zinc-400 group-hover:text-zinc-200"
+              )} 
+            />
+            <span className={cn(
+              "relative z-10 text-[9px] font-bold mt-1 tracking-wider uppercase transition-colors duration-200",
+              isMoreOpen ? "text-white font-extrabold" : "text-zinc-400 group-hover:text-zinc-200"
+            )}>
+              Más
+            </span>
+          </button>
+        )}
+      </nav>
 
         {/* Mobile Slide-Up Full Drawer Sheet for "Más" */}
         <AnimatePresence>
