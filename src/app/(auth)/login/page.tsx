@@ -117,34 +117,38 @@ export default function LoginPage() {
         className="flex flex-col items-center lg:items-start text-center lg:text-left max-w-md lg:max-w-lg"
       >
         {/* Floating 3D Crystal Shield Card */}
-        <div className="relative mb-6 group">
-          {/* Ambient Laser Halo Rings */}
-          <div className="absolute -inset-4 bg-gradient-to-r from-cyan-500/20 via-blue-600/20 to-indigo-500/20 rounded-[3rem] blur-2xl opacity-70 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+        {/* Floating Official SIGPAD Logo Showcase Card */}
+        <div className="relative mb-6 group w-full flex justify-center lg:justify-start">
+          {/* Ambient Laser Halo Glow */}
+          <div className="absolute -inset-2 bg-gradient-to-r from-cyan-500/20 via-blue-600/15 to-indigo-500/20 rounded-[2.5rem] blur-2xl opacity-70 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
           
           <motion.div
             animate={{ 
-              y: [0, -10, 0],
+              y: [0, -8, 0],
               boxShadow: [
-                "0 20px 60px rgba(0,0,0,0.8), 0 0 30px rgba(6,182,212,0.25)",
-                "0 30px 80px rgba(0,0,0,0.9), 0 0 50px rgba(6,182,212,0.45)",
-                "0 20px 60px rgba(0,0,0,0.8), 0 0 30px rgba(6,182,212,0.25)"
+                "0 20px 60px rgba(0,0,0,0.85), 0 0 30px rgba(6,182,212,0.2)",
+                "0 25px 75px rgba(0,0,0,0.95), 0 0 45px rgba(6,182,212,0.35)",
+                "0 20px 60px rgba(0,0,0,0.85), 0 0 30px rgba(6,182,212,0.2)"
               ]
             }}
-            transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-            className="w-48 h-48 sm:w-64 sm:h-64 lg:w-80 lg:h-80 rounded-[2.5rem] bg-[#070b14]/70 backdrop-blur-2xl border border-white/15 p-2 sm:p-3 relative overflow-hidden shadow-2xl flex items-center justify-center"
+            transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}
+            className="w-full max-w-[360px] sm:max-w-[420px] rounded-[2rem] bg-[#070b14]/80 backdrop-blur-3xl border border-white/15 p-6 sm:p-8 relative overflow-hidden shadow-2xl flex flex-col items-center justify-center"
           >
-            {/* 3D Official SIGPAD Emblem Asset */}
-            <img 
-              src="/sigpad_official_pedestal.jpg" 
-              alt="SIGPAD Logo Oficial"
-              className="w-full h-full object-cover rounded-[2rem] filter brightness-105 contrast-105"
-            />
+            {/* Subtle background radial reflection inside the card */}
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(6,182,212,0.12),transparent_70%)] pointer-events-none" />
 
             {/* Corner Tactical Accents */}
             <div className="absolute top-3 left-3 w-3 h-3 border-t-2 border-l-2 border-cyan-400/60 rounded-tl pointer-events-none" />
             <div className="absolute top-3 right-3 w-3 h-3 border-t-2 border-r-2 border-cyan-400/60 rounded-tr pointer-events-none" />
             <div className="absolute bottom-3 left-3 w-3 h-3 border-b-2 border-l-2 border-cyan-400/60 rounded-bl pointer-events-none" />
             <div className="absolute bottom-3 right-3 w-3 h-3 border-b-2 border-r-2 border-cyan-400/60 rounded-br pointer-events-none" />
+
+            {/* The Real Original SIGPAD Logo */}
+            <img 
+              src="/logo_sigpad.png" 
+              alt="SIGPAD" 
+              className="w-full h-auto max-h-36 object-contain filter drop-shadow-[0_0_20px_rgba(255,255,255,0.12)] brightness-110 contrast-105"
+            />
           </motion.div>
         </div>
 
